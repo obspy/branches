@@ -1,0 +1,38 @@
+body {
+  font-family: Verdana;
+  margin: 20px;
+}
+pre {
+  background-color: #EEEEEE;
+}
+th {
+  background-color: #EEEEEE;
+  margin: 0;
+  padding: 5px;
+  text-align: center;
+  border: 1px solid gray;
+}
+table {
+  border-collapse: collapse;
+  margin: 0;
+  padding: 0;
+}
+td {
+  text-align: center;
+  border: 1px solid gray;
+  margin: 0;
+  padding: 5px;
+}
+.error {
+  background-color: #FF0000;
+}
+.ok {
+  background-color: #00FF00;
+}
+ul.filter {
+  margin-top: 5px;
+  margin-bottom: 0;
+}
+ul.filter li {
+  display: inline;
+}

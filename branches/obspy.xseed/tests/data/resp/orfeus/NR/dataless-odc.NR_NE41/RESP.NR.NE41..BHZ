@@ -1,0 +1,55 @@
+#		<< IRIS SEED Reader, Release 4.8 >>
+#		
+#		======== CHANNEL RESPONSE DATA ========
+B050F03     Station:     NE41
+B050F16     Network:     NR
+B052F03     Location:    ??
+B052F04     Channel:     BHZ
+B052F22     Start date:  1990,004
+B052F23     End date:    1991,220,23:59:59.0000
+#		=======================================
+#		+               +--------------------------------------------+                +
+#		+               |   Response (Poles & Zeros),  NE41 ch BHZ   |                +
+#		+               +--------------------------------------------+                +
+#		
+B053F03     Transfer function type:                A [Laplace Transform (Rad/sec)]
+B053F04     Stage sequence number:                 1
+B053F05     Response in units lookup:              M - EARTH DISPLACEMENT IN METERS
+B053F06     Response out units lookup:             COUNTS - DIGITAL COUNTS
+B053F07     A0 normalization factor:               8.89
+B053F08     Normalization frequency:               1
+B053F09     Number of zeroes:                      3
+B053F14     Number of poles:                       4
+#		Complex zeroes:
+#		  i  real          imag          real_error    imag_error
+B053F10-13    0  0.000000E+00  0.000000E+00  0.000000E+00  0.000000E+00
+B053F10-13    1  0.000000E+00  0.000000E+00  0.000000E+00  0.000000E+00
+B053F10-13    2  0.000000E+00  0.000000E+00  0.000000E+00  0.000000E+00
+#		Complex poles:
+#		  i  real          imag          real_error    imag_error
+B053F15-18    0 -6.300000E-02  0.000000E+00  0.000000E+00  0.000000E+00
+B053F15-18    1 -6.300000E-02  0.000000E+00  0.000000E+00  0.000000E+00
+B053F15-18    2 -4.440000E+00  4.440000E+00  0.000000E+00  0.000000E+00
+B053F15-18    3 -4.440000E+00 -4.440000E+00  0.000000E+00  0.000000E+00
+#		
+#		+                  +---------------------------------------+                  +
+#		+                  |   Channel Sensitivity,  NE41 ch BHZ   |                  +
+#		+                  +---------------------------------------+                  +
+#		
+B058F03     Stage sequence number:                 0
+B058F04     Sensitivity:                           1.057270E+09
+B058F05     Frequency of sensitivity:              1.000000E+00 HZ
+B058F06     Number of calibrations:                1
+#		Calibrations:
+#		 i, sensitivity, frequency, time of calibration
+B058F07-08    0  1.155070E+03  1.000000E+00 1971,001
+#		
+#		+                  +---------------------------------------+                  +
+#		+                  |       Channel Gain,  NE41 ch BHZ      |                  +
+#		+                  +---------------------------------------+                  +
+#		
+B058F03     Stage sequence number:                 1
+B058F04     Gain:                                  1.057270E+09
+B058F05     Frequency of gain:                     1.000000E+00 HZ
+B058F06     Number of calibrations:                0
+#		

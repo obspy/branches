@@ -1,0 +1,155 @@
+#		<< IRIS SEED Reader, Release 4.8 >>
+#		
+#		======== CHANNEL RESPONSE DATA ========
+B050F03     Station:     ACSO
+B050F16     Network:     US
+B052F03     Location:    ??
+B052F04     Channel:     BLZ
+B052F22     Start date:  2005,157,00:00:00
+B052F23     End date:    2999,365,23:59:59
+#		=======================================
+#		+               +--------------------------------------------+                +
+#		+               |   Response (Poles & Zeros),  ACSO ch BLZ   |                +
+#		+               +--------------------------------------------+                +
+#		
+B053F03     Transfer function type:                A [Laplace Transform (Rad/sec)]
+B053F04     Stage sequence number:                 1
+B053F05     Response in units lookup:              M/S**2 - Acceleration in Meters Per Second Per Second
+B053F06     Response out units lookup:             V - Volts
+B053F07     A0 normalization factor:               2.45957E+13
+B053F08     Normalization frequency:               1
+B053F09     Number of zeroes:                      0
+B053F14     Number of poles:                       4
+#		Complex zeroes:
+#		  i  real          imag          real_error    imag_error
+#		Complex poles:
+#		  i  real          imag          real_error    imag_error
+B053F15-18    0 -9.810000E+02  1.009000E+03  0.000000E+00  0.000000E+00
+B053F15-18    1 -9.810000E+02 -1.009000E+03  0.000000E+00  0.000000E+00
+B053F15-18    2 -3.290000E+03  1.263000E+03  0.000000E+00  0.000000E+00
+B053F15-18    3 -3.290000E+03 -1.263000E+03  0.000000E+00  0.000000E+00
+#		
+#		+                  +---------------------------------------+                  +
+#		+                  |       Channel Gain,  ACSO ch BLZ      |                  +
+#		+                  +---------------------------------------+                  +
+#		
+B058F03     Stage sequence number:                 1
+B058F04     Gain:                                  1.020000E+00
+B058F05     Frequency of gain:                     1.000000E+00 HZ
+B058F06     Number of calibrations:                0
+#		
+#		+               +-------------------------------------------+                 +
+#		+               |   Response (Coefficients),  ACSO ch BLZ   |                 +
+#		+               +-------------------------------------------+                 +
+#		
+B054F03     Transfer function type:                D
+B054F04     Stage sequence number:                 2
+B054F05     Response in units lookup:              V - Volts
+B054F06     Response out units lookup:             COUNTS - Digital Counts
+B054F07     Number of numerators:                  1
+B054F10     Number of denominators:                0
+#		Numerator coefficients:
+#		  i, coefficient,  error
+B054F08-09    0  1.000000E+00  0.000000E+00
+#		
+#		+                      +------------------------------+                       +
+#		+                      |   Decimation,  ACSO ch BLZ   |                       +
+#		+                      +------------------------------+                       +
+#		
+B057F03     Stage sequence number:                 2
+B057F04     Input sample rate:                     4.000000E+01
+B057F05     Decimation factor:                     1
+B057F06     Decimation offset:                     0
+B057F07     Estimated delay (seconds):             0.000000E+00
+B057F08     Correction applied (seconds):          0.000000E+00
+#		
+#		+                  +---------------------------------------+                  +
+#		+                  |       Channel Gain,  ACSO ch BLZ      |                  +
+#		+                  +---------------------------------------+                  +
+#		
+B058F03     Stage sequence number:                 2
+B058F04     Gain:                                  4.194300E+05
+B058F05     Frequency of gain:                     0.000000E+00 HZ
+B058F06     Number of calibrations:                0
+#		
+#		+               +-------------------------------------------+                 +
+#		+               |   Response (Coefficients),  ACSO ch BLZ   |                 +
+#		+               +-------------------------------------------+                 +
+#		
+B054F03     Transfer function type:                D
+B054F04     Stage sequence number:                 3
+B054F05     Response in units lookup:              COUNTS - Digital Counts
+B054F06     Response out units lookup:             COUNTS - Digital Counts
+B054F07     Number of numerators:                  39
+B054F10     Number of denominators:                0
+#		Numerator coefficients:
+#		  i, coefficient,  error
+B054F08-09    0  1.671680E-13  0.000000E+00
+B054F08-09    1  5.201300E-07  0.000000E+00
+B054F08-09    2 -4.601310E-06  0.000000E+00
+B054F08-09    3  6.920170E-06  0.000000E+00
+B054F08-09    4  4.556420E-04  0.000000E+00
+B054F08-09    5  8.272690E-04  0.000000E+00
+B054F08-09    6 -3.525230E-03  0.000000E+00
+B054F08-09    7  1.284780E-03  0.000000E+00
+B054F08-09    8  6.739110E-05  0.000000E+00
+B054F08-09    9 -4.836730E-03  0.000000E+00
+B054F08-09   10  1.013240E-02  0.000000E+00
+B054F08-09   11 -1.494330E-02  0.000000E+00
+B054F08-09   12  1.568790E-02  0.000000E+00
+B054F08-09   13 -9.516390E-03  0.000000E+00
+B054F08-09   14 -5.902110E-03  0.000000E+00
+B054F08-09   15  3.063250E-02  0.000000E+00
+B054F08-09   16 -6.202530E-02  0.000000E+00
+B054F08-09   17  9.507870E-02  0.000000E+00
+B054F08-09   18 -1.298630E-01  0.000000E+00
+B054F08-09   19  1.441160E-01  0.000000E+00
+B054F08-09   20  8.523390E-01  0.000000E+00
+B054F08-09   21  1.607280E-01  0.000000E+00
+B054F08-09   22 -1.352070E-01  0.000000E+00
+B054F08-09   23  9.600150E-02  0.000000E+00
+B054F08-09   24 -6.110880E-02  0.000000E+00
+B054F08-09   25  2.889060E-02  0.000000E+00
+B054F08-09   26 -4.159150E-03  0.000000E+00
+B054F08-09   27 -1.081500E-02  0.000000E+00
+B054F08-09   28  1.639940E-02  0.000000E+00
+B054F08-09   29 -1.513740E-02  0.000000E+00
+B054F08-09   30  9.994240E-03  0.000000E+00
+B054F08-09   31 -4.562300E-03  0.000000E+00
+B054F08-09   32 -1.843090E-04  0.000000E+00
+B054F08-09   33  1.455760E-03  0.000000E+00
+B054F08-09   34 -3.575730E-03  0.000000E+00
+B054F08-09   35  7.867250E-04  0.000000E+00
+B054F08-09   36  4.775160E-04  0.000000E+00
+B054F08-09   37  8.027790E-06  0.000000E+00
+B054F08-09   38 -4.512370E-06  0.000000E+00
+#		
+#		+                      +------------------------------+                       +
+#		+                      |   Decimation,  ACSO ch BLZ   |                       +
+#		+                      +------------------------------+                       +
+#		
+B057F03     Stage sequence number:                 3
+B057F04     Input sample rate:                     4.000000E+01
+B057F05     Decimation factor:                     1
+B057F06     Decimation offset:                     0
+B057F07     Estimated delay (seconds):             5.000000E-01
+B057F08     Correction applied (seconds):          5.000000E-01
+#		
+#		+                  +---------------------------------------+                  +
+#		+                  |       Channel Gain,  ACSO ch BLZ      |                  +
+#		+                  +---------------------------------------+                  +
+#		
+B058F03     Stage sequence number:                 3
+B058F04     Gain:                                  1.000000E+00
+B058F05     Frequency of gain:                     0.000000E+00 HZ
+B058F06     Number of calibrations:                0
+#		
+#		+                  +---------------------------------------+                  +
+#		+                  |   Channel Sensitivity,  ACSO ch BLZ   |                  +
+#		+                  +---------------------------------------+                  +
+#		
+B058F03     Stage sequence number:                 0
+B058F04     Sensitivity:                           4.278190E+05
+B058F05     Frequency of sensitivity:              1.000000E+00 HZ
+B058F06     Number of calibrations:                0
+#		

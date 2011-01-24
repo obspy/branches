@@ -1,0 +1,30 @@
+<html>
+  <head>
+    <title>Last 20 reports</title>
+    <style type="text/css">
+      $CSS</style>
+  </head>
+  <body>
+    <h1>Last 20 reports</h1>
+    <div id="filter">
+      System: $FILTER_SYSTEM<br />
+      Arch: $FILTER_ARCH<br />
+      Version: $FILTER_VERSION<br />
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Timestamp</th>
+          <th>Failures/Errors [# Modules]</th>
+          <th>Node</th>
+          <th>System</th>
+          <th>Python Version</th>
+          <th>XML</th>
+        </tr>
+      </thead>
+      <tbody>
+        $DATA
+      </tbody>
+    </table>
+  </body>
+</html>

@@ -1,0 +1,13 @@
+Creates Mini-SEED files using libmseed directly. Sorry for the bad C code. Some comments might also not fit to the code.
+
+On UNIX just run ./buildandrun.sh
+
+A copy or a symlink to a shared libmseed library must be in the parent directory. The easiest way would be to place this folder in the libmseed directory.
+
+The filename is always the type of the datasample (int, float, ...) and the output encoding. The files will be created in the output directory.
+
+Every file will be 256 bytes long.
+
+Every encoding that supports numbers will contain 50 numbers from 1 to 50.
+
+Furthermore there are two ASCII files. The full ASCII files contains all 95 printable ASCII strings and the small ASCII file contains the first 8 letters of the alphabet.
