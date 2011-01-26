@@ -1,6 +1,6 @@
 @echo off
 
-cd /d D:\Workspace\obspy\branches\pypi
+cd /d D:\Workspace\obspy\misc\scripts
 
 PATH = C:\MinGW\bin\;C:\MinGW\include;%PATH%
 echo Python 2.5.x - 32 bit
@@ -47,4 +47,4 @@ call "D:\Python\obspy\27\x64\Scripts\deactivate.bat"
 echo DONE
 echo.
 
-cd /d D:\Python
+cd /d D:\Workspace\obspy-barsch
