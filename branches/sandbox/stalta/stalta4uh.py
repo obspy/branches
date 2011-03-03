@@ -77,6 +77,7 @@ for file in mseed_files:
         T2 = UTCDateTime("2010-09-20T04:00:00") # XXX
         st.trim(T1, T2) # XXX
         #st.trim(endtime=st[0].stats.starttime+5000) # XXX
+        st.merge(-1)
         summary.append(str(st))
     except:
         summary.append("skipped!")

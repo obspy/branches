@@ -56,6 +56,7 @@ for station in STATIONS:
         continue
     st.extend(tmp)
     num_stations += 1
+st.merge(-1)
 
 if not st:
     pass # XXX print/mail warning

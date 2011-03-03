@@ -41,6 +41,7 @@ for file in mseed_files:
     print "\n", file,
     try:
         stream = read(file)
+        stream.merge(-1)
     except:
         continue
     stats = stream[0].stats

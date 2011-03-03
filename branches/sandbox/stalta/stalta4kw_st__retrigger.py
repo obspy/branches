@@ -65,6 +65,7 @@ while T1 < UTCDateTime("2011-01-15T23:59:59Z"):
         except:
             continue
         st.extend(tmp)
+    st.merge(-1)
 
     if not st:
         print "no data for %s --- %s" % (T1, T2)

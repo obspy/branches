@@ -48,12 +48,15 @@ client = Client()
 #while T1 < UTCDateTime("2011-01-07T14:00:00Z"):
 #T1 = UTCDateTime("2010-05-26T23:00:00Z")
 #while T1 < UTCDateTime("2010-05-27T23:59:59Z"):
-T1 = UTCDateTime("2010-10-31T23:00:00Z")
-while T1 < UTCDateTime("2010-11-01T23:59:59Z"):
+#T1 = UTCDateTime("2010-10-31T23:00:00Z")
+#while T1 < UTCDateTime("2010-11-01T23:59:59Z"):
+T1 = UTCDateTime("2011-01-26T06:00:00Z")
+while T1 < UTCDateTime("2011-01-31T13:59:59Z"):
     T1 += (60 * 60 * 1)
     T2 = T1 + (60 * 60 * 1) + 30
 
     st = Stream()
+    num_stations = 0
     for station in STATIONS:
         try:
             # we request 60s more at start and end and cut them off later to avoid
@@ -64,6 +67,8 @@ while T1 < UTCDateTime("2010-11-01T23:59:59Z"):
         except:
             continue
         st.extend(tmp)
+        num_stations += 1
+    st.merge(-1)
 
     if not st:
         print "no data for %s --- %s" % (T1, T2)
@@ -131,8 +136,8 @@ while T1 < UTCDateTime("2010-11-01T23:59:59Z"):
             if off != last_off_time:
                 event = (UTCDateTime(on), off - on, stations)
                 summary.append("%s %04.1f %s" % event)
-                tmp = st.slice(UTCDateTime(on), UTCDateTime(off))
-                outfilename = "%s/%s.png" % (PLOTDIR, UTCDateTime(on))
+                tmp = st.slice(UTCDateTime(on) - 1, UTCDateTime(off))
+                outfilename = "%s/%s_%.1f_%s-%s_%s.png" % (PLOTDIR, UTCDateTime(on), off - on, len(stations), num_stations, "-".join(stations))
                 tmp.plot(outfile=outfilename)
                 mutt += ("-a", outfilename)
                 last_off_time = off

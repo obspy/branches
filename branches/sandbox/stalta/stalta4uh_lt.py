@@ -66,6 +66,7 @@ while T1 < END:
             if "No waveform data available" in str(e):
                 continue
             raise
+    st.merge(-1)
 
     summary = []
     summary.append("#" * 79)
