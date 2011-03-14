@@ -78,6 +78,7 @@ for file in mseed_files:
         st.trim(T1, T2) # XXX
         #st.trim(endtime=st[0].stats.starttime+5000) # XXX
         st.merge(-1)
+        st.sort()
         summary.append(str(st))
     except:
         summary.append("skipped!")

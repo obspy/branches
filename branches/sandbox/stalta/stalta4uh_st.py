@@ -57,6 +57,7 @@ for station in STATIONS:
     st.extend(tmp)
     num_stations += 1
 st.merge(-1)
+st.sort()
 
 if not st:
     pass # XXX print/mail warning

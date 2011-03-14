@@ -67,6 +67,7 @@ while T1 < END:
                 continue
             raise
     st.merge(-1)
+    st.sort()
 
     summary = []
     summary.append("#" * 79)

@@ -50,8 +50,8 @@ client = Client()
 #while T1 < UTCDateTime("2010-05-27T23:59:59Z"):
 #T1 = UTCDateTime("2010-10-31T23:00:00Z")
 #while T1 < UTCDateTime("2010-11-01T23:59:59Z"):
-T1 = UTCDateTime("2011-01-26T06:00:00Z")
-while T1 < UTCDateTime("2011-01-31T13:59:59Z"):
+T1 = UTCDateTime("2011-03-09T22:00:00Z")
+while T1 < UTCDateTime("2011-03-10T09:59:59Z"):
     T1 += (60 * 60 * 1)
     T2 = T1 + (60 * 60 * 1) + 30
 
@@ -69,6 +69,7 @@ while T1 < UTCDateTime("2011-01-31T13:59:59Z"):
         st.extend(tmp)
         num_stations += 1
     st.merge(-1)
+    st.sort()
 
     if not st:
         print "no data for %s --- %s" % (T1, T2)

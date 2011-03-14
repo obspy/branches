@@ -41,9 +41,10 @@ for file in mseed_files:
     print "\n", file,
     try:
         stream = read(file)
-        stream.merge(-1)
     except:
         continue
+    stream.merge(-1)
+    stream.sort()
     stats = stream[0].stats
     pick_file = "%s_%s_%s.picks" % (stats.starttime.year,
                                     stats.starttime.strftime("%j"),
