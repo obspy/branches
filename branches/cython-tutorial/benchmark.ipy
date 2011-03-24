@@ -1,0 +1,18 @@
+# run in ipython
+
+from integrate import integrate as i
+from integrate_cython1 import integrate as i1
+from integrate_cython2 import integrate as i2
+from integrate_cython3 import integrate as i3
+from integrate_cython3_alternative_syntax import integrate as i3a
+
+print "\noriginal python code:"
+%timeit -n100 i(10000, 10000, 10000)
+print "\ncython with original code:"
+%timeit -n100 i1(10000, 10000, 10000)
+print "\ncython with modified code (some static types):"
+%timeit -n100 i2(10000, 10000, 10000)
+print "\ncython with modified code (static types, also for function):"
+%timeit -n100 i3(10000, 10000, 10000)
+print "\nsame with alternative syntax:"
+%timeit -n100 i3a(10000, 10000, 10000)

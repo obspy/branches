@@ -1,0 +1,11 @@
+see tutorial and documentation at:
+http://cython.org/
+http://docs.cython.org/src/userguide/tutorial.html
+http://docs.cython.org/src/quickstart/cythonize.html
+
+for combined use with numpy:
+http://docs.cython.org/src/tutorial/numpy.html
+http://docs.cython.org/src/userguide/numpy_tutorial.html
+
+for automating the compilation steps:
+http://docs.cython.org/src/userguide/source_files_and_compilation.html
