@@ -27,8 +27,6 @@ class MyMainWindow(QtGui.QMainWindow):
         # e.g. in update() methods
         self.options = options
         # for convenience set some instance wide attributes
-        self.poles = options.poles
-        self.zeros = options.zeros
         self.file = options.file
 
         # put some addtional setup stuff here...
@@ -39,9 +37,9 @@ class MyMainWindow(QtGui.QMainWindow):
 
         # setup initial poles/zeros
         self.paz = {}
-        self.paz['poles'] = [0.06+0j, 206+0j]
-        self.paz['zeros'] = [0+0j, 0+0j]
-        self.paz['gain'] = 206
+        self.paz['poles'] = parse_paz_string(options.poles)
+        self.paz['zeros'] = parse_paz_string(options.zeros)
+        self.paz['gain'] = options.normalization_factor
         
         # setup GUI
         QtGui.QMainWindow.__init__(self)
@@ -53,15 +51,38 @@ class MyMainWindow(QtGui.QMainWindow):
         self.canv.show()
         self.show()
 
+    def __add_doublespinboxes(self, layout, complex, label, number):
+        """
+        Add a new set of real/imag QDoubleSpinBox'es to given layout.
+        Initial settings given by complex.
+        Label should be a String for the label in front of the two boxes.
+        """
+        box_real = QtGui.QDoubleSpinBox()
+        box_real.setMaximum(1e3)
+        box_real.setMinimum(-1e3)
+        box_real.setSingleStep(self.options.step)
+        box_real.setValue(complex.real)
+        layout.addWidget(QtGui.QLabel("%s %i real" % (label, number)))
+        layout.addWidget(box_real)
+        box_imag = QtGui.QDoubleSpinBox()
+        box_imag.setMaximum(1e3)
+        box_imag.setMinimum(-1e3)
+        box_imag.setSingleStep(self.options.step)
+        box_imag.setValue(complex.imag)
+        layout.addWidget(QtGui.QLabel("imag"))
+        layout.addWidget(box_imag)
+        return box_real, box_imag
+
+
     def __setup_GUI(self):
         """
-        Add matplotlib canvas, some buttons and stuff...
+        Add matplotlib canvas, some boxs and stuff...
         """
         self.setWindowTitle("FitResp")
         self.setGeometry(300, 300, 500, 500)
         main = QtGui.QWidget()
         self.setCentralWidget(main)
-        # add matplotlib canvas and setup layouts to put buttons in
+        # add matplotlib canvas and setup layouts to put boxes in
         vlayout = QtGui.QVBoxLayout()
         vlayout.addStretch(1)
         main.setLayout(vlayout)
@@ -71,37 +92,30 @@ class MyMainWindow(QtGui.QMainWindow):
         hlayout.addStretch(1)
         vlayout.addLayout(hlayout)
 
-        # add some buttons
-        self.buttons_real = []
-        self.buttons_imag = []
+        # add some boxes
+        self.boxes_poles_real = []
+        self.boxes_poles_imag = []
         for i, pole in enumerate(self.paz['poles']):
-            button_real = QtGui.QDoubleSpinBox()
-            button_real.setMaximum(1e3)
-            button_real.setMinimum(-1e3)
-            button_real.setSingleStep(1)
-            button_real.setValue(pole.real)
-            hlayout.addWidget(QtGui.QLabel("pole %i real" % (i + 1)))
-            hlayout.addWidget(button_real)
-            button_imag = QtGui.QDoubleSpinBox()
-            button_imag.setMaximum(1e3)
-            button_imag.setMinimum(-1e3)
-            button_imag.setSingleStep(1)
-            button_imag.setValue(pole.imag)
-            hlayout.addWidget(QtGui.QLabel("imag"))
-            hlayout.addWidget(button_imag)
-            self.buttons_real.append(button_real)
-            self.buttons_imag.append(button_imag)
-
-        #
-        #self.qDoubleSpinBox_high = QtGui.QDoubleSpinBox()
-        #self.qDoubleSpinBox_high.setValue(self.options.high)
-        #hlayout.addWidget(QtGui.QLabel("high"))
-        #hlayout.addWidget(self.qDoubleSpinBox_high)
-
-        #self.qCheckBox_zerophase = QtGui.QCheckBox()
-        #self.qCheckBox_zerophase.setChecked(self.options.zerophase)
-        #self.qCheckBox_zerophase.setText("zerophase")
-        #hlayout.addWidget(self.qCheckBox_zerophase)
+            box_real, box_imag = self.__add_doublespinboxes(hlayout, pole,
+                                                            "Pole", i + 1)
+            self.boxes_poles_real.append(box_real)
+            self.boxes_poles_imag.append(box_imag)
+        self.boxes_zeros_real = []
+        self.boxes_zeros_imag = []
+        for i, zero in enumerate(self.paz['zeros']):
+            box_real, box_imag = self.__add_doublespinboxes(hlayout, zero,
+                                                            "Zero", i + 1)
+            self.boxes_zeros_real.append(box_real)
+            self.boxes_zeros_imag.append(box_imag)
+        # add box for normalization factor
+        box_norm = QtGui.QDoubleSpinBox()
+        box_norm.setMaximum(1e10)
+        box_norm.setMinimum(-1e10)
+        box_norm.setSingleStep(self.options.step)
+        box_norm.setValue(self.paz['gain'])
+        hlayout.addWidget(QtGui.QLabel("Norm.Fac."))
+        hlayout.addWidget(box_norm)
+        self.box_norm = box_norm
 
         qToolBar = QtGui.QToolBar()
         self.toolbar = NavigationToolbar2QTAgg(canv, qToolBar)
@@ -118,19 +132,14 @@ class MyMainWindow(QtGui.QMainWindow):
 
     def __connect_signals(self):
         """
-        Connect button signals to methods...
+        Connect box signals to methods...
         """
         connect = QtCore.QObject.connect
-        for button in self.buttons_real + self.buttons_imag:
-            connect(button,
-                    QtCore.SIGNAL("valueChanged(double)"),
+        for box in self.boxes_poles_real + self.boxes_poles_imag + \
+                   self.boxes_zeros_real + self.boxes_zeros_imag + \
+                   [self.box_norm]:
+            connect(box, QtCore.SIGNAL("valueChanged(double)"),
                     self.on_anyButton_valueChanged)
-        #connect(self.qDoubleSpinBox_high,
-        #        QtCore.SIGNAL("valueChanged(double)"),
-        #        self.on_qDoubleSpinBox_high_valueChanged)
-        #connect(self.qCheckBox_zerophase,
-        #        QtCore.SIGNAL("stateChanged(int)"),
-        #        self.on_qCheckBox_zerophase_stateChanged)
 
     def update(self):
         """
@@ -142,9 +151,6 @@ class MyMainWindow(QtGui.QMainWindow):
         ax2 = self.ax2
         ax2.clear()
 
-        ax1.loglog(self.freq, self.ampl)
-        ax2.semilogx(self.freq, self.phase)
-
         # plot theoretical responses from paz here
         paz = self.paz
         h, f = pazToFreqResp(paz['poles'], paz['zeros'], paz['gain'], 0.005,
@@ -152,20 +158,35 @@ class MyMainWindow(QtGui.QMainWindow):
         ampl = abs(h)
         phase = np.unwrap(np.arctan2(-h.imag, h.real)) #take negative of imaginary part
         ax1.loglog(f, ampl, color="r")
-        ax2.semilogx(f, phase, color="r")
+        ax2.semilogx(f, phase, color="r", label='paz fit')
+
+        # plot read in calibration output
+        ax1.loglog(self.freq, self.ampl, color="b", ls="--")
+        ax2.semilogx(self.freq, self.phase, color="b", ls="--", label='calibration output')
+
+        ax2.legend()
 
         # update matplotlib canvas
         self.canv.draw()
     
     def on_anyButton_valueChanged(self, newvalue):
-        for i, button in enumerate(self.buttons_real):
-            real = button.value()
+        for i, box in enumerate(self.boxes_poles_real):
+            real = box.value()
             imag = self.paz['poles'][i].imag
             self.paz['poles'][i] = complex(real, imag)
-        for i, button in enumerate(self.buttons_imag):
+        for i, box in enumerate(self.boxes_poles_imag):
             real = self.paz['poles'][i].real
-            imag = button.value()
+            imag = box.value()
             self.paz['poles'][i] = complex(real, imag)
+        for i, box in enumerate(self.boxes_zeros_real):
+            real = box.value()
+            imag = self.paz['zeros'][i].imag
+            self.paz['zeros'][i] = complex(real, imag)
+        for i, box in enumerate(self.boxes_zeros_imag):
+            real = self.paz['zeros'][i].real
+            imag = box.value()
+            self.paz['zeros'][i] = complex(real, imag)
+        self.paz['gain'] = self.box_norm.value()
         self.update()
 
     #def on_qDoubleSpinBox_high_valueChanged(self, newvalue):
@@ -189,18 +210,34 @@ class QMplCanvas(FigureCanvasQTAgg):
         self.setParent(parent)
 
 
+def parse_paz_string(paz_string):
+    """
+    Parse a string representation of complex numbers separated by commas like
+    "0j,0j,1+3.4j" to a list of complex numbers.
+    """
+    paz = paz_string.split(",")
+    paz = map(complex, paz)
+    return paz
+
+
 def main():
     """
     Gets executed when the program starts.
     """
     usage = "Usage information goes here..."
     parser = optparse.OptionParser(usage)
-    parser.add_option("-p", "--poles", type=int, dest="poles", default=3,
-                      help="Number of Poles")
-    parser.add_option("-z", "--zeros", type=int, dest="zeros", default=2,
-                      help="Number of Zeros")
-    parser.add_option("-f", "--file", type=str, dest="file", default="res_unknown",
-                      help="Filename of relcalstack output")
+    parser.add_option("-p", "--poles", type=str, dest="poles",
+                      default="-0.0628332+0.0j,-206.69+0.0j",
+                      help="Poles in a string separated by commas")
+    parser.add_option("-z", "--zeros", type=str, dest="zeros", default="0j",
+                      help="Zeros in a string separated by commas")
+    parser.add_option("-n", "--normalization-factor", type=float,
+                      dest="normalization_factor", default=206.0,
+                      help="Normalization factor (A0)")
+    parser.add_option("-s", "--step", type=float, dest="step", default=0.1,
+                      help="Step size for SpinBoxes")
+    parser.add_option("-f", "--file", type=str, dest="file", default="res_known",
+                      help="Filename of relcalstack output to use as input.")
     (options, args) = parser.parse_args()
 
     qApp = QtGui.QApplication(sys.argv)
