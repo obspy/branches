@@ -74,6 +74,8 @@ from cStringIO import StringIO
 #additional library:
 import numpy as N
 
+import os
+import os.path as op
 
 #constants:
 dynecm = 1e-7
@@ -4171,8 +4173,6 @@ if __name__ == "__main__":
 
     """
 
-    import os
-    import os.path as op
     #-------------------------------------------------------------------
     def _which_call(call_raw):
 
