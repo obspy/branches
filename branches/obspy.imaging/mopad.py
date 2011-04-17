@@ -2711,6 +2711,8 @@ class BeachBall:
                 kw=key
             if '_'+kw in dir(self) :
                 setattr(self,'_'+kw, kwargs[key])
+        if kwargs.get('plot_only_lines', False):
+            setattr(self, '_plot_fill_flag', False)
 
     #---------------------------------------------------------------
 
