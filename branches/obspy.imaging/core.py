@@ -86,10 +86,12 @@ def Beach(fm, linewidth=2, facecolor='b', bgcolor='w', edgecolor='k',
     :param zorder: Set zorder. Artists with lower zorder values are drawn
                    first.
     """
+    # initialize beachball
     mt = mopad_MomentTensor(fm, "USE")
     bb = mopad_BeachBall(mt)
     bb._setup_BB()
     
+    # extract the coordinates and colors of the lines
     res = width/2.0
     neg_nodalline = bb._nodalline_negative_final_US
     pos_nodalline = bb._nodalline_positive_final_US
@@ -97,40 +99,58 @@ def Beach(fm, linewidth=2, facecolor='b', bgcolor='w', edgecolor='k',
     tension_colour = bb._plot_tension_colour
     pressure_colour = bb._plot_pressure_colour
 
-    coll = []
-    fc = []
-    if bb._plot_clr_order > 0:
-        coll.append(xy2patch(US[0,:], US[1,:], res, xy))
-        fc.append(pressure_colour)
-        coll.append(xy2patch(neg_nodalline[0,:], neg_nodalline[1,:], res, xy))
-        fc.append(tension_colour)
-        coll.append(xy2patch(pos_nodalline[0,:], pos_nodalline[1,:], res, xy))
-        fc.append(tension_colour)
-    if bb._plot_curve_in_curve != 0:
-        coll.append(xy2patch(US[0,:], US[1,:], res, xy))
-        fc.append(tension_colour)
-        if bb._plot_curve_in_curve < 1 :
-            coll.append(xy2patch(neg_nodalline[0,:], neg_nodalline[1,:], res, xy))
-            fc.append(pressure_colour)
-            coll.append(xy2patch(pos_nodalline[0,:], pos_nodalline[1,:], res, xy))
-            fc.append(tension_colour)
-        else:
-            coll.append(xy2patch(neg_nodalline[0,:], neg_nodalline[1,:], res, xy))
-            fc.append(pressure_colour)
-            coll.append(xy2patch(pos_nodalline[0,:], pos_nodalline[1,:], res, xy))
-            fc.append(tension_colour)
+    # collect patches for the selection
+    coll = [None, None, None]
+    coll[0] = xy2patch(US[0,:], US[1,:], res, xy)
+    coll[1] = xy2patch(neg_nodalline[0,:], neg_nodalline[1,:], res, xy)
+    coll[2] = xy2patch(pos_nodalline[0,:], pos_nodalline[1,:], res, xy)
+
+    # set the color of the three parts
+    fc = [None, None, None]
+    if bb._plot_clr_order > 0 :
+        fc[0] = pressure_colour
+        fc[1] = tension_colour
+        fc[2] = tension_colour
+        if bb._plot_curve_in_curve != 0:
+            fc[0] = tension_colour
+            if bb._plot_curve_in_curve < 1 :
+                fc[1] = pressure_colour
+                fc[2] = tension_colour
+            else:
+                coll = [coll[0], coll[2], coll[1]]
+                fc[1] = pressure_colour
+                fc[2] = tension_colour
+    else:
+        fc[0] = tension_colour
+        fc[1] = pressure_colour
+        fc[2] = pressure_colour
+        if bb._plot_curve_in_curve != 0:
+            fc[0] = pressure_colour
+            if bb._plot_curve_in_curve < 1 :
+                fc[1] = tension_colour
+                fc[2] = pressure_colour
+            else:
+                coll = [coll[0], coll[2], coll[1]]
+                fc[1] = tension_colour
+                fc[2] = pressure_colour
+
     if bb._pure_isotropic:
-        coll.append(xy2patch(US[0,:], US[1,:], res, xy))
-        if bb._plot_clr_order < 0:
-            fc.append(tension_colour)
-        else:
-            fc.append(pressure_colour)
+        if abs( N.trace( bb._M )) > epsilon:
+            coll.append(xy2patch(US[0,:], US[1,:], res, xy))
+            if bb._plot_clr_order < 0:
+                fc.append(tension_colour)
+            else:
+                fc.append(pressure_colour)
+
+    # transfrom the patches to a path collection and set
+    # the appropriate attributes
     collection = PatchCollection(coll, match_original=False)
     collection.set_facecolors(fc)
     collection.set_alpha(alpha)
     collection.set_linewidth(linewidth)
     collection.set_zorder(zorder)
     return collection
+
 
 def Beachball(fm, size=200, linewidth=2, facecolor='b', edgecolor='k',
               bgcolor='w', alpha=1.0, xy=(0, 0), width=200, outfile=None,
