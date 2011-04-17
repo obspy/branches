@@ -19,6 +19,8 @@ from mopad import BeachBall as mopad_BeachBall
 from mopad import MomentTensor as mopad_MomentTensor
 
 
+# seems the base system we (gmt) are using is called "USE" in mopad
+MOPAD_BASIS = "USE"
 KWARG_MAP = {'size': ['plot_size', 'plot_aux_plot_size'],
              'linewidth': ['plot_nodalline_width', 'plot_outerline_width'],
              'facecolor': ['plot_tension_colour'],
@@ -28,6 +30,7 @@ KWARG_MAP = {'size': ['plot_size', 'plot_aux_plot_size'],
              'width': [],
              'outfile': ['plot_outfile'],
              'format': ['plot_outfile_format'],
+             'nofill': ['plot_only_lines']
              }
 #  state of mopads kwargs dict before plotting after following command:
 #python mopad.py p 10,10,10 -f bla.png -s 0.5 -a 0.5 -l 3 r 0.4 -n 2 b 0.8 -w b -r g -q 72
@@ -87,7 +90,7 @@ def Beach(fm, linewidth=2, facecolor='b', bgcolor='w', edgecolor='k',
                    first.
     """
     # initialize beachball
-    mt = mopad_MomentTensor(fm, "USE")
+    mt = mopad_MomentTensor(fm, MOPAD_BASIS)
     bb = mopad_BeachBall(mt)
     bb._setup_BB()
     
@@ -184,9 +187,10 @@ def Beachball(fm, size=200, linewidth=2, facecolor='b', edgecolor='k',
     for key in ['plot_aux_plot_size', 'plot_size']:
         # 100.0 is matplotlibs default dpi for savefig
         mopad_kwargs[key] = mopad_kwargs[key] / 100.0 * 2.54
+    # use nofill kwarg
 
-    # seems the base system we (gmt) are using is called "USE" in mopad
-    mt = mopad_MomentTensor(fm, "USE")
+
+    mt = mopad_MomentTensor(fm, MOPAD_BASIS)
     bb = mopad_BeachBall(mt)
 
     # show plot in a window
