@@ -11,11 +11,46 @@
 ObsPy bindings to mopad
 """
 
+import warnings
 from matplotlib import pyplot as plt, patches
 from matplotlib.collections import PatchCollection
 from matplotlib.path import Path
 from mopad import BeachBall as mopad_BeachBall
 from mopad import MomentTensor as mopad_MomentTensor
+
+
+KWARG_MAP = {'size': ['plot_size', 'plot_aux_plot_size'],
+             'linewidth': ['plot_nodalline_width', 'plot_outerline_width'],
+             'facecolor': ['plot_tension_colour'],
+             'edgecolor': ['plot_outerline_colour'],
+             'bgcolor': [],
+             'alpha': ['plot_total_alpha'],
+             'width': [],
+             'outfile': ['plot_outfile'],
+             'format': ['plot_outfile_format'],
+             }
+#  state of mopads kwargs dict before plotting after following command:
+#python mopad.py p 10,10,10 -f bla.png -s 0.5 -a 0.5 -l 3 r 0.4 -n 2 b 0.8 -w b -r g -q 72
+# ipdb> kwargs_dict
+# Out[0]: 
+#{'plot_aux_plot_size': 1.9685039370078741,
+# 'plot_full_sphere': False,
+# 'plot_nodalline': True,
+# 'plot_nodalline_alpha': 0.80000000000000004,
+# 'plot_nodalline_colour': 'b',
+# 'plot_nodalline_width': 2.0,
+# 'plot_outerline': True,
+# 'plot_outerline_alpha': 0.40000000000000002,
+# 'plot_outerline_colour': 'r',
+# 'plot_outerline_width': 3.0,
+# 'plot_outfile': '/home/megies/obspy/branches/obspy.imaging/bla.png',
+# 'plot_outfile_format': 'png',
+# 'plot_pa_plot': False,
+# 'plot_pressure_colour': 'b',
+# 'plot_save_plot': True,
+# 'plot_size': 1.9685039370078741,
+# 'plot_tension_colour': 'g',
+# 'plot_total_alpha': 0.5}
 
 
 def Beach(fm, linewidth=2, facecolor='b', bgcolor='w', edgecolor='k',
@@ -108,9 +143,38 @@ def Beachball(fm, size=200, linewidth=2, facecolor='b', edgecolor='k',
     For info on the remaining parameters see the
     :func:`~obspy.imaging.beachball.Beach` function of this module.
     """
+    msg = "mopad wrapping is still beta stage!"
+    warnings.warn(msg)
+
+    mopad_kwargs = {}
+    loc = locals()
+    # map to kwargs used in mopad
+    for key in KWARG_MAP:
+        value = loc[key]
+        for mopad_key in KWARG_MAP[key]:
+            mopad_kwargs[mopad_key] = value
+    # convert from points to size in cm
+    for key in ['plot_aux_plot_size', 'plot_size']:
+        # 100.0 is matplotlibs default dpi for savefig
+        mopad_kwargs[key] = mopad_kwargs[key] / 100.0 * 2.54
+
+    # seems the base system we (gmt) are using is called "USE" in mopad
     mt = mopad_MomentTensor(fm, "USE")
     bb = mopad_BeachBall(mt)
-    bb.ploBB({})
+
+    # show plot in a window
+    if outfile is None:
+        bb.ploBB(mopad_kwargs)
+    # save plot to file
+    else:
+        # no format specified, parse it from outfile name
+        if mopad_kwargs['plot_outfile_format'] is None:
+            mopad_kwargs['plot_outfile_format'] = mopad_kwargs['plot_outfile'].split(".")[-1]
+        else:
+            # append file format if not already at end of outfile
+            if not mopad_kwargs['plot_outfile'].endswith(mopad_kwargs['plot_outfile_format']):
+                mopad_kwargs['plot_outfile'] += "." + mopad_kwargs['plot_outfile_format']
+        bb.save_BB(mopad_kwargs)
 
  
 def xy2patch(x, y, res, xy): 
