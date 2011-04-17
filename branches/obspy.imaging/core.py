@@ -99,12 +99,13 @@ def Beach(fm, linewidth=2, facecolor='b', bgcolor='w', edgecolor='k',
 
     coll = []
     fc = []
-    coll.append(xy2patch(US[0,:], US[1,:], res, xy))
-    fc.append(tension_colour)
-    coll.append(xy2patch(neg_nodalline[0,:], neg_nodalline[1,:], res, xy))
-    fc.append(pressure_colour)
-    coll.append(xy2patch(pos_nodalline[0,:], pos_nodalline[1,:], res, xy))
-    fc.append(pressure_colour)
+    if bb._plot_clr_order > 0:
+        coll.append(xy2patch(US[0,:], US[1,:], res, xy))
+        fc.append(pressure_colour)
+        coll.append(xy2patch(neg_nodalline[0,:], neg_nodalline[1,:], res, xy))
+        fc.append(tension_colour)
+        coll.append(xy2patch(pos_nodalline[0,:], pos_nodalline[1,:], res, xy))
+        fc.append(tension_colour)
     if bb._plot_curve_in_curve != 0:
         coll.append(xy2patch(US[0,:], US[1,:], res, xy))
         fc.append(tension_colour)
@@ -118,6 +119,12 @@ def Beach(fm, linewidth=2, facecolor='b', bgcolor='w', edgecolor='k',
             fc.append(pressure_colour)
             coll.append(xy2patch(pos_nodalline[0,:], pos_nodalline[1,:], res, xy))
             fc.append(tension_colour)
+    if bb._pure_isotropic:
+        coll.append(xy2patch(US[0,:], US[1,:], res, xy))
+        if bb._plot_clr_order < 0:
+            fc.append(tension_colour)
+        else:
+            fc.append(pressure_colour)
     collection = PatchCollection(coll, match_original=False)
     collection.set_facecolors(fc)
     collection.set_alpha(alpha)

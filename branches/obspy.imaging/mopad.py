@@ -2023,7 +2023,7 @@ class BeachBall:
     #-------------------------------------------------------------------
     #-------------------------------------------------------------------
 
-    def ploBB(self,kwargs):
+    def ploBB(self, kwargs, ax=None):
         """
         Plots the projection of the beachball onto a unit sphere.
 
@@ -2044,7 +2044,7 @@ class BeachBall:
 
         self._setup_BB()
 
-        self._plot_US()
+        self._plot_US(ax=ax)
  
     #-------------------------------------------------------------------
     #-------------------------------------------------------------------
@@ -3941,7 +3941,7 @@ class BeachBall:
 
    #---------------------------------------------------------------
 
-    def _plot_US(self):
+    def _plot_US(self, ax=None):
         """
         Generates the final plot of the beachball projection on the unit sphere.
 
@@ -3961,7 +3961,7 @@ class BeachBall:
         import pylab as P
         from matplotlib import interactive
         
-        plotfig = self._setup_plot_US(P)
+        plotfig = self._setup_plot_US(P, ax=ax)
        
        
         if self._plot_save_plot:
@@ -3978,7 +3978,7 @@ class BeachBall:
         del matplotlib       
 
 #-------------------------------------------------------------------
-    def _setup_plot_US(self,P):
+    def _setup_plot_US(self,P,ax=None):
         """
         Setting up the figure with the final plot of the unit sphere.
 
@@ -3986,10 +3986,11 @@ class BeachBall:
         """
         
         P.close(667)
-        plotfig = P.figure(667,figsize=(self._plot_size,self._plot_size) )
-        plotfig.subplots_adjust(left=0, bottom=0, right=1, top=1)
+        if ax is None:
+            plotfig = P.figure(667,figsize=(self._plot_size,self._plot_size) )
+            plotfig.subplots_adjust(left=0, bottom=0, right=1, top=1)
          
-        ax = plotfig.add_subplot(111, aspect='equal')
+            ax = plotfig.add_subplot(111, aspect='equal')
     
         ax.axison = False
 
