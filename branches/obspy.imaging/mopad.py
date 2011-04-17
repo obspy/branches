@@ -2005,7 +2005,7 @@ class BeachBall:
 
     """
 
-    def __init__(self,MT=MomentTensor,kwargs_dict={}):
+    def __init__(self,MT=MomentTensor,kwargs_dict={}, npoints=360):
 
         self.MT = MT
 
@@ -2014,6 +2014,7 @@ class BeachBall:
         self._set_standard_attributes()
 
         self._update_attributes(kwargs_dict)
+        self._plot_n_points = npoints
         
         self._nodallines_in_NED_system()
         

@@ -57,7 +57,7 @@ KWARG_MAP = {'size': ['plot_size', 'plot_aux_plot_size'],
 
 
 def Beach(fm, linewidth=2, facecolor='b', bgcolor='w', edgecolor='k',
-          alpha=1.0, xy=(0, 0), width=200, size=100, nofill=False,
+          alpha=1.0, xy=(0, 0), width=200, size=80, nofill=False,
           zorder=100):
     """
     Return a beach ball as a collection which can be connected to an
@@ -91,7 +91,7 @@ def Beach(fm, linewidth=2, facecolor='b', bgcolor='w', edgecolor='k',
     """
     # initialize beachball
     mt = mopad_MomentTensor(fm, MOPAD_BASIS)
-    bb = mopad_BeachBall(mt)
+    bb = mopad_BeachBall(mt, npoints=size)
     bb._setup_BB()
     
     # extract the coordinates and colors of the lines
