@@ -102,6 +102,7 @@ def Beach(fm, linewidth=2, facecolor='b', bgcolor='w', edgecolor='k',
     tension_colour = bb._plot_tension_colour
     pressure_colour = bb._plot_pressure_colour
 
+    # based on mopads _setup_plot_US() function
     # collect patches for the selection
     coll = [None, None, None]
     coll[0] = xy2patch(US[0,:], US[1,:], res, xy)
@@ -120,7 +121,7 @@ def Beach(fm, linewidth=2, facecolor='b', bgcolor='w', edgecolor='k',
                 fc[1] = pressure_colour
                 fc[2] = tension_colour
             else:
-                coll = [coll[0], coll[2], coll[1]]
+                coll = [coll[i] for i in (0, 2, 1)]
                 fc[1] = pressure_colour
                 fc[2] = tension_colour
     else:
@@ -133,17 +134,18 @@ def Beach(fm, linewidth=2, facecolor='b', bgcolor='w', edgecolor='k',
                 fc[1] = tension_colour
                 fc[2] = pressure_colour
             else:
-                coll = [coll[0], coll[2], coll[1]]
+                coll = [coll[i] for i in (0, 2, 1)]
                 fc[1] = tension_colour
                 fc[2] = pressure_colour
 
     if bb._pure_isotropic:
         if abs( N.trace( bb._M )) > epsilon:
-            coll.append(xy2patch(US[0,:], US[1,:], res, xy))
+            # use the circle as the upperst layer
+            coll = [coll[i] for i in (2, 1, 0)]
             if bb._plot_clr_order < 0:
-                fc.append(tension_colour)
+                fc[2] = tension_colour
             else:
-                fc.append(pressure_colour)
+                fc[2] = pressure_colour
 
     # transfrom the patches to a path collection and set
     # the appropriate attributes
@@ -270,4 +272,4 @@ if __name__ == '__main__':
 
     # Set the x and y limits and save the output
     ax.axis([-120, 120, -120, 120])
-    #plt.show()
+    plt.show()
