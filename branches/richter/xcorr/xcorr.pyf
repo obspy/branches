@@ -1,0 +1,17 @@
+python module _xcorr
+interface
+  subroutine xcorr(tr1, tr2, corp, shift, shift_zero, twosided, demean, ndat1, ndat2)
+    intent(c) xcorr               ! xcorr is a C function
+    intent(c)                     ! all xcorr arguments are considered as C based
+    integer intent(in) :: shift
+    integer intent(in) :: shift_zero
+    real intent(in) :: tr1(ndat1)      
+    real intent(in) :: tr2(ndat2)      
+    integer intent(hide), depend(tr1) :: ndat1=len(tr1) 
+    integer intent(hide), depend(tr2) :: ndat2=len(tr2) 
+    double precision intent(out) :: corp((twosided+1)*shift+1)
+    integer intent(in) :: twosided
+    integer intent(in) :: demean
+  end subroutine xcorr
+end interface
+end python module _xcorr
