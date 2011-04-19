@@ -19,7 +19,6 @@ except:
     raise USAGE
 
 data = np.loadtxt(file)
-data2 = np.loadtxt(file2)
 # create array with data from file
 fr = data[:,0]
 amp = data[:,1]
