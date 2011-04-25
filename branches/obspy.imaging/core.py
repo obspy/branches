@@ -12,11 +12,13 @@ ObsPy bindings to mopad
 """
 
 import warnings
+import numpy as np
 from matplotlib import pyplot as plt, patches
 from matplotlib.collections import PatchCollection
 from matplotlib.path import Path
 from mopad import BeachBall as mopad_BeachBall
 from mopad import MomentTensor as mopad_MomentTensor
+from mopad import epsilon
 
 
 # seems the base system we (gmt) are using is called "USE" in mopad
@@ -92,20 +94,19 @@ def Beach(fm, linewidth=2, facecolor='b', bgcolor='w', edgecolor='k',
     # initialize beachball
     mt = mopad_MomentTensor(fm, MOPAD_BASIS)
     bb = mopad_BeachBall(mt, npoints=size)
-    bb._setup_BB()
+    bb._setup_BB(unit_circle=False)
     
     # extract the coordinates and colors of the lines
     res = width/2.0
     neg_nodalline = bb._nodalline_negative_final_US
     pos_nodalline = bb._nodalline_positive_final_US
-    US             = bb._unit_sphere
     tension_colour = bb._plot_tension_colour
     pressure_colour = bb._plot_pressure_colour
 
     # based on mopads _setup_plot_US() function
     # collect patches for the selection
     coll = [None, None, None]
-    coll[0] = xy2patch(US[0,:], US[1,:], res, xy)
+    coll[0] = patches.Circle(xy, radius=res)
     coll[1] = xy2patch(neg_nodalline[0,:], neg_nodalline[1,:], res, xy)
     coll[2] = xy2patch(pos_nodalline[0,:], pos_nodalline[1,:], res, xy)
 
@@ -139,13 +140,13 @@ def Beach(fm, linewidth=2, facecolor='b', bgcolor='w', edgecolor='k',
                 fc[2] = pressure_colour
 
     if bb._pure_isotropic:
-        if abs( N.trace( bb._M )) > epsilon:
+        if abs( np.trace( bb._M )) > epsilon:
             # use the circle as the upperst layer
-            coll = [coll[i] for i in (2, 1, 0)]
+            coll = [coll[0]]
             if bb._plot_clr_order < 0:
-                fc[2] = tension_colour
+                fc = [tension_colour]
             else:
-                fc[2] = pressure_colour
+                fc = [pressure_colour]
 
     # transfrom the patches to a path collection and set
     # the appropriate attributes
@@ -226,8 +227,6 @@ if __name__ == '__main__':
     """
     """
     mt = [[0.91, -0.89, -0.02, 1.78, -1.55, 0.47],
-          [274, 13, 55]]
-    """
           [274, 13, 55],
           [130, 79, 98],
           [264.98, 45.00, -159.99],
@@ -249,7 +248,6 @@ if __name__ == '__main__':
           [16.578, -7.987, -8.592, -5.515, -29.732, 7.517],
           [-2.39, 1.04, 1.35, 0.57, -2.94, -0.94],
           [150, 87, 1]]
-    """
 
 
     # Initialize figure

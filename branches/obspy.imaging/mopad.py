@@ -73,6 +73,7 @@ from cStringIO import StringIO
 
 #additional library:
 import numpy as N
+import math as M
 
 import os
 import os.path as op
@@ -210,10 +211,10 @@ class MomentTensor:
         # mechanism given as 6- or 7-tuple, list or array
         if len(mech) == 6 or len(mech) == 7:
             M        = mech
-            new_M    = N.matrix( N.array([M[0],M[3],M[4],M[3],M[1],M[5],M[4], M[5],M[2] ]).reshape(3,3) )
+            new_M    = N.matrix([M[0],M[3],M[4],M[3],M[1],M[5],M[4], M[5],M[2] ]).reshape(3,3)
 
             if len(mech) == 7 :
-                new_M    = M[6] * new_M
+                new_M    *= M[6]
 
 
 
@@ -238,7 +239,7 @@ class MomentTensor:
  
             moms    = strikediprake_2_moments(strike,dip,rake)
 
-            new_M  = N.matrix(N.array([moms[0],moms[3],moms[4],moms[3],moms[1],moms[5],moms[4],moms[5],moms[2] ]).reshape(3,3))
+            new_M  = N.matrix([moms[0],moms[3],moms[4],moms[3],moms[1],moms[5],moms[4],moms[5],moms[2] ]).reshape(3,3)
 
             if len(mech) == 4:
                 new_M   *= mech[3] 
@@ -246,7 +247,7 @@ class MomentTensor:
             #to assure right basis system - others are meaningless, provided these angles
             self._input_basis   =   'NED'
 
-        return N.matrix(new_M)
+        return N.asmatrix(new_M)
 
     #---------------------------------------------------------------
 
@@ -263,7 +264,7 @@ class MomentTensor:
             raise MTError(' !! ')
 
 
-        NED_2_NED = N.matrix(N.diag([1,1,1]))
+        NED_2_NED = N.asmatrix(N.diag([1,1,1]))
 
         rotmat_USE_2_NED      = NED_2_NED.copy()
         rotmat_USE_2_NED[:]   =  0
@@ -371,13 +372,14 @@ class MomentTensor:
         F           = -eigenw_devi[0]/eigenw_devi[2]
         
 
-        M_DC        = N.matrix(N.zeros((9),float)).reshape(3,3)
-        M_CLVD      = N.matrix(N.zeros((9),float)).reshape(3,3)
-               
         M_DC        = eigenw[2]*(1-2*F)*( N.outer(a3,a3) - N.outer(a2,a2) )
         M_CLVD      = eigenw[2]*F*( 2*N.outer(a3,a3) - N.outer(a2,a2) - N.outer(a1,a1))
 
-        M_DC_percentage = int(round(( 1 - 2 * abs(F) ) * 100,6))    
+        try:
+            M_DC_percentage = int(round(( 1 - 2 * abs(F) ) * 100,6))    
+        except ValueError:
+            # this should only occure in the pure isotropic case
+            M_DC_percentage = N.NaN
         #  print ' EW', eigenw_devi
         #         print eigenw_devi
         #print M_DC_percentage
@@ -442,9 +444,6 @@ class MomentTensor:
         a3 = eigenv[:,2]
         
 
-        M_DC        = N.matrix(N.zeros((9),float)).reshape(3,3)
-        M_DC2       = N.matrix(N.zeros((9),float)).reshape(3,3)
-               
         M_DC        = eigenw[2]*( N.outer(a3,a3) - N.outer(a2,a2) )
         M_DC2       = eigenw[0]*( N.outer(a1,a1) - N.outer(a2,a2) )
 
@@ -511,10 +510,6 @@ class MomentTensor:
         a2 = eigenv[:,1]
         a3 = eigenv[:,2]
         
-
-        M_DC1        = N.matrix(N.zeros((9),float)).reshape(3,3)
-        M_DC2        = N.matrix(N.zeros((9),float)).reshape(3,3)
-        M_DC3        = N.matrix(N.zeros((9),float)).reshape(3,3)
 
         M_DC1        = 1./3.*(eigenw[0] - eigenw[1]) *( N.outer(a1,a1) - N.outer(a2,a2) )
         M_DC2        = 1./3.*(eigenw[1] - eigenw[2]) *( N.outer(a2,a2) - N.outer(a3,a3) )
@@ -616,7 +611,7 @@ class MomentTensor:
         EV2 = EV[:,EW_order[1]]
         EV3 = EV[:,EW_order[2]]
 
-        chng_basis_tmp    =  N.matrix(N.zeros((3,3)))
+        chng_basis_tmp    =  N.asmatrix(N.zeros((3,3)))
         chng_basis_tmp[:,0] = EV1_devi
         chng_basis_tmp[:,1] = EV2_devi
         chng_basis_tmp[:,2] = EV3_devi
@@ -823,8 +818,8 @@ class MomentTensor:
         #exit()
     
         # build the basis system change matrix:
-        chng_basis    =  N.matrix(N.zeros((3,3)))
-        chng_fp_basis =  N.matrix(N.zeros((3,3)))
+        chng_basis    =  N.asmatrix(N.zeros((3,3)))
+        chng_fp_basis =  N.asmatrix(N.zeros((3,3)))
 
     
         #order of eigenvector's basis: (H,N,S)
@@ -1125,10 +1120,10 @@ class MomentTensor:
 
             
             if N.shape(vectors)[0] == 3:
-                for ii in  N.arange(N.shape(vectors)[1]) :
+                for ii in xrange(N.shape(vectors)[1]) :
                     lo_vectors.append(vectors[:,ii])
             else: 
-                for ii in  N.arange(N.shape(vectors)[0]) :
+                for ii in xrange(N.shape(vectors)[0]) :
                     lo_vectors.append(vectors[:,ii].transpose())
 
         lo_vecs_to_show = []
@@ -1938,7 +1933,7 @@ def fancy_matrix(m_in):
     #         aftercom = -maxlen + 1
     #         maxlen   = 1
 
-    norm_factor = round(max(abs(N.array(m).flatten())),5)
+    norm_factor = round(max(abs(m.flatten())),5)
     
     #print m
     #print norm_factor
@@ -2018,6 +2013,7 @@ class BeachBall:
         
         self._nodallines_in_NED_system()
         
+        self.arange_1 = N.arange(3*npoints) - 1
         #self._identify_faultplanes()
 
     #-------------------------------------------------------------------
@@ -2576,7 +2572,7 @@ class BeachBall:
         for i in (N.arange(4)+1)*0.2:
             r_steps.append(i)
         r_labels = ['S']
-        for ii in N.arange(len(r_steps)):
+        for ii in xrange(len(r_steps)):
             if (ii+1)%2==0:
                 r_labels.append(str(r_steps[ii]))
             else:
@@ -2717,7 +2713,7 @@ class BeachBall:
 
     #---------------------------------------------------------------
 
-    def _setup_BB(self):
+    def _setup_BB(self, unit_circle=True):
         """
         Setup of the beachball, when a plotting method is evoked.
 
@@ -2742,7 +2738,8 @@ class BeachBall:
         
         self._vertical_2D_projection()
         
-        self._build_circles()
+        if unit_circle:
+            self._build_circles()
 
         if not  self.MT._iso_percentage == 100:
    
@@ -2819,17 +2816,17 @@ class BeachBall:
         
                 if go_ccw:
                     obj2cor_in_right_order = list(obj2cor_in_right_order.transpose())
-                    for kk in N.arange(n_edgepoints)+1:
+                    for kk in xrange(n_edgepoints+1):
                         current_phi    = phi_end - kk*openangle/(n_edgepoints+1)
                         current_radius = R_end + kk*radius_interval/(n_edgepoints+1)
-                        obj2cor_in_right_order.append([current_radius*N.sin(current_phi), current_radius*N.cos(current_phi) ]   )
+                        obj2cor_in_right_order.append([current_radius*M.sin(current_phi), current_radius*N.cos(current_phi) ]   )
                     obj2cor_in_right_order = N.array(obj2cor_in_right_order).transpose()
                 else:
                     obj2cor_in_right_order = list(obj2cor_in_right_order.transpose())
-                    for kk in N.arange(n_edgepoints)+1:
+                    for kk in xrange(n_edgepoints+1):
                         current_phi = phi_end + kk*openangle/(n_edgepoints+1)
                         current_radius = R_end + kk*radius_interval/(n_edgepoints+1)
-                        obj2cor_in_right_order.append([current_radius*N.sin(current_phi), current_radius*N.cos(current_phi) ]   )
+                        obj2cor_in_right_order.append([current_radius*M.sin(current_phi), current_radius*N.cos(current_phi) ]   )
                     obj2cor_in_right_order = N.array(obj2cor_in_right_order).transpose()
 
             
@@ -2985,7 +2982,7 @@ class BeachBall:
         line_tuple_neg = N.zeros((3,n_curve_points ))
         
 
-        for ii in N.arange(n_curve_points):
+        for ii in xrange(n_curve_points):
             pos_vec_in_EV_basis  = N.array([H_values[ii],N_values[ii],S_values_positive[ii] ]).transpose()
             neg_vec_in_EV_basis  = N.array([H_values[ii],N_values[ii],S_values_negative[ii] ]).transpose()
             line_tuple_pos[:,ii] = N.dot(chng_basis, pos_vec_in_EV_basis )
@@ -3030,13 +3027,13 @@ class BeachBall:
         FP1 = N.zeros((3,n_curve_points ))
         FP2 = N.zeros((3,n_curve_points ))
     
-        for ii in N.arange(midpoint_idx):          
+        for ii in xrange(midpoint_idx):          
             FP1_vec   = N.array([H_values_FP[ii],N_values_FP[ii],S_values_positive_FP[ii] ]).transpose()
             FP2_vec   = N.array([H_values_FP[ii],N_values_FP[ii],S_values_negative_FP[ii] ]).transpose()
             FP1[:,ii] = N.dot(chng_basis, FP1_vec )
             FP2[:,ii] = N.dot(chng_basis, FP2_vec )
     
-        for jj in N.arange(midpoint_idx):
+        for jj in xrange(midpoint_idx):
             ii = n_curve_points - jj - 1
             
             FP1_vec = N.array([H_values_FP[ii],N_values_FP[ii],S_values_negative_FP[ii] ]).transpose()
@@ -3154,7 +3151,7 @@ class BeachBall:
         rotmat_pos_raw[:,1] =  east_prime
         rotmat_pos_raw[:,2] =  down_prime
         
-        rotmat_pos = N.matrix(rotmat_pos_raw).T
+        rotmat_pos = N.asmatrix(rotmat_pos_raw).T
         # this matrix gives the coordinates of a given point in the old coordinates w.r.t. the new system 
     
         #up to here, only the position has changed, the angle of view
@@ -3178,7 +3175,7 @@ class BeachBall:
         only_rotation[0,1] = -s_az
         only_rotation[1,0] = s_az
     
-        local_rotation = N.matrix(only_rotation)
+        local_rotation = N.asmatrix(only_rotation)
     
         #apply rotation from left!!
         total_rotation_matrix = N.dot(local_rotation,rotmat_pos)
@@ -3207,7 +3204,7 @@ class BeachBall:
             #logger.debug( str(N.shape(self._plot_basis_change)) ) 
             
             rotated_thing = object2rotate.copy()
-            for i in N.arange(len(object2rotate)):
+            for i in xrange(len(object2rotate)):
                 rotated_thing[i] = N.dot(self._plot_basis_change,object2rotate[i])
 
             rotated_object = rotated_thing.copy()
@@ -3282,7 +3279,7 @@ class BeachBall:
             n_points = len(o2proj[0,:])
             stereo_coords = N.zeros((2,n_points))
             
-            for ll in N.arange(n_points):
+            for ll in xrange(n_points):
                 # second component is EAST
                 co_x = coords[1,ll]
         
@@ -3363,7 +3360,7 @@ class BeachBall:
             n_points = len(o2proj[0,:])
             coords2D = N.zeros((2,n_points))
             
-            for ll in N.arange(n_points):
+            for ll in xrange(n_points):
                 # second component is EAST
                 co_x = coords[1,ll]
         
@@ -3447,7 +3444,7 @@ class BeachBall:
             n_points = len(o2proj[0,:])
             coords2D = N.zeros((2,n_points))
             
-            for ll in N.arange(n_points):
+            for ll in xrange(n_points):
                 # second component is EAST
                 co_x = coords[1,ll]
         
@@ -3534,7 +3531,7 @@ class BeachBall:
             coords2D = N.zeros((2,n_points))
 
 
-            for ll in N.arange(n_points):
+            for ll in xrange(n_points):
                 # second component is EAST
                 co_x = coords[1,ll]
         
@@ -3622,9 +3619,9 @@ class BeachBall:
         #in polar coordinates
         #
         r_phi_curve = N.zeros((len(curve[0,:]),2))
-        for ii in N.arange(len(curve[0,:])):
-            r_phi_curve[ii,0] = N.sqrt(curve[0,ii]**2 + curve[1,ii]**2 )
-            r_phi_curve[ii,1] = N.arctan2(curve[0,ii],curve[1,ii])% (2*pi)
+        for ii in xrange(curve.shape[1]):
+            r_phi_curve[ii,0] = M.sqrt(curve[0,ii]**2 + curve[1,ii]**2 )
+            r_phi_curve[ii,1] = M.atan2(curve[0,ii],curve[1,ii])% (2*pi)
         
         #find index with highest r
         largest_r_idx = N.argmax(r_phi_curve[:,0])
@@ -3664,7 +3661,7 @@ class BeachBall:
             #direction is kept
         
             #logger.debug( 'curve with same direction as before\n' ) 
-            for jj in N.arange(len(curve[0,:])):
+            for jj in xrange(curve.shape[1]):
                 running_idx = (start_idx_curve + jj) %len(curve[0,:])                 
                 sorted_curve[0,jj] = curve[0,running_idx]
                 sorted_curve[1,jj] = curve[1,running_idx]
@@ -3672,7 +3669,7 @@ class BeachBall:
         else:
             #direction  is reversed
             #logger.debug( 'curve with reverted direction\n' ) 
-            for jj in N.arange(len(curve[0,:])):
+            for jj in xrange(curve.shape[1]):
                 running_idx = (start_idx_curve - jj) %len(curve[0,:])
                 sorted_curve[0,jj] = curve[0,running_idx]
                 sorted_curve[1,jj] = curve[1,running_idx]
@@ -3684,9 +3681,9 @@ class BeachBall:
         # points 2 and three, correct position of first point: keep R, but
         # take angle with same difference as point 2 to point 3
 
-        angle_point_1 = (N.arctan2(sorted_curve[0,0],sorted_curve[1,0])%(2*pi))
-        angle_point_2 = (N.arctan2(sorted_curve[0,1],sorted_curve[1,1])%(2*pi))
-        angle_point_3 = (N.arctan2(sorted_curve[0,2],sorted_curve[1,2])%(2*pi))
+        angle_point_1 = (M.atan2(sorted_curve[0,0],sorted_curve[1,0])%(2*pi))
+        angle_point_2 = (M.atan2(sorted_curve[0,1],sorted_curve[1,1])%(2*pi))
+        angle_point_3 = (M.atan2(sorted_curve[0,2],sorted_curve[1,2])%(2*pi))
 
         angle_diff_23 = ( angle_point_3 - angle_point_2 )
         if angle_diff_23 > pi :
@@ -3696,11 +3693,11 @@ class BeachBall:
         if angle_diff_12 > pi :
             angle_diff_12 = (-angle_diff_12)%(2*pi)
 
-        if N.abs( angle_diff_12) > N.abs( angle_diff_23):
-            r_old = N.sqrt(sorted_curve[0,0]**2 + sorted_curve[1,0]**2)
+        if abs( angle_diff_12) > abs( angle_diff_23):
+            r_old = M.sqrt(sorted_curve[0,0]**2 + sorted_curve[1,0]**2)
             new_angle = (angle_point_2 - angle_diff_23)%(2*pi)
-            sorted_curve[0,0] = r_old * N.sin(new_angle)
-            sorted_curve[1,0] = r_old * N.cos(new_angle)
+            sorted_curve[0,0] = r_old * M.sin(new_angle)
+            sorted_curve[1,0] = r_old * M.cos(new_angle)
             #logger.debug( 'corrected position of first point in curve to (%.2f,%.2f)\n'%(sorted_curve[0,0],sorted_curve[1,0]) ) 
 
 
@@ -3731,13 +3728,14 @@ class BeachBall:
 
             smoothed_array      = N.zeros((1,2))
             smoothed_array[0,:] = obj[0]
+            smoothed_list = [smoothed_array]
 
             #now in shape (n_points,2)
             for idx,val in enumerate(obj[:-1]):
-                r1   = N.sqrt(val[0]**2 + val[1]**2)
-                r2   = N.sqrt(obj[idx+1][0]**2 + obj[idx+1][1]**2   )
-                phi1 = N.arctan2(val[0],val[1])
-                phi2 = N.arctan2(obj[idx+1][0],obj[idx+1][1])
+                r1   = M.sqrt(val[0]**2 + val[1]**2)
+                r2   = M.sqrt(obj[idx+1][0]**2 + obj[idx+1][1]**2   )
+                phi1 = M.atan2(val[0],val[1])
+                phi2 = M.atan2(obj[idx+1][0],obj[idx+1][1])
 
                 phi2_larger      = N.sign( phi2 - phi1 )
                 angle_smaller_pi = N.sign( pi - abs(phi2 - phi1) )
@@ -3766,11 +3764,11 @@ class BeachBall:
                     fill_array[:,0] = radii * N.sin(angles)
                     fill_array[:,1] = radii * N.cos(angles)
 
-                    smoothed_array = N.append(smoothed_array,fill_array,axis=0)
+                    smoothed_list.append(fill_array)
 
-                smoothed_array = N.append(smoothed_array,[obj[idx+1]],axis=0)        
+                smoothed_list.append([obj[idx+1]])
 
-
+            smoothed_array = N.vstack(smoothed_list)
             setattr(self,'_'+curve2smooth+'_final',smoothed_array.transpose())
 
     #---------------------------------------------------------------
@@ -3784,14 +3782,16 @@ class BeachBall:
 
 
         lo_points_in_pos_curve = list(self._nodalline_positive_final.transpose())
+        lo_points_in_pos_curve_array = self._nodalline_positive_final.transpose()
         lo_points_in_neg_curve = list(self._nodalline_negative_final.transpose())
+        lo_points_in_neg_curve_array = self._nodalline_negative_final.transpose()
     
         # check, if negative curve completely within positive curve 
         #mask_neg_in_pos = points_inside_poly(lo_points_in_neg_curve,lo_points_in_pos_curve)
         mask_neg_in_pos = 0
         for neg_point in lo_points_in_neg_curve:
             #mask_neg_in_pos *=  self._point_inside_polygon(neg_point[0], neg_point[1],lo_points_in_pos_curve )   
-            mask_neg_in_pos +=  self._pnpoly(N.array(lo_points_in_pos_curve),N.array([neg_point[0], neg_point[1]]) )   
+            mask_neg_in_pos +=  self._pnpoly(lo_points_in_pos_curve_array, neg_point[:2])   
             #if self._pnpoly(N.array(lo_points_in_pos_curve),N.array([neg_point[0], neg_point[1]]) )  == 0:
             #    print neg_point
         if mask_neg_in_pos > len(lo_points_in_neg_curve)-3:
@@ -3803,7 +3803,7 @@ class BeachBall:
         mask_pos_in_neg = 0
         for pos_point in lo_points_in_pos_curve:
             #mask_pos_in_neg *=  self._point_inside_polygon(pos_point[0], pos_point[1],lo_points_in_neg_curve )
-            mask_pos_in_neg +=  self._pnpoly(N.array(lo_points_in_neg_curve),N.array([pos_point[0], pos_point[1]]) )   
+            mask_pos_in_neg +=  self._pnpoly(lo_points_in_neg_curve_array, pos_point[:2])   
         #exit()
         if mask_pos_in_neg > len(lo_points_in_pos_curve)-3:
             #logger.debug('positive curve completely within negative curve')
@@ -3853,14 +3853,14 @@ class BeachBall:
         See http://www.ecse.rpi.edu/Homepages/wrf/Research/Short_Notes/pnpoly.html    
         """
         
-        verts = verts.astype(float)
+        verts = N.require(verts, dtype=N.float64)
         x,y = point
         
         xpi = verts[:,0]
         ypi = verts[:,1]    
         # shift
-        xpj = xpi[N.arange(xpi.size)-1]
-        ypj = ypi[N.arange(ypi.size)-1]
+        xpj = xpi[self.arange_1[:xpi.size]]
+        ypj = ypi[self.arange_1[:ypi.size]]
         
         possible_crossings = ((ypi <= y) & (y < ypj)) | ((ypj <= y) & (y < ypi))
     
@@ -3871,7 +3871,7 @@ class BeachBall:
         
         crossings = x < (xpj-xpi)*(y - ypi) / (ypj - ypi) + xpi
         
-        return sum(crossings) % 2
+        return crossings.sum() % 2
     #---------------------------------------------------------------
 
     def _projection_2_unit_sphere(self):
@@ -3926,7 +3926,7 @@ class BeachBall:
         direction_letters = list('NSEWDU')
         
         for idx,val in enumerate(self._all_BV_2D.transpose()):
-            r_bv = N.sqrt(val[0]**2 + val[1]**2)
+            r_bv = M.sqrt(val[0]**2 + val[1]**2)
             if r_bv <= 1:
                 if idx == 1 and 'N' in dummy_list1:
                     continue
@@ -4306,7 +4306,7 @@ if __name__ == "__main__":
                 
   
             elif len(MT._original_M) == 9:
-                new_M     = N.array(MT._original_M).reshape(3,3).copy()
+                new_M     = N.asarray(MT._original_M).reshape(3,3).copy()
                 if kwargs_dict['fancy_conversion']:
                     return fancy_matrix(_puzzle_basis_transformation(new_M,kwargs_dict['in_system'],kwargs_dict['out_system'] ))
                 else:
