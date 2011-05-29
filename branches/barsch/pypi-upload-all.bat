@@ -2,7 +2,7 @@
 
 cd /d D:\Workspace\obspy-barsch
 
-PATH = C:\MinGW\bin\;C:\MinGW\include;%PATH%
+PATH = D:\Programme\MinGW\bin\;D:\Programme\MinGW\include;%PATH%
 echo Python 2.5.x - 32 bit
 call "D:\Python\obspy\25\win32\Scripts\activate.bat"
 call _dists-build.bat mingw32

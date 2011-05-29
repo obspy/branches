@@ -2,7 +2,7 @@
 
 cd /d D:\Workspace\obspy\misc\scripts
 
-PATH = C:\MinGW\bin\;C:\MinGW\include;%PATH%
+PATH = D:\Programme\MinGW\bin\;D:\Programme\MinGW\include;%PATH%
 echo Python 2.5.x - 32 bit
 call "D:\Python\obspy\25\win32\Scripts\activate.bat"
 del D:\Python\Python25-32bit.log 2> nul
