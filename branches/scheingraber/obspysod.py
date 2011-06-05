@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-Obspy Standing Order for Data. Meant to be used from the shell.
+ObsPySOD: ObsPy Standing Order for Data tool. Meant to be used from the shell.
 This has been part of a Bachelor's Thesis at the University of Munich.
 
 :copyright:
@@ -13,23 +13,23 @@ This has been part of a Bachelor's Thesis at the University of Munich.
 
 import sys
 import os
+import time
 import pickle
 # do not need signal, no ^c handling - quit d/l with q now
 #import signal
 from ConfigParser import ConfigParser
 from optparse import OptionParser
-from obspy.core import UTCDateTime
-from obspy.core import read
+from obspy.core import UTCDateTime, read
 import obspy.neries
 import obspy.arclink
 import obspy.iris
 from obspy.mseed.libmseed import LibMSEED
-from BeautifulSoup import BeautifulSoup
-
-# need threading to be able to capture keypress event without a GUI like
+from lxml import etree
+# using threads to be able to capture keypress event without a GUI like
 # tkinter or pyqt and run the main loop at the same time.
-# This should run cross-plattform... 
-import threading, termios
+# This should run cross-platform...
+import threading
+import termios
 TERMIOS = termios
 # need a lock for the global quit variable which is used in two threads
 lock = threading.RLock()
@@ -39,24 +39,26 @@ class keypress_thread (threading.Thread):
     """
     This class will run as a second thread to capture keypress events
     """
-    global quit
-    def run (self):
-        global quit
-        print 'Keypress capture thread initialized...'
-        print "Press 'q' at any time to finish downloading and saving the \
-last file and then quit."
-        while True:
+    global quit, done
+    def run(self):
+        global quit, done
+        msg = 'Keypress capture thread initialized...\n'
+        msg += "Press 'q' at any time to finish downloading and saving the " \
+        + "last file and then quit."
+        print msg
+        while not done:
             c = getkey()
             print c
-            if c == 'q':
+            if c == 'q' and not done:
                 with lock:
                     quit = True
                 print "You pressed q."
-                print "Obspysod will finish downloading and saving the last file and \
-quit gracefully."
+                msg = "Obspysod will finish downloading and saving the last " \
+                + "file and quit gracefully."
+                print msg
                 # exit this thread
                 sys.exit(0)
-  
+
 
 def getkey():
     """
@@ -77,11 +79,24 @@ def getkey():
     return c
 
 
+def check_quit():
+    """
+    Checks if the user pressed q to quit downloading meanwhile.
+    """
+    global quit
+    with lock:
+        if quit:
+            msg = "Quitting. To resume the download, just run " + \
+            "obspysod again, using the same arguments."
+            print msg
+            sys.exit(0)
+
+
 def main():
     """
     Main function to run as a dedicated program.
     """
-    global datapath, cwd
+    global datapath, quit, done
     # dead networks
     skip_networks = ['AI', 'BA']
     # create ConfigParser object.
@@ -98,10 +113,10 @@ def main():
                            'preset': '0',
                            'offset': '20',
                            'datapath': 'obspysod-data',
-                           'nw':'*',
-                           'st':'*',
-                           'lo':'*',
-                           'ch':'*',
+                           'nw': '*',
+                           'st': '*',
+                           'lo': '*',
+                           'ch': '*',
                           })
 
     # read config file, if it exists, possibly overriding defaults as set above
@@ -118,66 +133,70 @@ def main():
     # * you need to provide every possible option here.
     # reihenfolge wird eingehalten in help msg.
     parser.add_option("-H", "--detailed-help", action="store_true",
-                      dest="showhelp", help="Show detailed help and exit")
+                      dest="showhelp", help="Show detailed help and exit.")
+    helpmsg = "Instead of downloading seismic data, download resp " + \
+              "instrument files."
     parser.add_option("-q", "--query-resp", action="store_true",
-                      dest="resp", help="Instead of downloading seismic\
-                      data, download resp instrument files.")
+                      dest="resp", help=helpmsg)
+    helpmsg = "The path where obspysod will store the data (default is " + \
+              "./obspysod-data for the data download mode and " + \
+              "./obspysod-resp for resp download mode)."
     parser.add_option("-P", "--datapath", action="store", dest="datapath",
-                      help="The path where obspysod will store the data\
-                     (default is ./obspysod-data for the data download mode\
-                      and ./obspysod-resp for resp download mode).")
-    parser.add_option("-u", "--update", help="Update the event database when\
-                      obspysod runs on the same directory a second time in\
-                      order to continue data downloading.",
+                      help=helpmsg)
+    helpmsg = "Update the event database when obspysod runs on the same " + \
+              "directory a second time in order to continue data downloading."
+    parser.add_option("-u", "--update", help=helpmsg,
                       action="store_true", dest="update")
+    helpmsg = "If the datapath is found, do not resume previous downloads " + \
+              "as is the default behaviour, but redownload everything. " + \
+              "Same as deleting the datapath before running obspysod."
     parser.add_option("-R", "--reset", action="store_true",
-                      dest="reset", help="If the datapath is found, do not\
-                      resume previous downloads as is the default behaviour,\
-                      but redownload everything. Same as deleting the datapath\
-before running obspysod.")
+                      dest="reset", help=helpmsg)
     parser.add_option("-s", "--starttime", action="store", dest="start",
                       help="Start time")
     parser.add_option("-e", "--endtime", action="store", dest="end",
                       help="End time")
     parser.add_option("-t", "--time", action="store", dest="time",
-                      help="Start and End Time as one option delimited by a\
-                      slash")
+                      help="Start and End Time delimited by a slash")
+    helpmsg="Time parameter which determines how close the event data " + \
+            "will be cropped before the event. Default: 0"
     parser.add_option("-p", "--preset", action="store", dest="preset",
-                      help="Time parameter which determines how\
-                      close the event data will be cropped before the event")
+                      help=helpmsg)
+    helpmsg="Time parameter which determines how close the event data " + \
+            "will be cropped after the event."
     parser.add_option("-o", "--offset", action="store", dest="offset",
-                      help="Time parameter which determines how\
-                      close the event data will be cropped after the event")
+                      help=helpmsg)
     parser.add_option("-m", "--magmin", action="store", dest="magmin",
                       help="Minimum magnitude. Default: 3")
     parser.add_option("-M", "--magmax", action="store", dest="magmax",
-                      help="Maximum magnitude")
+                      help="Maximum magnitude.")
     parser.add_option("-r", "--rect", action="store", dest="rect",
                       help="Provide rectangle with GMT syntax (alternative to\
-                      -x -X -y -Y)")
+                      -x -X -y -Y).")
     parser.add_option("-x", "--latmin", action="store", dest="south",
-                      help="Minimum latitude")
+                      help="Minimum latitude.")
     parser.add_option("-X", "--latmax", action="store", dest="north",
-                      help="Maximum latitude")
+                      help="Maximum latitude.")
     parser.add_option("-y", "--lonmin", action="store", dest="west",
-                      help="Minimum longitude")
+                      help="Minimum longitude.")
     parser.add_option("-Y", "--lonmax", action="store", dest="east",
-                      help="Maximum longitude")
+                      help="Maximum longitude.")
+    helpmsg="Identity code restriction, syntax: nw.st.l.ch (alternative " + \
+            "to -N -S -L -C)."
     parser.add_option("-i", "--identity", action="store", dest="identity",
-    help="Identity code restriction, syntax: nw.st.l.ch (alternative to \
--N -S -L -C)")
+                      help=helpmsg)
     parser.add_option("-N", "--network", action="store", dest="nw",
-                      help="Network restriction. Default: *")
+                      help="Network restriction.")
     parser.add_option("-S", "--station", action="store", dest="st",
-                      help="Station restriction. Default: *")
+                      help="Station restriction.")
     parser.add_option("-L", "--location", action="store", dest="lo",
-                      help="Location restriction. Default: *")
+                      help="Location restriction.")
     parser.add_option("-C", "--channel", action="store", dest="ch",
-                      help="Channel restriction. Default: *")
+                      help="Channel restriction.")
     parser.add_option("-f", "--force", action="store_true", dest="force",
                       help="Skip working directory warning.")
     parser.add_option("-d", "--debug", action="store_true", dest="debug",
-                      help="Show debugging information")
+                      help="Show debugging information.")
 
     # read from ConfigParser object's defaults section into a dictionary
     # config.defaults() (ConfigParser method) returns a dict of the default
@@ -225,14 +244,15 @@ before running obspysod.")
     if options.showhelp:
         help()
         sys.exit()
-## Parsing different custom command line options
-## if the user has given e.g. -r x/x/x/x or -t time1/time
+    ## Parsing different custom command line options
+    ## if the user has given e.g. -r x/x/x/x or -t time1/time
     # extract min. and max. longitude and latitude if the user has given the
     # coordinates with -r (GMT syntax)
     if options.rect:
         if options.west or options.east or options.south or options.north:
-            print "Either provide the rectangle with GMT syntax, or with -x -X\
- -y -Y, not both."
+            msg = "Either provide the rectangle with GMT syntax, or with " + \
+            "-x -X -y -Y, not both."
+            print msg
             sys.exit(2)
         try:
             options.rect = options.rect.split('/')
@@ -256,8 +276,9 @@ before running obspysod.")
     # Extract start and end time if the user has given the timeframe with
     # -t start/end (GMT syntax)
     if options.time:
-        print "It makes no sense to provide start and end time with -s -e \
-and with -t at the same time, but if you do so, -t will override -s -e."
+        msg = "It makes no sense to provide start and end time with -s -e " + \
+        "and -t at the same time, but if you do so, -t will override -s -e."
+        print msg
         try:
             options.start = options.time.split('/')[0]
             options.end = options.time.split('/')[1]
@@ -272,8 +293,9 @@ and with -t at the same time, but if you do so, -t will override -s -e."
     # Extract network, station, location, channel if the user has given an
     # identity code (-i xx.xx.xx.xx)
     if options.identity:
-        print "It makes no sense to provide station restrictions with -i \
-and with -N -S -L -C at the same time, but if you do so, -i will override."
+        msg = "It makes no sense to provide station restrictions with -i and" \
+        + " -N -S -L -C at the same time, but if you do so, -i will override."
+        print msg
         try:
             options.nw, options.st, options.lo, options.ch = \
                                     options.identity.split('.')
@@ -299,8 +321,11 @@ and with -N -S -L -C at the same time, but if you do so, -i will override."
         print "Now it's UTCDateTime:"
         print "options.start", options.start
         print "options.end", options.end
-    # parse datapath (check if given absolute or relative)
     cwd = os.getcwd()
+    # change default datapath if we're in resp query mode
+    if options.resp and options.datapath == 'obspysod-data':
+        options.datapath = os.path.join(cwd, 'obspysod-resp')
+    # parse datapath (check if given absolute or relative)
     if os.path.isabs(options.datapath):
         datapath = options.datapath
     else:
@@ -313,19 +338,14 @@ and with -N -S -L -C at the same time, but if you do so, -i will override."
             rmtree(datapath)
         except:
             pass
-
     # if -q oder --query-resp, do not enter normal obspysod data download
     # operation, but download resp instrument files and quit.
     if options.resp:
         print "Obspysod will download dataless instrument files and quit.\n"
-        # we want a different default path for the dataless routine, but the
-        # same command line flag -P, so:
-        if options.datapath == 'obspysod-data':
-            options.datapath = os.path.join(cwd, 'obspysod-resp')
         queryResp(options.west, options.east, options.south, options.north,
                   options.start, options.end, options.nw, options.st,
-                  options.lo, options.ch, options.datapath, options.debug)
-        sys.exit()
+                  options.lo, options.ch, options.debug)
+        return
     # if -u or --update, delete event and catalog pickled objects
     if options.update:
         try:
@@ -347,15 +367,15 @@ and with -N -S -L -C at the same time, but if you do so, -i will override."
                 sys.exit(2)
         else:
             print "Found existing data folder %s" % datapath
-            print "Resume download?"
-            print "Notes:"
-            print "- suppress this message with -f or --force"
-            print "- update the event database before resuming download with\
- -u or --update"
-            print "- reset and redownload everything, including all data, with\
- -R or --reset"
-            print "Brief help: obspysod -h"
-            print "Long help: obspysod -H"
+            msg = "Resume download?\nNotes:"
+            msg += "- suppress this message with -f or --force\n"
+            msg += "- update the event database before resuming download "
+            msg += "with -u or --update\n"
+            msg += "- reset and redownload everything, including all data, "
+            msg += "with -R or --reset\n"
+            msg += "Brief help: obspysod -h\n"
+            msg += "Long help: obspysod -H"
+            print msg
             answer = raw_input("[y/N]> ")
             if answer != "y":
                 print "Exiting obspy."
@@ -363,11 +383,11 @@ and with -N -S -L -C at the same time, but if you do so, -i will override."
     # create datapath
     if not os.path.exists(datapath):
         os.mkdir(datapath)
-
     # start keypress thread, so we can quit by pressing 'q' anytime from now on
     # during the downloads
+    done = False
     keypress_thread().start()
-    # get events from NERIES-eventservice
+    # (1) get events from NERIES-eventservice
     if options.debug:
         print '#############'
         print "options: ", options
@@ -380,51 +400,56 @@ and with -N -S -L -C at the same time, but if you do so, -i will override."
         print 'events:'
         print events
         print '#############'
-    # get inventory data from ARCLINK
-    # ARCLINK supports wildcard searches like 'R*' for station, but not for
+    # (2) get inventory data from ArcLink
+    # ArcLink supports wildcard searches like 'R*' for station, but not for
     # network, where it accepts only * or exact network name
     # handle network restrictions: obspysod accepts e.g. R* for network:
     nwcheck = False
     if '*' in options.nw:
     # if '*' in options.nw and options.nw != '*':
-        options.nw2='*'
+        options.nw2 = '*'
         nwcheck = True
     else:
-        options.nw2=options.nw
+        options.nw2 = options.nw
     # check if the user pressed 'q' while we did d/l eventlists.
-    with lock:
-        if quit:
-            print "Quitting. To resume the download, just run obspysod \
-on the same datapath again."
-            sys.exit(0)
+    check_quit()
     networks, stations = get_inventory(options.start, options.end, options.nw2,
                                       options.st, options.lo, options.ch)
     # networks is a list of all networks and not needed again
     # stations is a list of all stations (nw.st.l.ch, so it includes st.)
     if options.debug:
         print '#############'
-        print 'networks:'
+        print 'networks(actual network wildcard search is handled internally):'
         print networks
         print 'stations:'
         print stations
         print '#############'
-    #
-    # write catalog file, create folders and d/l data
-    #
-    headline = 'event_id\tdatetime\torigin_id\tauthor\tflynn_region\t\
-latitude\tlongitude\tdepth\tmagnitude\tmagnitude_type\tDataQuality\t\
-TimingQualityMin\n########\t########\t#########\t######\t############\t\
-########\t#########\t#####\t#########\t##############\t#######\t#######\n\n'
-    hl_eventf =  'station\t\tTQ min\tGaps\tOverlaps'+'\n'
+    # (3) Get availability data from IRIS
+    # check if the user pressed 'q' while we did d/l the inventory from ArcLink
+    check_quit()
+    avail = getnparse_availability(west=options.west, east=options.east,
+                                   south=options.south, north=options.north,
+                                   start=options.start, end=options.end,
+                                   nw=options.nw, st=options.st, lo=options.lo,
+                                   ch=options.ch, debug=options.debug)
+    irisclient = obspy.iris.Client(debug=options.debug)
+    # (4) write catalog file, create folders
+    headline = "event_id\tdatetime\torigin_id\tauthor\tflynn_region\t"
+    headline += "latitude\tlongitude\tdepth\tmagnitude\tmagnitude_type\t"
+    headline += "DataQuality\tTimingQualityMin\n########\t########\t#########"
+    headline += "\t######\t############\t\########\t#########\t#####\t"
+    headline += '#########\t##############\t#######\t#######\n\n'
+    hl_eventf = 'station\t\tTQ min\tGaps\tOverlaps' + '\n'
     hl_eventf += '#######\t\t######\t####\t########\n\n'
     catalogfp = os.path.join(datapath, 'catalog.txt')
     catalogfout = open(catalogfp, 'wt')
     catalogfout.write(headline)
-    # Loop through events
+    # initialize ArcLink webservice client
+    arcclient = obspy.arclink.Client(timeout=5, debug=options.debug)
+    mseed = LibMSEED()
+    # (5) Loop through events
     for eventdict in events:
         eventid = eventdict['event_id']
-        # eventtime = UTCDateTime(eventdict['datetime'])
-        # changed this since all neries methods now return UTCDateTime object
         eventtime = eventdict['datetime']
         if options.debug:
             print '#############'
@@ -434,16 +459,15 @@ TimingQualityMin\n########\t########\t#########\t######\t############\t\
         # create event info line for catalog file and quakefile
         infoline = eventdict['event_id'] + '\t' + str(eventdict['datetime'])
         infoline += '\t' + str(eventdict['origin_id']) + '\t'
-        infoline += eventdict['author'] + '\t' + eventdict['flynn_region'] + '\t'
-        infoline += str(eventdict['latitude']) + '\t' + str(eventdict['longitude']) + '\t'
-        infoline += str(eventdict['depth']) + '\t' + str(eventdict['magnitude']) + '\t'
-        infoline += eventdict['magnitude_type'] + '\t'
+        infoline += eventdict['author'] + '\t' + eventdict['flynn_region']+'\t'
+        infoline += str(eventdict['latitude']) + '\t'
+        infoline += str(eventdict['longitude']) + '\t'
+        infoline += str(eventdict['depth']) + '\t' +str(eventdict['magnitude'])
+        infoline += '\t' + eventdict['magnitude_type'] + '\t'
         # create event-folder
         eventdir = os.path.join(datapath, eventid)
         if not os.path.exists(eventdir):
             os.mkdir(eventdir)
-        client = obspy.arclink.Client(timeout=5, debug=options.debug)
-        mseed = LibMSEED()
         # init/reset dqsum
         dqsum = 0
         tqlist = []
@@ -456,22 +480,18 @@ TimingQualityMin\n########\t########\t#########\t######\t############\t\
         quakefout.write(infoline + '\n\n')
         quakefout.write(hl_eventf)
         quakefout.flush()
-        # arclink wf data download loop
+        # (5.1) ArcLink wf data download loop (runs inside event loop)
         # Loop trough stations
         for station in stations:
-            with lock:
-                if quit:
-                    print "Quitting. To resume the download, just run obspysod \
-on the same datapath again (using the same command line arguments)."
-                    sys.exit(0)
+            check_quit()
             # skip dead networks
             net, sta, loc, cha = station.split('.')
             if net in skip_networks:
-                print 'Skipping dead network %s ...' % net
+                print 'Skipping dead network %s...' % net
                 # continue the for-loop to the next iteration
                 continue
-            # ArcLink does not support 'x*' and '*x' searches for networks, do it
-            # manually here:
+            # ArcLink does not support 'x*' and '*x' searches for networks,
+            # done manually here:
             if nwcheck:
                 # x* and *x type wildcard searches are supported
                 # i guess it's not the best way but I'm trying
@@ -486,18 +506,19 @@ on the same datapath again (using the same command line arguments)."
                 # backup behaviour if 'x*x' type search which is not
                 # supported occurs automatically: it will just d/l everything
                 # no else needed
-            # save waveform dataless seed for available stations in inventory
             # create data file handler
             datafout = os.path.join(eventdir, "%s.mseed" % station)
             if os.path.isfile(datafout):
-                print 'Data file for event %s from %s exists, \
-skip download...' % (eventid, station)
+                print 'Data file for event %s from %s exists, skip...'\
+                                                           % (eventid, station)
                 continue
-            print 'Downloading event %s from %s ...' % (eventid, station),
+            print 'Downloading event %s from ArcLink %s...'%(eventid, station),
             try:
                 # catch exception so the d/l continues if only one doesn't work
-                client.saveWaveform(datafout, net, sta, loc, cha, eventtime -
-                                    options.preset, eventtime + options.offset)
+                arcclient.saveWaveform(filename=datafout, network=net,
+                                       station=sta, location=loc, channel=cha,
+                                       starttime=eventtime-options.preset,
+                                       endtime=eventtime+options.offset)
             except Exception, error:
                 print "download error: ",
                 print error
@@ -536,11 +557,39 @@ skip download...' % (eventid, station)
                 quakefout.flush()
                 # if there has been no Exception, assume d/l was ok
                 print "done."
+        # (5.2) Iris wf data download loop
+        for (net, sta, loc, cha) in avail:
+            check_quit()
+            # construct filename:
+            stname = '.'.join((net, sta, loc, cha))
+            irisfn = stname + '.mseed'
+            irisfnfull = os.path.join(datapath, eventid, irisfn)
+            if options.debug:
+                print 'irisfnfull:', irisfnfull
+            if os.path.isfile(irisfnfull):
+                print 'Data file for event %s from %s exists, skip...' % \
+                                                         (eventid, stname)
+                continue
+            print 'Downloading event %s from IRIS %s...'%(eventid, stname),
+            try:
+                irisclient.saveWaveform(filename = irisfnfull,
+                                        network = net, station = sta,
+                                        location = loc,channel = cha,
+                                        starttime = eventtime-options.preset,
+                                        endtime = eventtime+options.offset)
+            except Exception, error:
+                print "download error: ", error
+                continue
+            else:
+                # if there was no exception, the d/l should have worked
+                print 'done.'
+                # data quality handling for iris
+
         # write data quality info into event info line
         if dqsum == 0:
-            infoline+= '0 (OK)\t'
+            infoline += '0 (OK)\t'
         else:
-            infoline+= str(dqsum) + ' (FAIL)\t'
+            infoline += str(dqsum) + ' (FAIL)\t'
         # write timing quality into event info line (minimum of all 'min'
         # entries
         if tqlist != []:
@@ -550,13 +599,15 @@ skip download...' % (eventid, station)
         # write event info line to catalog file (including QC)
         catalogfout.write(infoline)
         catalogfout.flush()
-        del client
-        del mseed
         # close quake and catalog files at end of station loop and event loop,
         # respectively
         quakefout.close()
+    # done with ArcLink, remove ArcLink client
+    del arcclient
+    # done with iris, remove client
+    del irisclient
     catalogfout.close()
-    print "All done."
+    done = True
 
 
 def get_events(west, east, south, north, start, end, magmin, magmax):
@@ -598,7 +649,7 @@ def get_events(west, east, south, north, start, end, magmin, magmax):
         fh.close()
         print "Found eventlist in datapath, skip download."
     except:
-        print "Downloading NERIES eventlist..."
+        print "Downloading NERIES eventlist...",
         client = obspy.neries.Client()
         # the maximum no of allowed results seems to be not allowed to be too
         # large, but 9999 seems to work, 99999 results in a timeout error in
@@ -613,13 +664,14 @@ def get_events(west, east, south, north, start, end, magmin, magmax):
         fh = open(eventfp, 'wb')
         pickle.dump(events, fh)
         fh.close()
+        print "done."
     print("Received %d event(s)." % (len(events)))
     return events
 
 
 def get_inventory(start, end, nw, st, lo, ch):
     """
-    Searches the arclink inventory for available networks and stations.
+    Searches the ArcLink inventory for available networks and stations.
 
     Parameters
     ----------
@@ -642,21 +694,19 @@ def get_inventory(start, end, nw, st, lo, ch):
         fh.close()
         print "Found inventory data in datapath, skip download."
     except:
-        print "Downloading ARCLINK inventory data..."
-        client = obspy.arclink.Client()
+        arcclient = obspy.arclink.client.Client()
+        print "Downloading ArcLink inventory data...",
         # "restricted = false, permanent = True" so we only get data that is
         # permanent and public
-
-        inventory = client.getInventory(network=nw, station=st, location=lo,
+        inventory = arcclient.getInventory(network=nw, station=st, location=lo,
                                     channel=ch, starttime=start, endtime=end,
                                         permanent=True, restricted=False)
-        del client
         # dump inventory to file so we can quickly resume d/l if obspysod runs
         # in the same dir more than once
         fh = open(inventoryfp, 'wb')
         pickle.dump(inventory, fh)
         fh.close()
-    # noch anschauen wie genau das funktioniert...!
+        print "done."
     networks = sorted([i for i in inventory.keys() if i.count('.') == 0])
     stations = sorted([i for i in inventory.keys()
                             if i.count('.') == 3 and i[-3:].startswith('BH')])
@@ -665,86 +715,129 @@ def get_inventory(start, end, nw, st, lo, ch):
     return (networks, stations)
 
 
-def availability(start, end, nw, st, lo, ch):
+def getnparse_availability(west, east, south, north, start, end, nw, st, lo, 
+                           ch, debug):
     """
-    Searches the IRIS inventory for available networks and stations.
+    Downloads and parses IRIS availability XML.
     """
-    client = obspy.iris.Client()
-    iris_avail = client.availability
-
-
-def queryResp(west, east, south, north, start, end, nw, st, lo, ch,
-                  datapath, debug):
-    """
-    Downloads Resp instrument data.
-    """
-    # start keypress thread, so we can quit by pressing 'q' anytime from now on
-    # during the downloads
-    keypress_thread().start()
-    print "Downloading IRIS availability data..."
-    client = obspy.iris.Client()
-    iris_avail = client.availability(network=nw, station=st, location=lo,
+    irisclient = obspy.iris.Client(debug=debug)
+    try:
+        # create data path:
+        if not os.path.isdir(datapath):
+            os.mkdir(datapath)
+        # try to load availability file
+        availfp = os.path.join(datapath, 'availability.pickle')
+        fh = open(availfp, 'rb')
+        avail_list = pickle.load(fh)
+        fh.close()
+        print "Found IRIS availability in datapath, skip download."
+        return avail_list
+    except:
+        print "Downloading IRIS availability data...",
+        try:
+            result = irisclient.availability(
+                                     network=nw, station=st, location=lo,
                                      channel=ch, starttime=UTCDateTime(start),
                                      endtime=UTCDateTime(end), minlat=south,
                                      maxlat=north, minlon=west, maxlon=east,
                                      output='xml')
-    print "...done"
-    if debug:
-        print 'datapath:', datapath
-        print 'iris_avail:', iris_avail
+        except Exception, error:
+            print "\nIRIS returned to matching stations."
+            if debug:
+                print "\niris client error: ", error
+            # return an empty list (iterable empty result)
+            return []
+        else:
+            print "done."
+            print "Parsing IRIS availability xml to obtain nw.st.lo.ch...",
+            availxml = etree.fromstring(result)
+            if debug:
+                print 'availxml:\n', availxml
+            stations = availxml.xpath('Station')
+            # I will construct a list of tuples of stations of the form:
+            # [(net,sta,cha,loc), (net,sta,loc,cha), ...]
+            avail_list = []
+            for station in stations:
+                net = station.values()[0]
+                sta = station.values()[1]
+                channels = station.xpath('Channel')
+                for channel in channels:
+                    loc = channel.values()[1]
+                    cha = channel.values()[0]
+                    if debug:
+                        print '#### station/channel: ####'
+                        print 'net', net
+                        print 'sta', sta
+                        print 'loc', loc
+                        print 'cha', cha
+                    # strip it so we can use it to construct nicer filenames
+                    # as well as to construct a working IRIS ws query
+                    avail_list.append((net.strip(' '),sta.strip(' '),
+                                       loc.strip(' '),cha.strip(' ')))
+            # dump availability to file
+            fh = open(availfp, 'wb')
+            pickle.dump(avail_list, fh)
+            fh.close()
+            print "done."
+            return avail_list
+
+
+def queryResp(west, east, south, north, start, end, nw, st, lo, ch, debug):
+    """
+    Downloads Resp instrument data.
+    """
+    global quit, done
+    # start keypress thread, so we can quit by pressing 'q' anytime from now on
+    # during the downloads
+    done = False
+    keypress_thread().start()
+    # get and parse availability xml
+    avail = getnparse_availability(west=west, east=east, south=south,
+                                   north=north, start=start, end=end,
+                                   nw=nw, st=st, lo=lo, ch=ch,
+                                   debug=debug)
     # resp file download loop:
-    # create dataless path:
-    if not os.path.isdir(datapath):
-        os.mkdir(datapath)
-    with lock:
-        if quit:
-            print "Quitting. To resume the download, just run obspysod \
-on the same datapath again."
-            sys.exit(0)
-    print "Wrapping IRIS availability xml to obtain nw.st.lo.ch...",
-    soup = BeautifulSoup(iris_avail)
-    print "done."
-    # wrap xml file for net,sta,cha,loc:
-    for station in soup.findAll('station'):
-        net = str(station.attrs[0][1])
-        sta = str(station.attrs[1][1])
-        for channel in station.findAll('channel'):
-            cha = str(channel.attrs[0][1])
-            loc = str(channel.attrs[1][1])
-            if debug:
-                print '#### station/channel: ####'
-                print 'net', net
-                print 'sta', sta
-                print 'loc', loc
-                print 'cha', cha
-            # now it's time to d/l our response file since inside this loop, we
-            # iterate all individual instruments:
-            # construct filename:
-            with lock:
-                if quit:
-                    print "Quitting. To resume the download, just run obspysod\
- on the same datapath again."
-                    sys.exit(0)
-            respfn = '.'.join((net.strip(' '), sta.strip(' '), loc.strip(' '),
-                               cha.strip(' '))) + '.resp'
-            respfnfull = os.path.join(datapath, respfn)
-            if debug:
-                print 'respfnfull:', respfnfull
-            if os.path.isfile(respfnfull):
-                print 'Resp File for %s exists, skip download...' % respfn
-                continue
-            print 'Downloading Resp File for %s...' % respfn,
-            try:
-                client.saveResponse(respfnfull, net, sta, loc, cha, start, end,
-                                    format='RESP')
-            except Exception, error:
-                print "download error: ",
-                print error
-                continue
-            else:
-                # if there has been no exception, the d/l should have worked
-                print 'done.'
-    del client
+    client = obspy.iris.Client(debug=debug)
+    # loop over all tuples of a station in avail list:
+    for (net, sta, loc, cha) in avail:
+        check_quit()
+        # construct filename
+        respfn = '.'.join((net, sta, loc, cha)) + '.resp'
+        respfnfull = os.path.join(datapath, respfn)
+        if debug:
+            print 'respfnfull:', respfnfull
+            print 'type cha: ', type(cha)
+            print 'length cha: ', len(cha)
+            print 'net: %s sta: %s loc: %s cha: %s' % (net,sta,loc,cha)
+        if os.path.isfile(respfnfull):
+            print 'Resp File for %s exists, skip download...' % respfn
+            continue
+        print 'Downloading Resp File for %s...' % respfn,
+        try:
+            client.saveResponse(respfnfull, net, sta, loc, cha, start, end,
+                                format='RESP')
+        except Exception, error:
+            print "\ndownload error: ",
+            print error
+            continue
+        else:
+            # if there has been no exception, the d/l should have worked
+            print 'done.'
+    done = True
+
+
+def getFolderSize(folder):
+    """
+    Returns the size of a folder in bytes.
+    """
+    total_size = os.path.getsize(folder)
+    for item in os.listdir(folder):
+        itempath = os.path.join(folder, item)
+        if os.path.isfile(itempath):
+            total_size += os.path.getsize(itempath)
+        elif os.path.isdir(itempath):
+            total_size += getFolderSize(itempath)
+    return total_size
 
 
 def help():
@@ -791,23 +884,31 @@ if __name__ == "__main__":
     # works fine.
     # The implementation uses class keypress_thread and function getkey(see
     # above).
-
     def interrupt_handler(signal, frame):
         global quit
         if not quit:
             print "You pressed ^C (SIGINT)."
-            print "Obspysod will finish downloading and saving the last file and \
-quit gracefully."
+            msg = "Obspysod will finish downloading and saving the last file"+\
+                    " and quit gracefully."
+            print msg
             print "Press ^C again to interrupt immediately."
         else:
-            print "Interrupting immediately. The last file will most likely \
-be corrupt."
+            msg = "Interrupting immediately. The last file will most likely"+ \
+                    " be corrupt."
             sys.exit(2)
         quit = True
     signal.signal(signal.SIGINT, interrupt_handler)
     signal.siginterrupt(signal.SIGINT, False)
     """
+    global quit, done
     quit = False
+    begin = time.time()
     status = main()
+    size = getFolderSize(datapath)
+    elapsed = time.time() - begin
+    print "Downloaded %d bytes in %d seconds." % (size, elapsed)
+    # sorry for the inconvenience, AFAIK there is no other way to quit the
+    # second thread since getkey is waiting for input:
+    print "Done, press any key to quit."
     # pass the return of main to the command line.
     sys.exit(status)
