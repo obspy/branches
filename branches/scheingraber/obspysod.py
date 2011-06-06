@@ -106,10 +106,11 @@ def main():
     # need to provide default start and end time, otherwise
     # obspy.arclink.getInventory will raise an error if the user does not
     # provide start and end time
+    # default for start is three months ago, end is now
     config = ConfigParser({'magmin': '3',
                            'dt': '10',
-                           'start': '2011-01-01',
-                           'end': '2011-05-01',
+                           'start': str(UTCDateTime.utcnow()-60*60*24*30*3),
+                           'end': str(UTCDateTime.utcnow()),
                            'preset': '0',
                            'offset': '20',
                            'datapath': 'obspysod-data',
@@ -132,8 +133,8 @@ def main():
     # in dest="..var.." angeg. ist
     # * you need to provide every possible option here.
     # reihenfolge wird eingehalten in help msg.
-    parser.add_option("-H", "--detailed-help", action="store_true",
-                      dest="showhelp", help="Show detailed help and exit.")
+    parser.add_option("-H", "--more-help", action="store_true",
+                      dest="showhelp", help="Show explanatory help and exit.")
     helpmsg = "Instead of downloading seismic data, download resp " + \
               "instrument files."
     parser.add_option("-q", "--query-resp", action="store_true",
@@ -153,11 +154,11 @@ def main():
     parser.add_option("-R", "--reset", action="store_true",
                       dest="reset", help=helpmsg)
     parser.add_option("-s", "--starttime", action="store", dest="start",
-                      help="Start time. Default: ")
+                      help="Start time. Default: 3 months ago.")
     parser.add_option("-e", "--endtime", action="store", dest="end",
-                      help="End time")
+                      help="End time. Default: now.")
     parser.add_option("-t", "--time", action="store", dest="time",
-                      help="Start and End Time delimited by a slash")
+                      help="Start and End Time delimited by a slash.")
     helpmsg="Time parameter which determines how close the event data " + \
             "will be cropped before the event. Default: 0"
     parser.add_option("-p", "--preset", action="store", dest="preset",
@@ -170,9 +171,10 @@ def main():
                       help="Minimum magnitude. Default: 3")
     parser.add_option("-M", "--magmax", action="store", dest="magmax",
                       help="Maximum magnitude.")
+    helpmsg="Provide rectangle with GMT syntax: <west>/<east>/<south>/<north>"\
+            + " (alternative to -x -X -y -Y)."
     parser.add_option("-r", "--rect", action="store", dest="rect",
-                      help="Provide rectangle with GMT syntax (alternative to\
-                      -x -X -y -Y).")
+                      help=helpmsg)
     parser.add_option("-x", "--latmin", action="store", dest="south",
                       help="Minimum latitude.")
     parser.add_option("-X", "--latmax", action="store", dest="north",
@@ -873,26 +875,81 @@ def getFolderSize(folder):
 
 def help():
     """
-    Print detailed help.
+    Print more help.
     """
-    print "\nobspysod - seismological standing order for data based on obspy."
-    print "usage: obspysod -r <west>/<east>/<south>/<north> -t <start>/<end> -m <magnitude>"
-    print "\nYou need to:"
-    print "------------\n"
-    print "* specify a geographical rectangle"
-    print "\t -r[--rect] \t<min.longitude>/<max.longitude>/<min.latitude>/<max.latitude>"
+    print "\nObsPySOD: ObsPy Standing Order for Data tool"
+    print "============================================\n\n"
+    print "The CLI allows for different flavors of usage, in short:"
+    print "--------------------------------------------------------\n"
+    print "e.g.: obspysod.py -r <west>/<east>/<south>/<north> -t " + \
+          "<start>/<end> -m <min_mag> -M <max_mag> -i <nw>.<st>.<l>.<ch>"
+    print "e.g.: obspysod.py -y <min_lon> -Y <max_lon> -x <min_lat> -X " + \
+          "<max_lat> -s <start> -e <end> -P <datapath> -o <offset> --reset -f"
+    print "\nYou may (no mandatory options):"
+    print "-------------------------------\n"
+    print "* specify a geographical rectangle:\n"
+    print "\t -r[--rect] \t<min.longitude>/<max.longitude>/<min.latitude>/" + \
+          "<max.latitude>"
     print "\t Format: +/- 90 decimal degrees for latitudinal limits,"
     print "\t         +/- 180 decimal degrees for longitudinal limits."
     print "\t         e.g.: -r -15.5/40/30.8/50\n"
-    print "* specify a timeframe:"
+    print "\t -x[--lonmin] \t<min.latitude>"
+    print "\t -X[--lonmax] \t<max.longitude>"
+    print "\t -y[--latmin] \t<min.latitude>"
+    print "\t -Y[--latmax] \t<max.latitude>"
+    print "\t Format: +/- 90 decimal degrees for latitudinal limits,"
+    print "\t         +/- 180 decimal degrees for longitudinal limits."
+    print "\t         e.g.: -x -15.5 -X 40 -y 30.8 -Y 50\n"
+    print "* specify a timeframe:\n"
     print "\t -t[--time] \t<start>/<end>"
     print "\t Format: Any obspy.core.UTCDateTime recognizable string,"
     print "\t         e.g.: -t 2007-12-31T12:23:34.5/2011-01-31T18:23:34.5\n"
-    print "* specify a minimum magnitude:"
-    print "\t -m[--mag] \t<magnitude>"
+    print "\t -s[--start] \t<starttime>"
+    print "\t -e[--end] \t<endtime>"
+    print "\t Format: Any obspy.core.UTCDateTime recognizable string,"
+    print "\t         e.g.: -s 2007-12-31T12:23:34.5 -e 2011-01-31T18:23:34.5\n"
+    print "* specify a minimum and maximum magnitude:\n"
+    print "\t -m[--magmin] \t<min.magnitude>"
+    print "\t -M[--magmax] \t<max.magnitude>"
     print "\t Format: Integer or decimal,"
-    print "\t         e.g.: -m 4.2\n"
-    print "Examples:"
+    print "\t         e.g.: -m 4.2 -M 9\n"
+    print "* specify a station restriction:\n"
+    print "\t -i[--identity]\t<nw>.<st>.<l>.<ch>"
+    print "\t Format: Any station code, may include wildcards,"
+    print "\t         e.g. -i IU.ANMO.00.BH* or -i *.*.?0.BHZ\n"
+    print "\t -N[--network] \t<network>"
+    print "\t -S[--station] \t<station>"
+    print "\t -L[--location]\t<location>"
+    print "\t -C[--channel]\t<channel>"
+    print "\t Format: Any station code, may include wildcards,"
+    print "\t         e.g. -N IU -S ANMO -L 00 -C BH*\n"
+    print "* specify additional options:\n"
+    print "\t -p[--preset] <preset>"
+    print "\t\t Time parameter which determines how close the event " + \
+          "data will be cropped before the event. Default: 0"
+    # hopefully this will be automatically with taupe arrival times later
+    print "\t -o[--offset] <offset>"
+    print "\t\t Time parameter which determines how close the event " + \
+          "data will be cropped after the event."
+    print "\t -q[--query-resp]"
+    print "\t\tInstead of downloading seismic data, download instrument " + \
+          "response files."
+    print "\t -P[--datapath]\t<datapath>"
+    print "\t\tInstead of using the default datapath, specify a different one."
+    print "\t -R[--reset]"
+    print "\t\tIf the datapath is found, do not resume previous downloads " + \
+          "as is the default behaviour, but redownload everything. Same as" + \
+          " deleting the datapath before running ObsPySOD."
+    print "\t -u[--update]"
+    print "\t\tUpdate the event database if obspysod runs on the " + \
+          "same directory for a second time."
+    print "\t -f[--force]"
+    print "\t\tSkip working directory warning (no need to confirm folder" + \
+          " creation)."
+    print "\nType obspysod -h for a list of all long and short form options."
+    print 
+    ### XXX need better examples
+    print "\nExamples:"
     print "---------\n"
     print "* Alps region, minimum magnitude of 4.2:"
     print "  obspysod -r 5/16.5/45.75/48 -t 2007-01-13T08:24:00/2011-02-25T22:41:00 -m 4.2"
