@@ -153,7 +153,7 @@ def main():
     parser.add_option("-R", "--reset", action="store_true",
                       dest="reset", help=helpmsg)
     parser.add_option("-s", "--starttime", action="store", dest="start",
-                      help="Start time")
+                      help="Start time. Default: ")
     parser.add_option("-e", "--endtime", action="store", dest="end",
                       help="End time")
     parser.add_option("-t", "--time", action="store", dest="time",
@@ -561,16 +561,16 @@ def main():
         for (net, sta, loc, cha) in avail:
             check_quit()
             # construct filename:
-            stname = '.'.join((net, sta, loc, cha))
-            irisfn = stname + '.mseed'
+            station = '.'.join((net, sta, loc, cha))
+            irisfn = station + '.mseed'
             irisfnfull = os.path.join(datapath, eventid, irisfn)
             if options.debug:
                 print 'irisfnfull:', irisfnfull
             if os.path.isfile(irisfnfull):
                 print 'Data file for event %s from %s exists, skip...' % \
-                                                         (eventid, stname)
+                                                         (eventid, station)
                 continue
-            print 'Downloading event %s from IRIS %s...'%(eventid, stname),
+            print 'Downloading event %s from IRIS %s...'%(eventid, station),
             try:
                 irisclient.saveWaveform(filename = irisfnfull,
                                         network = net, station = sta,
@@ -584,8 +584,38 @@ def main():
                 # if there was no exception, the d/l should have worked
                 print 'done.'
                 # data quality handling for iris
-
-        # write data quality info into event info line
+                # write station name to event info line
+                il_quake = station + '\t'
+                # Quality Control with libmseed
+                dqsum += sum(mseed.getDataQualityFlagsCount(irisfnfull))
+                # Timing Quality, trying to get all stations into one line in
+                # eventfile, and handling the case that some station's mseeds
+                # provide TQ data, and some do not
+                tq = mseed.getTimingQuality(irisfnfull)
+                if tq != {}:
+                    tqlist.append(tq['min'])
+                    il_quake += str(tq['min'])
+                else:
+                    il_quake += str('None')
+                # finally, gaps&overlaps into quakefile
+                # read mseed into stream, use .getGaps method
+                st = read(irisfnfull)
+                # this code snippet is taken from stream.printGaps since I need
+                # gaps and overlaps distinct.
+                result = st.getGaps()
+                gaps = 0
+                overlaps = 0
+                for r in result:
+                    if r[6] > 0:
+                        gaps += 1
+                    else:
+                        overlaps += 1
+                del st
+                il_quake += '\t%d\t%d\n' % (gaps, overlaps)
+                quakefout.write(il_quake)
+                quakefout.flush()
+                print "done."
+        # write data quality info into catalog file event info line
         if dqsum == 0:
             infoline += '0 (OK)\t'
         else:
@@ -599,15 +629,16 @@ def main():
         # write event info line to catalog file (including QC)
         catalogfout.write(infoline)
         catalogfout.flush()
-        # close quake and catalog files at end of station loop and event loop,
-        # respectively
+        # close quake file at end of station loop
         quakefout.close()
     # done with ArcLink, remove ArcLink client
     del arcclient
     # done with iris, remove client
     del irisclient
+    # close event catalog info file at the end of event loop
     catalogfout.close()
     done = True
+    return
 
 
 def get_events(west, east, south, north, start, end, magmin, magmax):
