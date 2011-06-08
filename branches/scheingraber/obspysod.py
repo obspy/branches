@@ -24,6 +24,7 @@ import obspy.neries
 import obspy.arclink
 import obspy.iris
 from obspy.mseed.libmseed import LibMSEED
+from obspy.taup import taup
 from lxml import etree
 # using threads to be able to capture keypress event without a GUI like
 # tkinter or pyqt and run the main loop at the same time.
@@ -107,12 +108,13 @@ def main():
     # obspy.arclink.getInventory will raise an error if the user does not
     # provide start and end time
     # default for start is three months ago, end is now
+    # default offset is 10 min
     config = ConfigParser({'magmin': '3',
                            'dt': '10',
                            'start': str(UTCDateTime.utcnow()-60*60*24*30*3),
                            'end': str(UTCDateTime.utcnow()),
                            'preset': '0',
-                           'offset': '20',
+                           'offset': '600',
                            'datapath': 'obspysod-data',
                            'nw': '*',
                            'st': '*',
@@ -135,13 +137,13 @@ def main():
     # reihenfolge wird eingehalten in help msg.
     parser.add_option("-H", "--more-help", action="store_true",
                       dest="showhelp", help="Show explanatory help and exit.")
-    helpmsg = "Instead of downloading seismic data, download resp " + \
-              "instrument files."
-    parser.add_option("-q", "--query-resp", action="store_true",
-                      dest="resp", help=helpmsg)
+    helpmsg = "Instead of downloading seismic data, download metadata: " + \
+              "resp instrument and dataless seed files."
+    parser.add_option("-q", "--query-metadata", action="store_true",
+                      dest="metadata", help=helpmsg)
     helpmsg = "The path where obspysod will store the data (default is " + \
               "./obspysod-data for the data download mode and " + \
-              "./obspysod-resp for resp download mode)."
+              "./obspysod-metadata for metadata download mode)."
     parser.add_option("-P", "--datapath", action="store", dest="datapath",
                       help=helpmsg)
     helpmsg = "Update the event database when obspysod runs on the same " + \
@@ -324,9 +326,9 @@ def main():
         print "options.start", options.start
         print "options.end", options.end
     cwd = os.getcwd()
-    # change default datapath if we're in resp query mode
-    if options.resp and options.datapath == 'obspysod-data':
-        options.datapath = os.path.join(cwd, 'obspysod-resp')
+    # change default datapath if we're in metadata query mode
+    if options.metadata and options.datapath == 'obspysod-data':
+        options.datapath = os.path.join(cwd, 'obspysod-metadata')
     # parse datapath (check if given absolute or relative)
     if os.path.isabs(options.datapath):
         datapath = options.datapath
@@ -340,11 +342,12 @@ def main():
             rmtree(datapath)
         except:
             pass
-    # if -q oder --query-resp, do not enter normal obspysod data download
-    # operation, but download resp instrument files and quit.
-    if options.resp:
-        print "Obspysod will download dataless instrument files and quit.\n"
-        queryResp(options.west, options.east, options.south, options.north,
+    # if -q oder --query-metadata, do not enter normal obspysod data download
+    # operation, but download resp instrument files and dataless seed and quit.
+    if options.metadata:
+        print "ObsPySOD will download resp and dataless seed instrument " + \
+              "files and quit.\n"
+        queryMeta(options.west, options.east, options.south, options.north,
                   options.start, options.end, options.nw, options.st,
                   options.lo, options.ch, options.debug)
         return
@@ -416,9 +419,10 @@ def main():
     # check if the user pressed 'q' while we did d/l eventlists.
     check_quit()
     networks, stations = get_inventory(options.start, options.end, options.nw2,
-                                      options.st, options.lo, options.ch)
+                                      options.st, options.lo, options.ch,
+                                       debug=options.debug)
     # networks is a list of all networks and not needed again
-    # stations is a list of all stations (nw.st.l.ch, so it includes st.)
+    # stations is a list of all stations (nw.st.l.ch, so it includes networks)
     if options.debug:
         print '#############'
         print 'networks(actual network wildcard search is handled internally):'
@@ -450,7 +454,11 @@ def main():
     arcclient = obspy.arclink.Client(timeout=5, debug=options.debug)
     mseed = LibMSEED()
     # (5) Loop through events
+    # init neriesclient here, need it inside every loop to d/l respective
+    # quakeml xml
+    neriesclient = obspy.neries.Client()
     for eventdict in events:
+        check_quit()
         eventid = eventdict['event_id']
         eventtime = eventdict['datetime']
         if options.debug:
@@ -470,6 +478,14 @@ def main():
         eventdir = os.path.join(datapath, eventid)
         if not os.path.exists(eventdir):
             os.mkdir(eventdir)
+        # download quake ml xml
+        print "Downloading quakeml xml file for event %s..." % eventid,
+        quakeml = neriesclient.getEventDetail(eventid, 'xml')
+        quakemlfp = os.path.join(eventdir, 'quakeml.xml')
+        quakemlfout = open(quakemlfp, 'wt')
+        quakemlfout.write(quakeml)
+        quakemlfout.close()
+        print "done."
         # init/reset dqsum
         dqsum = 0
         tqlist = []
@@ -492,6 +508,8 @@ def main():
                 print 'Skipping dead network %s...' % net
                 # continue the for-loop to the next iteration
                 continue
+            # XXX need to change this to using regex
+            # and rather inside the arclink fct.
             # ArcLink does not support 'x*' and '*x' searches for networks,
             # done manually here:
             if nwcheck:
@@ -672,7 +690,7 @@ def get_events(west, east, south, north, start, end, magmin, magmax):
 
     Returns
     -------
-        List of event dictionaries or quakeml string.
+        List of event dictionaries.
     """
     eventfp = os.path.join(datapath, 'events.pickle')
     try:
@@ -698,11 +716,11 @@ def get_events(west, east, south, north, start, end, magmin, magmax):
         pickle.dump(events, fh)
         fh.close()
         print "done."
-    print("Received %d event(s)." % (len(events)))
+    print("Received %d event(s) from NERIES." % (len(events)))
     return events
 
 
-def get_inventory(start, end, nw, st, lo, ch):
+def get_inventory(start, end, nw, st, lo, ch, debug=False):
     """
     Searches the ArcLink inventory for available networks and stations.
 
@@ -731,20 +749,31 @@ def get_inventory(start, end, nw, st, lo, ch):
         print "Downloading ArcLink inventory data...",
         # "restricted = false, permanent = True" so we only get data that is
         # permanent and public
-        inventory = arcclient.getInventory(network=nw, station=st, location=lo,
-                                    channel=ch, starttime=start, endtime=end,
-                                        permanent=True, restricted=False)
-        # dump inventory to file so we can quickly resume d/l if obspysod runs
-        # in the same dir more than once
-        fh = open(inventoryfp, 'wb')
-        pickle.dump(inventory, fh)
-        fh.close()
-        print "done."
+        try:
+            inventory = arcclient.getInventory(network=nw, station=st,
+                                               location=lo, channel=ch,
+                                               starttime=start, endtime=end,
+                                            permanent=True, restricted=False)
+        except Exception, error:
+            print "download error: ", error
+            print "ArcLink returned no stations."
+            # return empty result in the form of (networks, stations)
+            return ([],[])
+        else:
+            # dump inventory to file so we can quickly resume d/l if obspysod
+            # runs in the same dir more than once
+            fh = open(inventoryfp, 'wb')
+            pickle.dump(inventory, fh)
+            fh.close()
+            print "done."
+    # XXX change this
+    if debug:
+        print "inventory inside get_inventory(): ", inventory
     networks = sorted([i for i in inventory.keys() if i.count('.') == 0])
     stations = sorted([i for i in inventory.keys()
                             if i.count('.') == 3 and i[-3:].startswith('BH')])
-    print("Received %d network(s)" % (len(networks)))
-    print("Received %d station(s)" % (len(stations)))
+    print("Received %d network(s) from ArcLink." % (len(networks)))
+    print("Received %d station(s) from ArcLink." % (len(stations)))
     return (networks, stations)
 
 
@@ -812,25 +841,31 @@ def getnparse_availability(west, east, south, north, start, end, nw, st, lo,
             pickle.dump(avail_list, fh)
             fh.close()
             print "done."
+            if debug:
+                print "avail_list: ", avail_list
+            print("Received %d station(s) from IRIS." % (len(stations)))
+            print("Received %d channel(s) from IRIS." % (len(avail_list)))
             return avail_list
 
 
-def queryResp(west, east, south, north, start, end, nw, st, lo, ch, debug):
+def queryMeta(west, east, south, north, start, end, nw, st, lo, ch, debug):
     """
-    Downloads Resp instrument data.
+    Downloads Resp instrument data and dataless seed files.
     """
     global quit, done
     # start keypress thread, so we can quit by pressing 'q' anytime from now on
     # during the downloads
     done = False
     keypress_thread().start()
-    # get and parse availability xml
+    irisclient = obspy.iris.Client(debug=debug)
+    arclinkclient = obspy.arclink.client.Client(debug=debug)
+    # (1) IRIS: resp files
+    # get and parse IRIS availability xml
     avail = getnparse_availability(west=west, east=east, south=south,
                                    north=north, start=start, end=end,
                                    nw=nw, st=st, lo=lo, ch=ch,
                                    debug=debug)
-    # resp file download loop:
-    client = obspy.iris.Client(debug=debug)
+    # stations is a list of all stations (nw.st.l.ch, so it includes networks)
     # loop over all tuples of a station in avail list:
     for (net, sta, loc, cha) in avail:
         check_quit()
@@ -843,14 +878,54 @@ def queryResp(west, east, south, north, start, end, nw, st, lo, ch, debug):
             print 'length cha: ', len(cha)
             print 'net: %s sta: %s loc: %s cha: %s' % (net,sta,loc,cha)
         if os.path.isfile(respfnfull):
-            print 'Resp File for %s exists, skip download...' % respfn
+            print 'Resp file for %s exists, skip download...' % respfn
             continue
-        print 'Downloading Resp File for %s...' % respfn,
+        print 'Downloading Resp file for %s from IRIS...' % respfn,
         try:
-            client.saveResponse(respfnfull, net, sta, loc, cha, start, end,
-                                format='RESP')
+            irisclient.saveResponse(respfnfull, net, sta, loc, cha, start, end,
+                                    format='RESP')
         except Exception, error:
             print "\ndownload error: ",
+            print error
+            continue
+        else:
+            # if there has been no exception, the d/l should have worked
+            print 'done.'
+    # (2) ArcLink: dataless seed
+    # get ArcLink inventory
+    networks, stations = get_inventory(start, end, nw, st, lo, ch,
+                                       debug=debug)
+    # networks is a list of all networks and not needed again
+    # loop over stations to d/l every dataless seed file...
+    # skip dead ArcLink networks
+    skip_networks = ['AI', 'BA']
+    for station in stations:
+        check_quit()
+        # skip dead networks
+        net, sta, loc, cha = station.split('.')
+        if net in skip_networks:
+            print 'Skipping dead network %s...' % net
+            # continue the for-loop to the next iteration
+            continue
+        # construct filename
+        dlseedfn = '.'.join((net, sta, loc, cha)) + '.seed'
+        dlseedfnfull = os.path.join(datapath, dlseedfn)
+        # ArcLink does not support 'x*' and '*x' searches for networks,
+        # done manually here: not done here anymore right now.
+        # XXX need to change this, use regex instead...
+        # and rather inside the arclink get_inventory fct.
+        # create data file handler
+        dlseedfnfull = os.path.join(datapath, "%s.mseed" % station)
+        if os.path.isfile(dlseedfnfull):
+            print 'Dataless file for %s exists, skip download...' % dlseedfn
+            continue
+        print 'Downloading dataless seed file for %s from ArcLink...'%dlseedfn,
+        try:
+            # catch exception so the d/l continues if only one doesn't work
+            arclinkclient.saveResponse(dlseedfnfull, net, sta, loc, cha,
+                                       start, end, format='SEED')
+        except Exception, error:
+            print "download error: ",
             print error
             continue
         else:
