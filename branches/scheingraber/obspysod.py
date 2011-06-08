@@ -24,7 +24,6 @@ import obspy.neries
 import obspy.arclink
 import obspy.iris
 from obspy.mseed.libmseed import LibMSEED
-from obspy.taup import taup
 from lxml import etree
 # using threads to be able to capture keypress event without a GUI like
 # tkinter or pyqt and run the main loop at the same time.
