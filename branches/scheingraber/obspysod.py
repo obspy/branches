@@ -16,7 +16,7 @@ import os
 import time
 import pickle
 # do not need signal, no ^c handling - quit d/l with q now.
-# i left the remainders in the code since it would be nicer to have 1 thread
+# I left the remainders in the code since it would be nicer to have 1 thread
 # and real ^c handling - perhaps someone will pick up on this, had to give up
 #import signal
 from ConfigParser import ConfigParser
