@@ -13,6 +13,8 @@ This has been part of a Bachelor's Thesis at the University of Munich.
 
 import sys
 import os
+import re
+import fnmatch
 import time
 import pickle
 # do not need signal, no ^c handling - quit d/l with q now.
@@ -422,19 +424,9 @@ def main():
         print events
         print '#############'
     # (2) get inventory data from ArcLink
-    # ArcLink supports wildcard searches like 'R*' for station, but not for
-    # network, where it accepts only * or exact network name
-    # handle network restrictions: obspysod accepts e.g. R* for network:
-    nwcheck = False
-    if '*' in options.nw:
-    # if '*' in options.nw and options.nw != '*':
-        options.nw2 = '*'
-        nwcheck = True
-    else:
-        options.nw2 = options.nw
     # check if the user pressed 'q' while we did d/l eventlists.
     check_quit()
-    networks, stations = get_inventory(options.start, options.end, options.nw2,
+    networks, stations = get_inventory(options.start, options.end, options.nw,
                                       options.st, options.lo, options.ch,
                                       permanent=options.permanent,
                                       debug=options.debug)
@@ -442,9 +434,9 @@ def main():
     # stations is a list of all stations (nw.st.l.ch, so it includes networks)
     if options.debug:
         print '#############'
-        print 'networks(actual network wildcard search is handled internally):'
+        print 'networks returned from get_inventory:'
         print networks
-        print 'stations:'
+        print 'stations returned from get_inventory:'
         print stations
         print '#############'
     # (3) Get availability data from IRIS
@@ -523,24 +515,6 @@ def main():
                 print 'Skipping dead network %s...' % net
                 # continue the for-loop to the next iteration
                 continue
-            # XXX need to change this to using regex
-            # and rather inside the arclink fct.
-            # ArcLink does not support 'x*' and '*x' searches for networks,
-            # done manually here:
-            if nwcheck:
-                # x* and *x type wildcard searches are supported
-                # i guess it's not the best way but I'm trying
-                # to get by without re for now
-                # if the rest without * is not in net: next iteration
-                if options.nw[0] == '*':
-                    if options.nw[1:] not in net:
-                        continue
-                elif options.nw[-1] == '*':
-                    if options.nw[:-1] not in net:
-                        continue
-                # backup behaviour if 'x*x' type search which is not
-                # supported occurs automatically: it will just d/l everything
-                # no else needed
             # create data file handler
             datafout = os.path.join(eventdir, "%s.mseed" % station)
             if os.path.isfile(datafout):
@@ -739,6 +713,10 @@ def get_events(west, east, south, north, start, end, magmin, magmax):
 def get_inventory(start, end, nw, st, lo, ch, permanent, debug=False):
     """
     Searches the ArcLink inventory for available networks and stations.
+    Because the ArcLink webservice does not support wildcard searches for
+    networks (but for everything else), this method uses the re module to
+    find * and ? wildcards in ArcLink networks and returns only matching
+    network/station combinations.
 
     Parameters
     ----------
@@ -757,10 +735,21 @@ def get_inventory(start, end, nw, st, lo, ch, permanent, debug=False):
     try:
         # first check if inventory data has already been downloaded
         fh = open(inventoryfp, 'rb')
-        inventory = pickle.load(fh)
+        stations2 = pickle.load(fh)
         fh.close()
         print "Found inventory data in datapath, skip download."
+        return [], stations2
     except:
+        # first take care of network wildcard searches as arclink does not
+        # support anything but '*' here:
+        nwcheck = False
+        if '*' in nw and nw != '*' or '?' in nw:
+            if debug:
+                print "we're now setting nwcheck = True"
+            nw2 = '*'
+            nwcheck = True
+        else:
+            nw2 = nw
         arcclient = obspy.arclink.client.Client()
         print "Downloading ArcLink inventory data...",
         # restricted = false, we don't want restricted data
@@ -768,7 +757,7 @@ def get_inventory(start, end, nw, st, lo, ch, permanent, debug=False):
         if debug:
             print "permanent flag: ", permanent
         try:
-            inventory = arcclient.getInventory(network=nw, station=st,
+            inventory = arcclient.getInventory(network=nw2, station=st,
                                                location=lo, channel=ch,
                                                starttime=start, endtime=end,
                                                permanent=permanent,
@@ -779,21 +768,50 @@ def get_inventory(start, end, nw, st, lo, ch, permanent, debug=False):
             # return empty result in the form of (networks, stations)
             return ([], [])
         else:
-            # dump inventory to file so we can quickly resume d/l if obspysod
-            # runs in the same dir more than once
-            fh = open(inventoryfp, 'wb')
-            pickle.dump(inventory, fh)
-            fh.close()
             print "done."
-    # XXX change this
-    if debug:
-        print "inventory inside get_inventory(): ", inventory
     networks = sorted([i for i in inventory.keys() if i.count('.') == 0])
     stations = sorted([i for i in inventory.keys() if i.count('.') == 3])
+    if debug:
+        print "inventory inside get_inventory(): ", inventory
+        print "stations inside get_inventory(): ", stations
     # networks is a list of all networks and not needed again
+    # stations is a list of 'nw.st.lo.ch' strings and is what we want
+    # check if we need to search for wildcards:
+    if nwcheck:
+        stations2 = []
+        # convert nw (which is 'b?a*' type string, using normal wildcards into
+        # equivalent regular expression
+        # nw = nw.replace("*", ".*").replace("?", ".")
+        # using fnmatch.translate to translate ordinary wildcard into regex
+        # expression. the solution commented out above proved to be incorrect
+        nw = fnmatch.translate(nw)
+        if debug:
+            print "regex nw: ", nw
+        p = re.compile(nw, re.IGNORECASE)
+        for i in range(len(stations)):
+            # split every station('nw.st.lo.ch') by the . and take the first
+            # object which is 'nw', search for the regular expression inside
+            # this network string. if it matches, the if condition will be met
+            # (p.match returns None if nothing is found)
+            if p.match(stations[i].split('.')[0]):
+                # everything is fine, we can return this station
+                stations2.append(stations[i])
+    else:
+        # just return the whole stations list otherwise
+        stations2 = stations
     print("Received %d network(s) from ArcLink." % (len(networks)))
-    print("Received %d channels(s) from ArcLink." % (len(stations)))
-    return (networks, stations)
+    print("Received %d channels(s) from ArcLink." % (len(stations2)))
+    if debug:
+        print "stations2 inside get_inventory: ", stations2
+    # dump result to file so we can quickly resume d/l if obspysod
+    # runs in the same dir more than once. we're only dumping stations (the
+    # regex matched ones, since only those are needed. see the try statement
+    # above, if this file is found later, we don't have to perform the regex
+    # search again.
+    fh = open(inventoryfp, 'wb')
+    pickle.dump(stations2, fh)
+    fh.close()
+    return (networks, stations2)
 
 
 def getnparse_availability(west, east, south, north, start, end, nw, st, lo,
