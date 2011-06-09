@@ -28,6 +28,9 @@ import obspy.iris
 from obspy.mseed.libmseed import LibMSEED
 from lxml import etree
 from obspy.taup import taup
+# using these modules to wrap to custom(long) help function
+from textwrap import wrap
+from itertools import izip_longest
 # using threads to be able to capture keypress event without a GUI like
 # tkinter or pyqt and run the main loop at the same time.
 # This should run cross-platform...
@@ -786,10 +789,10 @@ def get_inventory(start, end, nw, st, lo, ch, permanent, debug=False):
     if debug:
         print "inventory inside get_inventory(): ", inventory
     networks = sorted([i for i in inventory.keys() if i.count('.') == 0])
-    stations = sorted([i for i in inventory.keys()
-                            if i.count('.') == 3 and i[-3:].startswith('BH')])
+    stations = sorted([i for i in inventory.keys() if i.count('.') == 3])
+    # networks is a list of all networks and not needed again
     print("Received %d network(s) from ArcLink." % (len(networks)))
-    print("Received %d station(s) from ArcLink." % (len(stations)))
+    print("Received %d channels(s) from ArcLink." % (len(stations)))
     return (networks, stations)
 
 
@@ -912,7 +915,6 @@ def queryMeta(west, east, south, north, start, end, nw, st, lo, ch, permanent,
     # get ArcLink inventory
     networks, stations = get_inventory(start, end, nw, st, lo, ch,
                                        permanent=permanent, debug=debug)
-    # networks is a list of all networks and not needed again
     # loop over stations to d/l every dataless seed file...
     # skip dead ArcLink networks
     skip_networks = ['AI', 'BA']
@@ -971,8 +973,6 @@ def printWrap(left, right, l_width=14, r_width=61, indent=2, separation=3):
     Formats and prints a text output into 2 columns. Needed for the custom
     (long) help.
     """
-    from textwrap import wrap
-    from itertools import izip_longest
     lefts = wrap(left, width=l_width)
     rights = wrap(right, width=r_width)
     results = []
