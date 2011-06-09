@@ -27,6 +27,7 @@ import obspy.arclink
 import obspy.iris
 from obspy.mseed.libmseed import LibMSEED
 from lxml import etree
+from obspy.taup import taup
 # using threads to be able to capture keypress event without a GUI like
 # tkinter or pyqt and run the main loop at the same time.
 # This should run cross-platform...
@@ -42,6 +43,7 @@ class keypress_thread (threading.Thread):
     This class will run as a second thread to capture keypress events
     """
     global quit, done
+
     def run(self):
         global quit, done
         msg = 'Keypress capture thread initialized...\n'
@@ -112,7 +114,8 @@ def main():
     # default offset is 10 min
     config = ConfigParser({'magmin': '3',
                            'dt': '10',
-                           'start': str(UTCDateTime.utcnow()-60*60*24*30*3),
+                           'start': str(UTCDateTime.utcnow()
+                                        - 60 * 60 * 24 * 30 * 3),
                            'end': str(UTCDateTime.utcnow()),
                            'preset': '0',
                            'offset': '600',
@@ -131,9 +134,10 @@ def main():
     parser = OptionParser("%prog [options]")
 
     # configure command line options
-    # action=".." sagt was er machen soll: store_true saved bool TRUE,
-    # store_false saved bool FALSE, store saved string, jeweils in die var. die
-    # in dest="..var.." angeg. ist
+    # action=".." tells OptionsParser what to save:
+    # store_true saves bool TRUE,
+    # store_false saves bool FALSE, store saves string; into the variable
+    # given with dest="var"
     # * you need to provide every possible option here.
     # reihenfolge wird eingehalten in help msg.
     parser.add_option("-H", "--more-help", action="store_true",
@@ -162,11 +166,11 @@ def main():
                       help="End time. Default: now.")
     parser.add_option("-t", "--time", action="store", dest="time",
                       help="Start and End Time delimited by a slash.")
-    helpmsg="Time parameter which determines how close the event data " + \
+    helpmsg = "Time parameter which determines how close the event data " + \
             "will be cropped before the event. Default: 0"
     parser.add_option("-p", "--preset", action="store", dest="preset",
                       help=helpmsg)
-    helpmsg="Time parameter which determines how close the event data " + \
+    helpmsg = "Time parameter which determines how close the event data " + \
             "will be cropped after the event."
     parser.add_option("-o", "--offset", action="store", dest="offset",
                       help=helpmsg)
@@ -174,8 +178,8 @@ def main():
                       help="Minimum magnitude. Default: 3")
     parser.add_option("-M", "--magmax", action="store", dest="magmax",
                       help="Maximum magnitude.")
-    helpmsg="Provide rectangle with GMT syntax: <west>/<east>/<south>/<north>"\
-            + " (alternative to -x -X -y -Y)."
+    helpmsg = "Provide rectangle with GMT syntax: <west>/<east>/<south>/" \
+            + "<north> (alternative to -x -X -y -Y)."
     parser.add_option("-r", "--rect", action="store", dest="rect",
                       help=helpmsg)
     parser.add_option("-x", "--latmin", action="store", dest="south",
@@ -186,8 +190,8 @@ def main():
                       help="Minimum longitude.")
     parser.add_option("-Y", "--lonmax", action="store", dest="east",
                       help="Maximum longitude.")
-    helpmsg="Identity code restriction, syntax: nw.st.l.ch (alternative " + \
-            "to -N -S -L -C)."
+    helpmsg = "Identity code restriction, syntax: nw.st.l.ch (alternative " + \
+              "to -N -S -L -C)."
     parser.add_option("-i", "--identity", action="store", dest="identity",
                       help=helpmsg)
     parser.add_option("-N", "--network", action="store", dest="nw",
@@ -198,6 +202,9 @@ def main():
                       help="Location restriction.")
     parser.add_option("-C", "--channel", action="store", dest="ch",
                       help="Channel restriction.")
+    helpmsg = "Do not request all networks (default), but only permanent ones."
+    parser.add_option("-n", "--no-temporary", action="store_true",
+                      dest="permanent", help=helpmsg)
     parser.add_option("-f", "--force", action="store_true", dest="force",
                       help="Skip working directory warning.")
     parser.add_option("-d", "--debug", action="store_true", dest="debug",
@@ -319,7 +326,7 @@ def main():
         options.start = UTCDateTime(options.start)
         options.end = UTCDateTime(options.end)
     except:
-        print "Erroneous timeframe given."
+        print "Given time string not compatible with ObsPy UTCDateTime method."
         help()
         sys.exit(2)
     if options.debug:
@@ -350,7 +357,7 @@ def main():
               "files and quit.\n"
         queryMeta(options.west, options.east, options.south, options.north,
                   options.start, options.end, options.nw, options.st,
-                  options.lo, options.ch, options.debug)
+                  options.lo, options.ch, options.permanent, options.debug)
         return
     # if -u or --update, delete event and catalog pickled objects
     if options.update:
@@ -362,14 +369,19 @@ def main():
     # Warn that datapath will be created and give list of further options
     if not options.force:
         if not os.path.isdir(datapath):
-            print "obspysod will now create the folder %s" % datapath
+            if len(sys.argv) == 1:
+                print "\nWelcome,"
+                print "you provided no options, using all default values will"
+                print "download every event that occurred in the last 3 months"
+                print "with magnitude > 3 from every available station."
+            print "\nObsPySOD will now create the folder %s" % datapath
             print "and possibly download vast amounts of data. Continue?"
             print "Note: you can suppress this message with -f or --force"
             print "Brief help: obspysod -h"
             print "Long help: obspysod -H"
             answer = raw_input("[y/N]> ")
             if answer != "y":
-                print "Exiting obspy."
+                print "Exiting ObsPySOD."
                 sys.exit(2)
         else:
             print "Found existing data folder %s" % datapath
@@ -421,7 +433,8 @@ def main():
     check_quit()
     networks, stations = get_inventory(options.start, options.end, options.nw2,
                                       options.st, options.lo, options.ch,
-                                       debug=options.debug)
+                                      permanent=options.permanent,
+                                      debug=options.debug)
     # networks is a list of all networks and not needed again
     # stations is a list of all stations (nw.st.l.ch, so it includes networks)
     if options.debug:
@@ -441,13 +454,11 @@ def main():
                                    ch=options.ch, debug=options.debug)
     irisclient = obspy.iris.Client(debug=options.debug)
     # (4) write catalog file, create folders
-    headline = "event_id\tdatetime\torigin_id\tauthor\tflynn_region\t"
-    headline += "latitude\tlongitude\tdepth\tmagnitude\tmagnitude_type\t"
-    headline += "DataQuality\tTimingQualityMin\n########\t########\t#########"
-    headline += "\t######\t############\t\########\t#########\t#####\t"
-    headline += '#########\t##############\t#######\t#######\n\n'
-    hl_eventf = 'station\t\tTQ min\tGaps\tOverlaps' + '\n'
-    hl_eventf += '#######\t\t######\t####\t########\n\n'
+    headline = "event_id;datetime;origin_id;author;flynn_region;"
+    headline += "latitude;longitude;depth;magnitude;magnitude_type;"
+    headline += "DataQuality;TimingQualityMin\n" + "#" * 126 + "\n\n"
+    hl_eventf = "Station;Data Provider;TQ min;Gaps;Overlaps" + "\n"
+    hl_eventf += "#" * 42 + "\n\n"
     catalogfp = os.path.join(datapath, 'catalog.txt')
     catalogfout = open(catalogfp, 'wt')
     catalogfout.write(headline)
@@ -468,13 +479,13 @@ def main():
             for key in eventdict:
                 print key, eventdict[key]
         # create event info line for catalog file and quakefile
-        infoline = eventdict['event_id'] + '\t' + str(eventdict['datetime'])
-        infoline += '\t' + str(eventdict['origin_id']) + '\t'
-        infoline += eventdict['author'] + '\t' + eventdict['flynn_region']+'\t'
-        infoline += str(eventdict['latitude']) + '\t'
-        infoline += str(eventdict['longitude']) + '\t'
-        infoline += str(eventdict['depth']) + '\t' +str(eventdict['magnitude'])
-        infoline += '\t' + eventdict['magnitude_type'] + '\t'
+        infoline = eventdict['event_id'] + ';' + str(eventdict['datetime'])
+        infoline += ';' + str(eventdict['origin_id']) + ';'
+        infoline += eventdict['author'] + ';' + eventdict['flynn_region']
+        infoline += ';' + str(eventdict['latitude']) + ';'
+        infoline += str(eventdict['longitude']) + ';'
+        infoline += str(eventdict['depth']) + ';' + str(eventdict['magnitude'])
+        infoline += ';' + eventdict['magnitude_type']
         # create event-folder
         eventdir = os.path.join(datapath, eventid)
         if not os.path.exists(eventdir):
@@ -495,8 +506,8 @@ def main():
         # this is handled inside the station loop
         quakefp = os.path.join(eventdir, 'quake.txt')
         quakefout = open(quakefp, 'wt')
-        quakefout.write(headline)
-        quakefout.write(infoline + '\n\n')
+        quakefout.write(headline[:97] + "\n" + "#" * 97 + "\n\n")
+        quakefout.write(infoline + '\n\n\n')
         quakefout.write(hl_eventf)
         quakefout.flush()
         # (5.1) ArcLink wf data download loop (runs inside event loop)
@@ -530,16 +541,17 @@ def main():
             # create data file handler
             datafout = os.path.join(eventdir, "%s.mseed" % station)
             if os.path.isfile(datafout):
-                print 'Data file for event %s from %s exists, skip...'\
+                print 'Data file for event %s from %s exists, skip...' \
                                                            % (eventid, station)
                 continue
-            print 'Downloading event %s from ArcLink %s...'%(eventid, station),
+            print 'Downloading event %s from ArcLink %s...' \
+                                                          % (eventid, station),
             try:
                 # catch exception so the d/l continues if only one doesn't work
                 arcclient.saveWaveform(filename=datafout, network=net,
                                        station=sta, location=loc, channel=cha,
-                                       starttime=eventtime-options.preset,
-                                       endtime=eventtime+options.offset)
+                                       starttime=eventtime - options.preset,
+                                       endtime=eventtime + options.offset)
             except Exception, error:
                 print "download error: ",
                 print error
@@ -547,7 +559,7 @@ def main():
             else:
                 # else code will run if try returned no exception!
                 # write station name to event info line
-                il_quake = station + '\t'
+                il_quake = station + ';ArcLink;'
                 # Quality Control with libmseed
                 dqsum += sum(mseed.getDataQualityFlagsCount(datafout))
                 # Timing Quality, trying to get all stations into one line in
@@ -558,7 +570,7 @@ def main():
                     tqlist.append(tq['min'])
                     il_quake += str(tq['min'])
                 else:
-                    il_quake +=str('None')
+                    il_quake += str('None')
                 # finally, gaps&overlaps into quakefile
                 # read mseed into stream, use .getGaps method
                 st = read(datafout)
@@ -573,7 +585,7 @@ def main():
                     else:
                         overlaps += 1
                 del st
-                il_quake += '\t%d\t%d\n' % (gaps, overlaps)
+                il_quake += ';%d;%d\n' % (gaps, overlaps)
                 quakefout.write(il_quake)
                 quakefout.flush()
                 # if there has been no Exception, assume d/l was ok
@@ -591,13 +603,13 @@ def main():
                 print 'Data file for event %s from %s exists, skip...' % \
                                                          (eventid, station)
                 continue
-            print 'Downloading event %s from IRIS %s...'%(eventid, station),
+            print 'Downloading event %s from IRIS %s...' % (eventid, station),
             try:
-                irisclient.saveWaveform(filename = irisfnfull,
-                                        network = net, station = sta,
-                                        location = loc,channel = cha,
-                                        starttime = eventtime-options.preset,
-                                        endtime = eventtime+options.offset)
+                irisclient.saveWaveform(filename=irisfnfull,
+                                        network=net, station=sta,
+                                        location=loc, channel=cha,
+                                        starttime=eventtime - options.preset,
+                                        endtime=eventtime + options.offset)
             except Exception, error:
                 print "download error: ", error
                 continue
@@ -606,7 +618,7 @@ def main():
                 print 'done.'
                 # data quality handling for iris
                 # write station name to event info line
-                il_quake = station + '\t'
+                il_quake = station + ';IRIS;'
                 # Quality Control with libmseed
                 dqsum += sum(mseed.getDataQualityFlagsCount(irisfnfull))
                 # Timing Quality, trying to get all stations into one line in
@@ -632,15 +644,15 @@ def main():
                     else:
                         overlaps += 1
                 del st
-                il_quake += '\t%d\t%d\n' % (gaps, overlaps)
+                il_quake += ';%d;%d\n' % (gaps, overlaps)
                 quakefout.write(il_quake)
                 quakefout.flush()
                 print "done."
         # write data quality info into catalog file event info line
         if dqsum == 0:
-            infoline += '0 (OK)\t'
+            infoline += ';0 (OK);'
         else:
-            infoline += str(dqsum) + ' (FAIL)\t'
+            infoline += ';' + str(dqsum) + ' (FAIL);'
         # write timing quality into event info line (minimum of all 'min'
         # entries
         if tqlist != []:
@@ -721,7 +733,7 @@ def get_events(west, east, south, north, start, end, magmin, magmax):
     return events
 
 
-def get_inventory(start, end, nw, st, lo, ch, debug=False):
+def get_inventory(start, end, nw, st, lo, ch, permanent, debug=False):
     """
     Searches the ArcLink inventory for available networks and stations.
 
@@ -748,18 +760,21 @@ def get_inventory(start, end, nw, st, lo, ch, debug=False):
     except:
         arcclient = obspy.arclink.client.Client()
         print "Downloading ArcLink inventory data...",
-        # "restricted = false, permanent = True" so we only get data that is
-        # permanent and public
+        # restricted = false, we don't want restricted data
+        # permanent is handled via command line flag
+        if debug:
+            print "permanent flag: ", permanent
         try:
             inventory = arcclient.getInventory(network=nw, station=st,
                                                location=lo, channel=ch,
                                                starttime=start, endtime=end,
-                                            permanent=True, restricted=False)
+                                               permanent=permanent,
+                                               restricted=False)
         except Exception, error:
             print "download error: ", error
             print "ArcLink returned no stations."
             # return empty result in the form of (networks, stations)
-            return ([],[])
+            return ([], [])
         else:
             # dump inventory to file so we can quickly resume d/l if obspysod
             # runs in the same dir more than once
@@ -778,7 +793,7 @@ def get_inventory(start, end, nw, st, lo, ch, debug=False):
     return (networks, stations)
 
 
-def getnparse_availability(west, east, south, north, start, end, nw, st, lo, 
+def getnparse_availability(west, east, south, north, start, end, nw, st, lo,
                            ch, debug):
     """
     Downloads and parses IRIS availability XML.
@@ -835,8 +850,8 @@ def getnparse_availability(west, east, south, north, start, end, nw, st, lo,
                         print 'cha', cha
                     # strip it so we can use it to construct nicer filenames
                     # as well as to construct a working IRIS ws query
-                    avail_list.append((net.strip(' '),sta.strip(' '),
-                                       loc.strip(' '),cha.strip(' ')))
+                    avail_list.append((net.strip(' '), sta.strip(' '),
+                                       loc.strip(' '), cha.strip(' ')))
             # dump availability to file
             fh = open(availfp, 'wb')
             pickle.dump(avail_list, fh)
@@ -849,7 +864,8 @@ def getnparse_availability(west, east, south, north, start, end, nw, st, lo,
             return avail_list
 
 
-def queryMeta(west, east, south, north, start, end, nw, st, lo, ch, debug):
+def queryMeta(west, east, south, north, start, end, nw, st, lo, ch, permanent,
+              debug):
     """
     Downloads Resp instrument data and dataless seed files.
     """
@@ -877,7 +893,7 @@ def queryMeta(west, east, south, north, start, end, nw, st, lo, ch, debug):
             print 'respfnfull:', respfnfull
             print 'type cha: ', type(cha)
             print 'length cha: ', len(cha)
-            print 'net: %s sta: %s loc: %s cha: %s' % (net,sta,loc,cha)
+            print 'net: %s sta: %s loc: %s cha: %s' % (net, sta, loc, cha)
         if os.path.isfile(respfnfull):
             print 'Resp file for %s exists, skip download...' % respfn
             continue
@@ -895,7 +911,7 @@ def queryMeta(west, east, south, north, start, end, nw, st, lo, ch, debug):
     # (2) ArcLink: dataless seed
     # get ArcLink inventory
     networks, stations = get_inventory(start, end, nw, st, lo, ch,
-                                       debug=debug)
+                                       permanent=permanent, debug=debug)
     # networks is a list of all networks and not needed again
     # loop over stations to d/l every dataless seed file...
     # skip dead ArcLink networks
@@ -920,7 +936,8 @@ def queryMeta(west, east, south, north, start, end, nw, st, lo, ch, debug):
         if os.path.isfile(dlseedfnfull):
             print 'Dataless file for %s exists, skip download...' % dlseedfn
             continue
-        print 'Downloading dataless seed file for %s from ArcLink...'%dlseedfn,
+        print 'Downloading dataless seed file for %s from ArcLink...' \
+                                                                  % dlseedfn,
         try:
             # catch exception so the d/l continues if only one doesn't work
             arclinkclient.saveResponse(dlseedfnfull, net, sta, loc, cha,
@@ -949,6 +966,23 @@ def getFolderSize(folder):
     return total_size
 
 
+def printWrap(left, right, l_width=14, r_width=61, indent=2, separation=3):
+    """
+    Formats and prints a text output into 2 columns. Needed for the custom
+    (long) help.
+    """
+    from textwrap import wrap
+    from itertools import izip_longest
+    lefts = wrap(left, width=l_width)
+    rights = wrap(right, width=r_width)
+    results = []
+    for l, r in izip_longest(lefts, rights, fillvalue=''):
+        results.append('{0:{1}}{2:{5}}{0:{3}}{4}'.format('', indent, l,
+                                                 separation, r, l_width))
+    print "\n".join(results)
+    return
+
+
 def help():
     """
     Print more help.
@@ -957,82 +991,109 @@ def help():
     print "============================================\n\n"
     print "The CLI allows for different flavors of usage, in short:"
     print "--------------------------------------------------------\n"
-    print "e.g.: obspysod.py -r <west>/<east>/<south>/<north> -t " + \
-          "<start>/<end> -m <min_mag> -M <max_mag> -i <nw>.<st>.<l>.<ch>"
-    print "e.g.: obspysod.py -y <min_lon> -Y <max_lon> -x <min_lat> -X " + \
-          "<max_lat> -s <start> -e <end> -P <datapath> -o <offset> --reset -f"
-    print "\nYou may (no mandatory options):"
+    printWrap("e.g.:", "obspysod.py -r <west>/<east>/<south>/<north> -t " + \
+          "<start>/<end> -m <min_mag> -M <max_mag> -i <nw>.<st>.<l>.<ch>")
+    printWrap("e.g.:", "obspysod.py -y <min_lon> -Y <max_lon> -x <min_lat>" + \
+       "-X <max_lat> -s <start> -e <end> -P <datapath> -o <offset> --reset -f")
+    print "\n\nYou may (no mandatory options):"
     print "-------------------------------\n"
     print "* specify a geographical rectangle:\n"
-    print "\t -r[--rect] \t<min.longitude>/<max.longitude>/<min.latitude>/" + \
-          "<max.latitude>"
-    print "\t Format: +/- 90 decimal degrees for latitudinal limits,"
-    print "\t         +/- 180 decimal degrees for longitudinal limits."
-    print "\t         e.g.: -r -15.5/40/30.8/50\n"
-    print "\t -x[--lonmin] \t<min.latitude>"
-    print "\t -X[--lonmax] \t<max.longitude>"
-    print "\t -y[--latmin] \t<min.latitude>"
-    print "\t -Y[--latmax] \t<max.latitude>"
-    print "\t Format: +/- 90 decimal degrees for latitudinal limits,"
-    print "\t         +/- 180 decimal degrees for longitudinal limits."
-    print "\t         e.g.: -x -15.5 -X 40 -y 30.8 -Y 50\n"
+    printWrap("Default:", "no constraints.")
+    printWrap("Format:", "+/- 90 decimal degrees for latitudinal limits,")
+    printWrap("", "+/- 180 decimal degrees for longitudinal limits.")
+    print
+    printWrap("-r[--rect]",
+            "<min.longitude>/<max.longitude>/<min.latitude>/<max.latitude>")
+    printWrap("", "e.g.: -r -15.5/40/30.8/50")
+    print
+    printWrap("-x[--lonmin]", "<min.latitude>")
+    printWrap("-X[--lonmax]", "<max.longitude>")
+    printWrap("-y[--latmin]", "<min.latitude>")
+    printWrap("-Y[--latmax]", "<max.latitude>")
+    printWrap("", "e.g.: -x -15.5 -X 40 -y 30.8 -Y 50")
+    print "\n"
     print "* specify a timeframe:\n"
-    print "\t -t[--time] \t<start>/<end>"
-    print "\t Format: Any obspy.core.UTCDateTime recognizable string,"
-    print "\t         e.g.: -t 2007-12-31T12:23:34.5/2011-01-31T18:23:34.5\n"
-    print "\t -s[--start] \t<starttime>"
-    print "\t -e[--end] \t<endtime>"
-    print "\t Format: Any obspy.core.UTCDateTime recognizable string,"
-    print "\t         e.g.: -s 2007-12-31T12:23:34.5 -e 2011-01-31T18:23:34.5\n"
+    printWrap("Default:", "the last 3 months")
+    printWrap("Format:", "Any obspy.core.UTCDateTime recognizable string.")
+    print
+    printWrap("-t[--time]", "<start>/<end>")
+    printWrap("", "e.g.: -t 2007-12-31/2011-01-31")
+    print
+    printWrap("-s[--start]", "<starttime>")
+    printWrap("-e[--end]", "<endtime>")
+    printWrap("", "e.g.: -s 2007-12-31 -e 2011-01-31")
+    print "\n"
     print "* specify a minimum and maximum magnitude:\n"
-    print "\t -m[--magmin] \t<min.magnitude>"
-    print "\t -M[--magmax] \t<max.magnitude>"
-    print "\t Format: Integer or decimal,"
-    print "\t         e.g.: -m 4.2 -M 9\n"
+    printWrap("Default:", "minimum magnitude 3, no maximum magnitude.")
+    printWrap("Format:", "Integer or decimal.")
+    print
+    printWrap("-m[--magmin]", "<min.magnitude>")
+    printWrap("-M[--magmax]", "<max.magnitude>")
+    printWrap("", "e.g.: -m 4.2 -M 9")
+    print "\n"
     print "* specify a station restriction:\n"
-    print "\t -i[--identity]\t<nw>.<st>.<l>.<ch>"
-    print "\t Format: Any station code, may include wildcards,"
-    print "\t         e.g. -i IU.ANMO.00.BH* or -i *.*.?0.BHZ\n"
-    print "\t -N[--network] \t<network>"
-    print "\t -S[--station] \t<station>"
-    print "\t -L[--location]\t<location>"
-    print "\t -C[--channel]\t<channel>"
-    print "\t Format: Any station code, may include wildcards,"
-    print "\t         e.g. -N IU -S ANMO -L 00 -C BH*\n"
-    print "* specify additional options:\n"
-    print "\t -p[--preset] <preset>"
-    print "\t\t Time parameter which determines how close the event " + \
-          "data will be cropped before the event. Default: 0"
+    printWrap("Default:", "no constraints.")
+    printWrap("Format:", "Any station code, may include wildcards.")
+    print
+    printWrap("-i[--identity]", "<nw>.<st>.<l>.<ch>")
+    printWrap("", "e.g. -i IU.ANMO.00.BH* or -i *.*.?0.BHZ")
+    print
+    printWrap("-N[--network]", "<network>")
+    printWrap("-S[--station]", "<station>")
+    printWrap("-L[--location]", "<location>")
+    printWrap("-C[--channel]", "<channel>")
+    printWrap("", "e.g. -N IU -S ANMO -L 00 -C BH*")
+    print "\n\n* specify additional options:\n"
+    printWrap("-n[--no-temporary]", "")
+    printWrap("", "Instead of downloading both temporary and permanent " + \
+          "networks (default), download only permanent ones.")
+    print
     # hopefully this will be automatically with taupe arrival times later
-    print "\t -o[--offset] <offset>"
-    print "\t\t Time parameter which determines how close the event " + \
-          "data will be cropped after the event."
-    print "\t -q[--query-resp]"
-    print "\t\tInstead of downloading seismic data, download instrument " + \
-          "response files."
-    print "\t -P[--datapath]\t<datapath>"
-    print "\t\tInstead of using the default datapath, specify a different one."
-    print "\t -R[--reset]"
-    print "\t\tIf the datapath is found, do not resume previous downloads " + \
-          "as is the default behaviour, but redownload everything. Same as" + \
-          " deleting the datapath before running ObsPySOD."
-    print "\t -u[--update]"
-    print "\t\tUpdate the event database if obspysod runs on the " + \
-          "same directory for a second time."
-    print "\t -f[--force]"
-    print "\t\tSkip working directory warning (no need to confirm folder" + \
-          " creation)."
-    print "\nType obspysod -h for a list of all long and short form options."
-    print 
-    ### XXX need better examples
-    print "\nExamples:"
+    printWrap("-p[--preset]", "<preset>")
+    printWrap("", "Time parameter given in seconds which determines how " + \
+        "close the data will be cropped before event origin time. Default: 0")
+    print
+    printWrap("-o[--offset]", "<offset>")
+    printWrap("", "Time parameter given in seconds which determines how " + \
+              "close the data will be cropped after the event origin time.")
+    print
+    printWrap("-q[--query-resp]", "")
+    printWrap("", "Instead of downloading seismic data, download " + \
+              "instrument response files.")
+    print
+    printWrap("-P[--datapath]", "<datapath>")
+    printWrap("", "Specify a different datapath, do not use do default one.")
+    print
+    printWrap("-R[--reset]", "")
+    printWrap("", "If the datapath is found, do not resume previous " + \
+              "downloads as is the default behaviour, but redownload " + \
+              "everything. Same as deleting the datapath before running " + \
+              "ObsPySOD.")
+    print
+    printWrap("-u[--update]", "")
+    printWrap("", "Update the event database if ObsPySOD runs on the " + \
+              "same directory for a second time.")
+    print
+    printWrap("-f[--force]", "")
+    printWrap("", "Skip working directory warning (auto-confirm folder" + \
+              " creation).")
+    print "\nType obspysod.py -h for a list of all long and short options."
+    # XXX need better examples
+    print "\n\nExamples:"
     print "---------\n"
-    print "* Alps region, minimum magnitude of 4.2:"
-    print "  obspysod -r 5/16.5/45.75/48 -t 2007-01-13T08:24:00/2011-02-25T22:41:00 -m 4.2"
-    print "* Sumatra region, Christmas 2004, different timestring, mind the quotation marks:"
-    print "  obspysod -r 90/108/-7/7 -t \"2004-12-24 01:23:45/2004-12-26 12:34:56\" -m 9"
-    print "* Mount Hochstaufen area (Germany/Austria), no minimum magnitude:"
-    print "  obspysod -r 12.8/12.9/47.72/47.77 -t 2001-01-01/2011-02-28\n"
+    printWrap("Alps region, minimum magnitude of 4.2:",
+              "obspysod.py -r 5/16.5/45.75/48 -t 2007-01-13T08:24:00/" + \
+              "2011-02-25T22:41:00 -m 4.2")
+    print
+    printWrap("Sumatra region, Christmas 2004, different timestring, " + \
+              "mind the quotation marks:",
+              "obspysod.py -r 90/108/-7/7 -t \"2004-12-24 01:23:45/" + \
+              "2004-12-26 12:34:56\" -m 9")
+    print
+    printWrap("Mount Hochstaufen area(Ger/Aus), default minimum magnitude:",
+              "obspysod.py -r 12.8/12.9/47.72/47.77 -t 2001-01-01/2011-02-28")
+    print
+    return
 
 
 if __name__ == "__main__":
