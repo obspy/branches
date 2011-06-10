@@ -212,6 +212,14 @@ def main():
                       dest="permanent", help=helpmsg)
     parser.add_option("-f", "--force", action="store_true", dest="force",
                       help="Skip working directory warning.")
+    helpmsg = "Instead entering the normal download procedure, read the " + \
+              "file exceptions.txt in the datapath, in which all " + \
+              "errors ObsPySOD encountered while downloading are saved. " + \
+              "This mode will try to download the data from every " + \
+              "station that returned an error other than 'no data " + \
+              "available' last time."
+    parser.add_option("-E", "--exceptions", action="store_true",
+                      dest="exceptions", help=helpmsg)
     parser.add_option("-d", "--debug", action="store_true", dest="debug",
                       help="Show debugging information.")
 
@@ -355,8 +363,8 @@ def main():
             rmtree(datapath)
         except:
             pass
-    # if -q oder --query-metadata, do not enter normal obspysod data download
-    # operation, but download resp instrument files and dataless seed and quit.
+    # if -q oder --query-metadata, do not enter normal data download operation,
+    # but download resp instrument and dataless seed files and quit.
     if options.metadata:
         print "ObsPySOD will download resp and dataless seed instrument " + \
               "files and quit.\n"
@@ -364,6 +372,14 @@ def main():
                   options.start, options.end, options.nw, options.st,
                   options.lo, options.ch, options.permanent, options.debug)
         return
+    # if -E oder --exceptions, do not enter normal data download operation,
+    # operation, but read exceptions.txt and try to download again and quit.
+    if options.exceptions:
+        print "ObsPySOD will now try to download the data that returned an" + \
+              " error other than 'no data available' last time.\n"
+        exceptionMode(debug=options.debug)
+        return
+
     # if -u or --update, delete event and catalog pickled objects
     if options.update:
         try:
@@ -461,6 +477,24 @@ def main():
     arcclient = obspy.arclink.Client(timeout=5, debug=options.debug)
     mseed = LibMSEED()
     # (5) Loop through events
+    # create exception file
+    # this file will contain any information about exceptions while trying to
+    # download data: the event we were trying to d/l, starttime, endtime,
+    # the station, the exception
+    exceptionfp = os.path.join(datapath, 'exceptions.txt')
+    # try open exceptionfile in read and write mode if we continue d/l
+    try:
+        exceptionfout = open(exceptionfp, 'r+t')
+    except:
+        # the file did not exist, we are not continuing d/l
+        exceptionfout = open(exceptionfp, 'wt')
+    exceptionhl = 'event_id;data provider;station;starttime;endtime;exception'
+    exceptionhl += '\n' + '#' * 58 + '\n\n'
+    exceptionfout.write(exceptionhl)
+    # move to end of exception file. that way if we are continuing downloading,
+    # we overwrote the headline with the same headline again and now continue
+    # to write new exceptions to the end of the file
+    exceptionfout.seek(0, 2)
     # init neriesclient here, need it inside every loop to d/l respective
     # quakeml xml
     neriesclient = obspy.neries.Client()
@@ -521,17 +555,27 @@ def main():
                 print 'Data file for event %s from %s exists, skip...' \
                                                            % (eventid, station)
                 continue
+            # use taupe to calculate the correct starttime and endtime for
+            # waveform retrieval at this station
+            # XXX
+            starttime = eventtime - options.preset
+            endtime = eventtime + options.offset
             print 'Downloading event %s from ArcLink %s...' \
                                                           % (eventid, station),
             try:
                 # catch exception so the d/l continues if only one doesn't work
                 arcclient.saveWaveform(filename=datafout, network=net,
                                        station=sta, location=loc, channel=cha,
-                                       starttime=eventtime - options.preset,
-                                       endtime=eventtime + options.offset)
+                                       starttime=starttime, endtime=endtime)
             except Exception, error:
                 print "download error: ",
                 print error
+                # create exception file info line
+                il_exception = str(eventid) + ';ArcLink;' + station + ';'
+                il_exception += str(starttime) + ';' + str(endtime) + ';'
+                il_exception += str(error) + '\n'
+                exceptionfout.write(il_exception)
+                exceptionfout.flush()
                 continue
             else:
                 # else code will run if try returned no exception!
@@ -581,18 +625,27 @@ def main():
                                                          (eventid, station)
                 continue
             print 'Downloading event %s from IRIS %s...' % (eventid, station),
+            # use taupe to calculate the correct starttime and endtime for
+            # waveform retrieval at this station
+            # XXX
+            starttime = eventtime - options.preset
+            endtime = eventtime + options.offset
             try:
                 irisclient.saveWaveform(filename=irisfnfull,
                                         network=net, station=sta,
                                         location=loc, channel=cha,
-                                        starttime=eventtime - options.preset,
-                                        endtime=eventtime + options.offset)
+                                        starttime=starttime, endtime=endtime)
             except Exception, error:
                 print "download error: ", error
+                # create exception file info line
+                il_exception = str(eventid) + ';IRIS;' + station + ';'
+                il_exception += str(starttime) + ';' + str(endtime) + ';'
+                il_exception += str(error) + '\n'
+                exceptionfout.write(il_exception)
+                exceptionfout.flush()
                 continue
             else:
                 # if there was no exception, the d/l should have worked
-                print 'done.'
                 # data quality handling for iris
                 # write station name to event info line
                 il_quake = station + ';IRIS;'
@@ -645,8 +698,9 @@ def main():
     del arcclient
     # done with iris, remove client
     del irisclient
-    # close event catalog info file at the end of event loop
+    # close event catalog info file and exception file at the end of event loop
     catalogfout.close()
+    exceptionfout.close()
     done = True
     return
 
@@ -938,8 +992,8 @@ def queryMeta(west, east, south, north, start, end, nw, st, lo, ch, permanent,
     skip_networks = ['AI', 'BA']
     for station in stations:
         check_quit()
-        # skip dead networks
         net, sta, loc, cha = station.split('.')
+        # skip dead networks
         if net in skip_networks:
             print 'Skipping dead network %s...' % net
             # continue the for-loop to the next iteration
@@ -970,6 +1024,90 @@ def queryMeta(west, east, south, north, start, end, nw, st, lo, ch, permanent,
             # if there has been no exception, the d/l should have worked
             print 'done.'
     done = True
+    return
+
+
+def exceptionMode(debug):
+    """
+    This will read the file 'exceptions.txt' and try to download all the data
+    that returned an exception other than 'no data available' last time.
+    """
+    # initialize both clients, needed inside every loop.
+    arcclient = obspy.arclink.Client(timeout=5, debug=debug)
+    irisclient = obspy.iris.Client(debug=debug)
+    # read exception file
+    exceptionfp = os.path.join(datapath, 'exceptions.txt')
+    exceptionfin = open(exceptionfp, 'rt')
+    exceptions = exceptionfin.readlines()
+    exceptionfin.close()
+    # create further_exceptions string, this will be used to overwrite the
+    # exceptionfile, but only after the process if done so we won't loose our
+    # original exceptions (exception file) if the user presses q while d/l
+    further_exceptions = exceptions[0] + exceptions[1] + exceptions[2]
+    if debug:
+        print "further_exceptions: ", further_exceptions
+    for exception in exceptions[3:]:
+        check_quit()
+        if debug:
+            print "exception: ", exception
+        exsplit = exception.split(';')
+        if debug:
+            print "exsplit: ", exsplit
+        if exsplit[5] != "No data available\n" and \
+                    exsplit[5] != "No waveform data available (HTTPError: )\n":
+            # we want to d/l this one again
+            if debug:
+                print "passed no data available test."
+            eventid = exsplit[0]
+            station = exsplit[2]
+            net, sta, loc, cha = station.split('.')
+            starttime = UTCDateTime(exsplit[3])
+            endtime = UTCDateTime(exsplit[4])
+            datafout = os.path.join(datapath, eventid, station + '.mseed')
+            if debug:
+                print "datafout: ", datafout
+            # check if ArcLink or IRIS
+            if exsplit[1] == "ArcLink":
+                print "Trying to download event %s from ArcLink %s..." % \
+                                                           (eventid, station),
+                try:
+                    arcclient.saveWaveform(filename=datafout, network=net,
+                                       station=sta, location=loc, channel=cha,
+                                       starttime=starttime, endtime=endtime)
+                except Exception, error:
+                    print "download error: ",
+                    print error
+                    # create exception info line
+                    il_exception = str(eventid) + ';ArcLink;' + station + ';'
+                    il_exception += str(starttime) + ';' + str(endtime) + ';'
+                    il_exception += str(error) + '\n'
+                    further_exceptions += il_exception
+                    continue
+                else:
+                    print "done."
+            elif exsplit[1] == "IRIS":
+                print "Trying to download event %s from IRIS %s..." % \
+                                                           (eventid, station),
+                try:
+                    irisclient.saveWaveform(filename=datafout,
+                                            network=net, station=sta,
+                                            location=loc, channel=cha,
+                                          starttime=starttime, endtime=endtime)
+                except Exception, error:
+                    print "download error: ", error
+                    # create exception file info line
+                    il_exception = str(eventid) + ';IRIS;' + station + ';'
+                    il_exception += str(starttime) + ';' + str(endtime) + ';'
+                    il_exception += str(error) + '\n'
+                    further_exceptions += il_exception
+                    continue
+                else:
+                    print "done."
+    exceptionfout = open(exceptionfp, 'wt')
+    exceptionfout.write(further_exceptions)
+    exceptionfout.close()
+    done = True
+    return
 
 
 def getFolderSize(folder):
