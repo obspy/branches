@@ -36,7 +36,9 @@ Remaining Parts:
 
 # ------------------------Getting List of Events (Parameters)--------------------
 from read_input import *
-(Address, min_datetime, max_datetime, min_magnitude, max_results, plot_events) = read_input()
+(Address, min_datetime, max_datetime, min_magnitude, max_magnitude, \
+	min_latitude, max_latitude, min_longitude, max_longitude, \
+	min_depth, max_depth, max_results, plot_events) = read_input()
 
 # ------------------------Import required Modules (Python and Obspy)-------------
 from obspy.core import read
@@ -61,8 +63,8 @@ client_arclink = Client_arclink()
 
 # ------------------------Getting List of Events---------------------------------
 from get_Events import *
-(events, len_events, Period) = get_Events(Address = Address, min_datetime=min_datetime, \
-	max_datetime=max_datetime, min_magnitude=min_magnitude, max_results=max_results)
+(events, len_events, Period) = get_Events(Address, min_datetime, max_datetime, min_magnitude, max_magnitude, \
+		min_latitude, max_latitude, min_longitude, max_longitude, min_depth, max_depth, max_results)
 
 if plot_events == 'on':
 	from plot_all_events import *
