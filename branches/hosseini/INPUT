@@ -1,0 +1,15 @@
+Address = /media/Elements/Wave       # where you want to save the waveforms and ...
+min_datetime = 2009-09-30            # minimum datetime
+max_datetime = 2009-10-01            # maximum datetime
+min_magnitude = 7.4                  # minimum magnitude
+max_results = 2500                   # maximum magnitude
+
+plot_events = on                     # whether you want to have a plot of all events or not
+
+# not implemented yet:
+
+--------------------
+min_latitude = -90
+max_latitude = 90
+min_longitude = -180
+max_longitude = -100
