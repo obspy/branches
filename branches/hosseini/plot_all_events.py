@@ -7,7 +7,7 @@ from mpl_toolkits.basemap import Basemap
 import numpy as np
 import matplotlib.pyplot as plt
 
-def plot_all_events(Address, Period, events, lon_event, lat_event, name_event, Num_Event):
+def plot_all_events(Address_events, events, lon_event, lat_event, name_event, Num_Event):
 	
 	plt.clf()
 	
@@ -37,4 +37,4 @@ def plot_all_events(Address, Period, events, lon_event, lat_event, name_event, N
 	for i in range(0, Num_Event):
 		plt.text(x[i], y[i], ' ' + name_event[i], va="top", family="monospace", weight="bold")
 	'''
-	plt.savefig(Address + '/Data/' + Period + '/All_events' + '.pdf')	
+	plt.savefig(Address_events + '/All_events' + '.pdf')	

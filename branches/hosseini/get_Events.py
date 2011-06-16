@@ -1,6 +1,5 @@
 """
 Getting list of events from NERIES
-Selecting required events based on the desired parameters....
 """
 
 from obspy.neries import Client as Client_neries
@@ -23,16 +22,20 @@ def get_Events(Address, min_datetime, max_datetime, min_magnitude, max_magnitude
 		min_depth = min_depth, max_depth=max_depth, max_results=max_results)
 		
 	# !!!!!!! You should change the str(t_event_1) 
-	Period = min_datetime + '_' + max_datetime + '_' + str(min_magnitude) + '_' + str(t_event_1.hour) + '_' + str(t_event_1.minute) + '_' + str(t_event_1.second)
-	     
-	os.makedirs(Address + '/Data/' + Period)
+	Period = min_datetime + '_' + max_datetime + '_' + str(min_magnitude) + '_' + \
+		str(t_event_1.hour) + '_' + str(t_event_1.minute) + '_' + str(t_event_1.second)
+	
+	Address_events = Address + '/Data/' + Period
+	
+	os.makedirs(Address_events)
 	len_events = len(events)
-	#import ipdb; ipdb.set_trace()
+	
+	print 'Length of the events found based on the inputs:'
 	print len_events
+	
 	Events_No = []
 	
 	for i in range(0, len_events):
-		#if events[i]['magnitude'] >= 7:
 		Events_No.append(i+1)
 		print "Event No:" + " " + str(i+1)
 		print "Date Time:" + " " + str(events[i]['datetime'])
@@ -51,7 +54,7 @@ def get_Events(Address, min_datetime, max_datetime, min_magnitude, max_magnitude
 	t_event_2 = datetime.now()
 	t_event = t_event_2 - t_event_1
 	
-	print 'Events are saved!'
+	print 'Events are saved!...time:'
 	print t_event
 	
-	return events, len_events, Period
+	return events, len_events, Period, Address_events

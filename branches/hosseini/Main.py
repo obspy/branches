@@ -63,15 +63,16 @@ client_arclink = Client_arclink()
 
 # ------------------------Getting List of Events---------------------------------
 from get_Events import *
-(events, len_events, Period) = get_Events(Address, min_datetime, max_datetime, min_magnitude, max_magnitude, \
-		min_latitude, max_latitude, min_longitude, max_longitude, min_depth, max_depth, max_results)
-
+(events, len_events, Period, Address_events) = get_Events(Address, min_datetime, \
+		max_datetime, min_magnitude, max_magnitude,	min_latitude, max_latitude, \
+		min_longitude, max_longitude, min_depth, max_depth, max_results)
+import ipdb; ipdb.set_trace()
 if plot_events == 'on':
 	from plot_all_events import *
 	from load_event import *
-	(lat_event, lon_event, name_event) = load_event(len_events, Address, Period)
+	(lat_event, lon_event, name_event) = load_event(len_events, Address_events)
 	
-	plot_all_events(Address, Period, events = events, lon_event = lon_event, \
+	plot_all_events(Address_events, events = events, lon_event = lon_event, \
 		lat_event = lat_event, name_event = name_event, Num_Event = len_events)
 
 # ------------------------IRIS------------------------------------------------

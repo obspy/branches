@@ -1,13 +1,13 @@
 """
 Load events from the directory
-get the Lat, Lon and name of each
+get the Lat, Lon and name (depth) of each
 """
 
 import pickle
 
-def load_event(Num_Event, Address, Period):	
+def load_event(Num_Event, Address_events):	
 	
-	Event_file = open(Address + '/Data/' + Period + '/list_event', 'r')
+	Event_file = open(Address_events + '/list_event', 'r')
 	events = pickle.load(Event_file)
 	
 	lat_event = []
