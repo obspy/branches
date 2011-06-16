@@ -1,21 +1,21 @@
 """
-Getting list of events from ???????
+Getting list of events from NERIES
 Selecting required events based on desired parameters....
 """
 
-from obspy.neries import Client as Client_orfeus
+from obspy.neries import Client as Client_neries
 from datetime import datetime
 import time
 import pickle
 import os
 
-client_orfeus = Client_orfeus()
+client_neries = Client_neries()
 
 def get_Events(Address, min_datetime, max_datetime, min_magnitude, max_results):
 	
 	t_event_1 = datetime.now()
 	
-	events = client_orfeus.getEvents(min_datetime=min_datetime, \
+	events = client_neries.getEvents(min_datetime=min_datetime, \
 		max_datetime=max_datetime,min_magnitude=min_magnitude) 
 		#min_latitude = 10, max_latitude = 70, min_longitude = -140, max_longitude = -50, max_results=max_results)
 		

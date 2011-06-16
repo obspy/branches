@@ -46,9 +46,9 @@ def Arclink_get_Waveform(Address, Period, len_events, events, Nets_Arc_req_BHE, 
 		Lon_temp = []
 		name_temp = []
 		len_req_Arc_BHE = len(Nets_Arc_req_BHE[i]) 
-		'''
-		#for j in range(0, len_req_Arc_BHE):
-		for j in range(11,20):
+		
+		for j in range(0, len_req_Arc_BHE):
+		#for j in range(11,20):
 			EC = str(i+1) + '-' + str(j)
 			print '------------------'
 			print 'Arclink-Event and Station Numbers are:'
@@ -95,8 +95,8 @@ def Arclink_get_Waveform(Address, Period, len_events, events, Nets_Arc_req_BHE, 
 				
 				print e
 			
-		#for j in range(0, len_req_Arc_BHE):
-		for j in range(11,20):
+		for j in range(0, len_req_Arc_BHE):
+		#for j in range(11,20):
 			EC = str(i+1) + '-' + str(j)
 			print '------------------'
 			print 'Arclink-Event and Station Numbers are:'
@@ -142,9 +142,9 @@ def Arclink_get_Waveform(Address, Period, len_events, events, Nets_Arc_req_BHE, 
 				Exception_file2.writelines(ee)
 				
 				print e
-		'''
-		#for j in range(0, len_req_Arc_BHE):
-		for j in range(11,20):
+		
+		for j in range(0, len_req_Arc_BHE):
+		#for j in range(11,20):
 			EC = str(i+1) + '-' + str(j)
 			print '------------------'
 			print 'Arclink-Event and Station Numbers are:'

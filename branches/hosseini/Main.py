@@ -1,3 +1,17 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+"""
+Management of Large Seismic Datasets
+
+:copyright:
+    The ObsPy Development Team (devs@obspy.org)
+:license:
+    GNU Lesser General Public License, Version 3
+ (http://www.gnu.org/copyleft/lesser.html)
+"""
+
+
 #import ipdb; ipdb.set_trace()
 
 """
@@ -17,7 +31,7 @@ Remaining Parts:
 - Arclink (available stations+waveform)
 - Load events (Lat, Lon and Name of each)
 - Load Stations (Lat, Lon and Name of each)
-- Plot Ray Paths
+- Plot Ray Paths (event --> stations)
 """
 
 # ------------------------Getting List of Events (Parameters)--------------------
@@ -37,12 +51,12 @@ import os
 t1_pro = datetime.now()
 
 from obspy.iris import Client as Client_iris
-from obspy.neries import Client as Client_orfeus
+from obspy.neries import Client as Client_neries
 from obspy.arclink import Client as Client_arclink
 
 # ------------------------Initializing the Clients-------------------------------
 client_iris = Client_iris()
-client_orfeus = Client_orfeus()
+client_neries = Client_neries()
 client_arclink = Client_arclink()
 
 # ------------------------Getting List of Events---------------------------------

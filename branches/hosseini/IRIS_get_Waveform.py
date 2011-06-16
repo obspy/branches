@@ -32,9 +32,9 @@ def IRIS_get_Waveform(Address, Period, len_events, events, Networks_iris, t):
 		name_temp = []
 		len_req_iris_BH = len(Networks_iris[i]) 
 		
-		'''
-		#for j in range(0, len_req_iris_BH):
-		for j in range(0,10):
+		
+		for j in range(0, len_req_iris_BH):
+		#for j in range(0,10):
 			EC = str(i+1) + '-' + str(j)
 			print '------------------'
 			print 'IRIS-Event and Station Numbers are:'
@@ -66,8 +66,8 @@ def IRIS_get_Waveform(Address, Period, len_events, events, Networks_iris, t):
 				Exception_file.writelines(ee)
 				print e
 		
-		#for j in range(0, len_req_iris_BH):
-		for j in range(0,10):
+		for j in range(0, len_req_iris_BH):
+		#for j in range(0,10):
 			EC = str(i+1) + '-' + str(j)
 			print '------------------'
 			print 'IRIS-Event and Station Numbers are:'
@@ -99,7 +99,7 @@ def IRIS_get_Waveform(Address, Period, len_events, events, Networks_iris, t):
 				Exception_file.writelines(ee)
 				print e
 		
-		'''
+		
 		#for j in range(0, len_req_iris_BH):
 		#for j in range(0, len_req_iris_BH, 35):
 		for j in range(0,10):
