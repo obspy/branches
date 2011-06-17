@@ -116,19 +116,20 @@ def main():
     # obspy.arclink.getInventory will raise an error if the user does not
     # provide start and end time
     # default for start is three months ago, end is now
-    # default offset is 10 min
+    # default offset is 15 min, default velocity model is 'iasp91'
     config = ConfigParser({'magmin': '3',
                            'dt': '10',
                            'start': str(UTCDateTime.utcnow()
                                         - 60 * 60 * 24 * 30 * 3),
                            'end': str(UTCDateTime.utcnow()),
-                           'preset': '0',
-                           'offset': '600',
+                           'preset': '15',
+                           'offset': '900',
                            'datapath': 'obspysod-data',
+                           'model': 'iasp91',
                            'nw': '*',
                            'st': '*',
                            'lo': '*',
-                           'ch': '*',
+                           'ch': '*'
                           })
 
     # read config file, if it exists, possibly overriding defaults as set above
@@ -171,8 +172,12 @@ def main():
                       help="End time. Default: now.")
     parser.add_option("-t", "--time", action="store", dest="time",
                       help="Start and End Time delimited by a slash.")
+    helpmsg = "Velocity model for arrival time calculation used to crop " + \
+              "the data, either 'iasp91' or 'ak135'. Default: 'iasp91'."
+    parser.add_option("-v", "--velocity-model", action="store", dest="model",
+                      help=helpmsg)
     helpmsg = "Time parameter which determines how close the event data " + \
-            "will be cropped before the event. Default: 0"
+            "will be cropped before the calculated arrival time. Default: 0."
     parser.add_option("-p", "--preset", action="store", dest="preset",
                       help=helpmsg)
     helpmsg = "Time parameter which determines how close the event data " + \
@@ -270,6 +275,11 @@ def main():
         help()
         sys.exit()
     ## Parsing different custom command line options
+    # Sanity check for velocity model
+    if options.model != 'iasp91' and options.model != 'ak135':
+        print "Erroneous velocity model given:"
+        print "correct are '-v iasp91' or '-v ak135'."
+        sys.exit(2)
     ## if the user has given e.g. -r x/x/x/x or -t time1/time
     # extract min. and max. longitude and latitude if the user has given the
     # coordinates with -r (GMT syntax)
@@ -436,24 +446,22 @@ def main():
                             options.magmin, options.magmax)
     if options.debug:
         print '#############'
-        print 'events:'
+        print 'events from NERIES:'
         print events
         print '#############'
     # (2) get inventory data from ArcLink
     # check if the user pressed 'q' while we did d/l eventlists.
     check_quit()
-    networks, stations = get_inventory(options.start, options.end, options.nw,
-                                      options.st, options.lo, options.ch,
-                                      permanent=options.permanent,
-                                      debug=options.debug)
-    # networks is a list of all networks and not needed again
-    # stations is a list of all stations (nw.st.l.ch, so it includes networks)
+    arclink_stations = get_inventory(options.start, options.end, options.nw,
+                              options.st, options.lo, options.ch,
+                              permanent=options.permanent,
+                              debug=options.debug)
+    # arclink_stations is a list of tuples of all stations:
+    # [(station1, lat1, lon1), (station2, lat2, lon2), ...]
     if options.debug:
         print '#############'
-        print 'networks returned from get_inventory:'
-        print networks
-        print 'stations returned from get_inventory:'
-        print stations
+        print 'arclink_stations returned from get_inventory:'
+        print arclink_stations
         print '#############'
     # (3) Get availability data from IRIS
     # check if the user pressed 'q' while we did d/l the inventory from ArcLink
@@ -502,6 +510,10 @@ def main():
         check_quit()
         eventid = eventdict['event_id']
         eventtime = eventdict['datetime']
+        # extract information for taup
+        eventlat = float(eventdict['latitude'])
+        eventlon = float(eventdict['longitude'])
+        eventdepth = float(eventdict['depth'])
         if options.debug:
             print '#############'
             print 'event:', eventid
@@ -540,9 +552,13 @@ def main():
         quakefout.write(hl_eventf)
         quakefout.flush()
         # (5.1) ArcLink wf data download loop (runs inside event loop)
-        # Loop trough stations
-        for station in stations:
+        # Loop trough arclink_stations
+        for station in arclink_stations:
             check_quit()
+            # station is a tuple of (stationname, lat, lon)
+            stationlat = station[1]
+            stationlon = station[2]
+            station = station[0]
             # skip dead networks
             net, sta, loc, cha = station.split('.')
             if net in skip_networks:
@@ -555,11 +571,27 @@ def main():
                 print 'Data file for event %s from %s exists, skip...' \
                                                            % (eventid, station)
                 continue
-            # use taupe to calculate the correct starttime and endtime for
+            # use taup to calculate the correct starttime and endtime for
             # waveform retrieval at this station
-            # XXX
-            starttime = eventtime - options.preset
-            endtime = eventtime + options.offset
+            distance = taup.locations2degrees(eventlat, eventlon, stationlat,
+                                              stationlon)
+            if options.debug:
+                print "distance :", distance, type(distance)
+                print "eventdepth: ", eventdepth, type(eventdepth)
+                print "options.model: ", options.model
+            traveltimes = taup.getTravelTimes(distance, eventdepth,
+                                              model=options.model)
+            if options.debug:
+                print "traveltimes: ", traveltimes
+            # find the earliest arrival time
+            arrivaltime = 99999
+            for phase in traveltimes:
+                if phase['time'] < arrivaltime:
+                    arrivaltime = phase['time']
+            if options.debug:
+                print "earliest arrival time: ", arrivaltime
+            starttime = eventtime + arrivaltime - options.preset
+            endtime = eventtime + arrivaltime + options.offset
             print 'Downloading event %s from ArcLink %s...' \
                                                           % (eventid, station),
             try:
@@ -612,7 +644,7 @@ def main():
                 # if there has been no Exception, assume d/l was ok
                 print "done."
         # (5.2) Iris wf data download loop
-        for (net, sta, loc, cha) in avail:
+        for net, sta, loc, cha, stationlat, stationlon in avail:
             check_quit()
             # construct filename:
             station = '.'.join((net, sta, loc, cha))
@@ -625,11 +657,21 @@ def main():
                                                          (eventid, station)
                 continue
             print 'Downloading event %s from IRIS %s...' % (eventid, station),
-            # use taupe to calculate the correct starttime and endtime for
+            # use taup to calculate the correct starttime and endtime for
             # waveform retrieval at this station
-            # XXX
-            starttime = eventtime - options.preset
-            endtime = eventtime + options.offset
+            distance = taup.locations2degrees(eventlat, eventlon, stationlat,
+                                              stationlon)
+            traveltimes = taup.getTravelTimes(distance, eventdepth,
+                                              model=options.model)
+            # find the earliest arrival time
+            arrivaltime = 99999
+            for phase in traveltimes:
+                if phase['time'] < arrivaltime:
+                    arrivaltime = phase['time']
+            if options.debug:
+                print "earliest arrival time: ", arrivaltime
+            starttime = eventtime + arrivaltime - options.preset
+            endtime = eventtime + arrivaltime + options.offset
             try:
                 irisclient.saveWaveform(filename=irisfnfull,
                                         network=net, station=sta,
@@ -783,16 +825,16 @@ def get_inventory(start, end, nw, st, lo, ch, permanent, debug=False):
 
     Returns
     -------
-        A tuple of (networks, stations)
+        A list of tuples of the form [(station1, lat1, lon1), ...]
     """
     inventoryfp = os.path.join(datapath, 'inventory.pickle')
     try:
         # first check if inventory data has already been downloaded
         fh = open(inventoryfp, 'rb')
-        stations2 = pickle.load(fh)
+        stations3 = pickle.load(fh)
         fh.close()
         print "Found inventory data in datapath, skip download."
-        return [], stations2
+        return stations3
     except:
         # first take care of network wildcard searches as arclink does not
         # support anything but '*' here:
@@ -853,19 +895,29 @@ def get_inventory(start, end, nw, st, lo, ch, permanent, debug=False):
     else:
         # just return the whole stations list otherwise
         stations2 = stations
+    # include latitude and longitude for taup in the dict stations3, which will
+    # be a list of tuples (station, lat, lon)
+    stations3 = []
+    for station in stations2:
+        # obtain key for station Attrib dict
+        net, sta, loc, cha = station.split('.')
+        key = '.'.join((net, sta))
+        stations3.append((station, inventory[key]['latitude'],
+                                  inventory[key]['longitude']))
     print("Received %d network(s) from ArcLink." % (len(networks)))
-    print("Received %d channels(s) from ArcLink." % (len(stations2)))
+    print("Received %d channels(s) from ArcLink." % (len(stations3)))
     if debug:
         print "stations2 inside get_inventory: ", stations2
+        print "stations3 inside get_inventory: ", stations3
     # dump result to file so we can quickly resume d/l if obspysod
     # runs in the same dir more than once. we're only dumping stations (the
     # regex matched ones, since only those are needed. see the try statement
     # above, if this file is found later, we don't have to perform the regex
     # search again.
     fh = open(inventoryfp, 'wb')
-    pickle.dump(stations2, fh)
+    pickle.dump(stations3, fh)
     fh.close()
-    return (networks, stations2)
+    return stations3
 
 
 def getnparse_availability(west, east, south, north, start, end, nw, st, lo,
@@ -906,14 +958,17 @@ def getnparse_availability(west, east, south, north, start, end, nw, st, lo,
             availxml = etree.fromstring(result)
             if debug:
                 print 'availxml:\n', availxml
-            stations = availxml.xpath('Station')
+            stations = availxml.findall('Station')
             # I will construct a list of tuples of stations of the form:
-            # [(net,sta,cha,loc), (net,sta,loc,cha), ...]
+            # [(net,sta,cha,loc,lat,lon), (net,sta,loc,cha,lat,lon), ...]
             avail_list = []
             for station in stations:
                 net = station.values()[0]
                 sta = station.values()[1]
-                channels = station.xpath('Channel')
+                # find latitude and longitude of station
+                lat = float(station.find('Lat').text)
+                lon = float(station.find('Lon').text)
+                channels = station.findall('Channel')
                 for channel in channels:
                     loc = channel.values()[1]
                     cha = channel.values()[0]
@@ -926,7 +981,8 @@ def getnparse_availability(west, east, south, north, start, end, nw, st, lo,
                     # strip it so we can use it to construct nicer filenames
                     # as well as to construct a working IRIS ws query
                     avail_list.append((net.strip(' '), sta.strip(' '),
-                                       loc.strip(' '), cha.strip(' ')))
+                                       loc.strip(' '), cha.strip(' '), lat,
+                                       lon))
             # dump availability to file
             fh = open(availfp, 'wb')
             pickle.dump(avail_list, fh)
@@ -959,7 +1015,7 @@ def queryMeta(west, east, south, north, start, end, nw, st, lo, ch, permanent,
                                    debug=debug)
     # stations is a list of all stations (nw.st.l.ch, so it includes networks)
     # loop over all tuples of a station in avail list:
-    for (net, sta, loc, cha) in avail:
+    for (net, sta, loc, cha, lat, lon) in avail:
         check_quit()
         # construct filename
         respfn = '.'.join((net, sta, loc, cha)) + '.resp'
@@ -985,13 +1041,15 @@ def queryMeta(west, east, south, north, start, end, nw, st, lo, ch, permanent,
             print 'done.'
     # (2) ArcLink: dataless seed
     # get ArcLink inventory
-    networks, stations = get_inventory(start, end, nw, st, lo, ch,
-                                       permanent=permanent, debug=debug)
+    stations = get_inventory(start, end, nw, st, lo, ch, permanent=permanent,
+                             debug=debug)
     # loop over stations to d/l every dataless seed file...
     # skip dead ArcLink networks
     skip_networks = ['AI', 'BA']
     for station in stations:
         check_quit()
+        # we don't need lat and lon
+        station = station[0]
         net, sta, loc, cha = station.split('.')
         # skip dead networks
         if net in skip_networks:
@@ -1001,10 +1059,6 @@ def queryMeta(west, east, south, north, start, end, nw, st, lo, ch, permanent,
         # construct filename
         dlseedfn = '.'.join((net, sta, loc, cha)) + '.seed'
         dlseedfnfull = os.path.join(datapath, dlseedfn)
-        # ArcLink does not support 'x*' and '*x' searches for networks,
-        # done manually here: not done here anymore right now.
-        # XXX need to change this, use regex instead...
-        # and rather inside the arclink get_inventory fct.
         # create data file handler
         dlseedfnfull = os.path.join(datapath, "%s.mseed" % station)
         if os.path.isfile(dlseedfnfull):
