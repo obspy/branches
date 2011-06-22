@@ -41,6 +41,9 @@ import termios
 TERMIOS = termios
 # need a lock for the global quit variable which is used in two threads
 lock = threading.RLock()
+import numpy as np
+import matplotlib.pyplot as plt
+import scipy.ndimage
 
 
 class keypress_thread (threading.Thread):
@@ -129,7 +132,7 @@ def main():
                            'nw': '*',
                            'st': '*',
                            'lo': '*',
-                           'ch': '*'
+                           'ch': '*',
                           })
 
     # read config file, if it exists, possibly overriding defaults as set above
@@ -225,6 +228,18 @@ def main():
               "available' last time."
     parser.add_option("-E", "--exceptions", action="store_true",
                       dest="exceptions", help=helpmsg)
+    helpmsg = "For each event, create one plot with the data from all " + \
+              "stations together with theoretical arrival times. You may " + \
+              "provide or omit the output size: e.g. -I 900x600. If -I d, " + \
+              "or -I default, the default output size of " + \
+              "1200x800 px will be used. If this command line parameter " + \
+              "is not passed to ObsPySOD at all, no plots will be created." + \
+              " You may additionally specify the timespan of the plot " + \
+              "after event origin time in minutes: e.g. for timespan " + \
+              "lasting 80 minutes: -I 1200x800/80 (or -I d/80). The " + \
+              "default timespan is 100 minutes."
+    parser.add_option("-I", "--image-size", action="store", dest="plt",
+                      help=helpmsg)
     parser.add_option("-d", "--debug", action="store_true", dest="debug",
                       help="Show debugging information.")
 
@@ -280,6 +295,49 @@ def main():
         print "Erroneous velocity model given:"
         print "correct are '-v iasp91' or '-v ak135'."
         sys.exit(2)
+    # parse pixel sizes and timespan of the plot if -I
+    if options.plt:
+        try:
+            # this will do it's job if the user has given a timespan
+            size, timespan = options.plt.split('/')
+            if size == 'd' or size == 'default':
+                pltWidth, pltHeight = 1200, 800
+            else:
+                try:
+                    pltWidth, pltHeight = size.split('x')
+                    pltWidth = int(pltWidth)
+                    pltHeight = int(pltHeight)
+                except:
+                    print "Erroneous plot size given."
+                    print "Format: e.g. -I 800x600/80"
+                    sys.exit(0)
+            try:
+                timespan = int(timespan)
+                # we need the timespan in seconds later
+                timespan *= 60
+            except:
+                print "Erroneous timespan given."
+                print "Format: e.g. -I d/80"
+                sys.exit(0)
+        except:
+            # we're in here if the user did not provide a timespan
+            if options.plt == 'd' or options.plt == 'default':
+                pltWidth, pltHeight = 1200, 800
+            else:
+                try:
+                    pltWidth, pltHeight = options.plt.split('x')
+                    pltWidth = int(pltWidth)
+                    pltHeight = int(pltHeight)
+                except:
+                    print "Erroneous plot size given."
+                    print "Format: e.g. -I 800x600"
+                    sys.exit(0)
+            # this is the default timespan if no timespan was provided
+            timespan = 100 * 60
+    if options.debug:
+        print "pltWidth: ", pltWidth
+        print "pltHeight: ", pltHeight
+        print "timespan: ", timespan
     ## if the user has given e.g. -r x/x/x/x or -t time1/time
     # extract min. and max. longitude and latitude if the user has given the
     # coordinates with -r (GMT syntax)
@@ -336,7 +394,6 @@ def main():
                                     options.identity.split('.')
         except:
             print "Erroneous identity code given."
-            help()
             sys.exit(2)
         if options.debug:
             print "options.nw:\t", options.nw
@@ -551,6 +608,11 @@ def main():
         quakefout.write(infoline + '\n\n\n')
         quakefout.write(hl_eventf)
         quakefout.flush()
+        # init matrix containing all station plots - will be used to plot
+        # all station waveforms later. +1 because the [0] entry of each col
+        # works as a counter
+        if options.plt:
+            stmatrix = np.zeros((pltHeight + 1, pltWidth))
         # (5.1) ArcLink wf data download loop (runs inside event loop)
         # Loop trough arclink_stations
         for station in arclink_stations:
@@ -637,12 +699,65 @@ def main():
                         gaps += 1
                     else:
                         overlaps += 1
+                # if there has been no Exception, assume d/l was ok
+                print "done."
+                if options.plt:
+                    print "Getting and scaling data for station plot...",
+                    del st
+                    # get data for the whole timeframe needed for the
+                    # plot. We don't want to save this, it's just needed for
+                    # the (rectangular) plot
+                    try:
+                        st = arcclient.getWaveform(network=net, station=sta,
+                                                   location=loc, channel=cha,
+                                                   starttime=eventtime,
+                                                  endtime=eventtime + timespan)
+                    except Exception, error:
+                        print "error: ",
+                        print error
+                        continue
+                    # the way we downloaded data, there should always be
+                    # exactly one trace in each stream object
+                    tr = st[0]
+                    # x axis / abscissa - distance
+                    # y axis / ordinate - time
+                    # normalize the trace, needed for plotting
+                    tr.normalize()
+                    # obtain the time increment that passes between samples
+                    # delta = tr.stats['delta']
+                    # scale down the trace array so it matches the output size
+                    pixelcol = np.around(scipy.ndimage.interpolation.zoom(
+                                                  tr,
+                                                  float(pltHeight) / len(tr)),
+                                         7)
+                    if options.debug:
+                        print "pixelcol: ", pixelcol
+                    # Find the pixel column that represents the distance of
+                    # this station
+                    x_coord = int((distance / 180.0) * pltWidth)
+                    # Add trace as one column to waveform matrix. the [0] entry
+                    # of the matrix counts how many waveforms have been added
+                    # to that column (this will be normalized later)
+                    # For no (to me) apparent reason, sometimes
+                    # scipy.ndimage.interpolation.zoom returns a slightly
+                    # different array size, so I use try-except.
+                    # It seems to be worse with some output sizes and no
+                    # problem at all with other ones.
+                    if options.debug:
+                        print "len stack: ", len(np.hstack((1, abs(pixelcol))))
+                        print "len stmatrixslice: ", len(stmatrix[:, x_coord])
+                    try:
+                        stmatrix[:, x_coord] += np.hstack((1, abs(pixelcol)))
+                    except:
+                        print "failed."
+                        continue
+                    if options.debug:
+                        print "stmatrix: ", stmatrix
+                    print "done."
                 del st
                 il_quake += ';%d;%d\n' % (gaps, overlaps)
                 quakefout.write(il_quake)
                 quakefout.flush()
-                # if there has been no Exception, assume d/l was ok
-                print "done."
         # (5.2) Iris wf data download loop
         for net, sta, loc, cha, stationlat, stationlon in avail:
             check_quit()
@@ -715,11 +830,46 @@ def main():
                         gaps += 1
                     else:
                         overlaps += 1
+                print "done."
+                if options.plt:
+                    print "Getting and scaling data for station plot...",
+                    del st
+                    # add to waveform matrix
+                    # this is the same as for arclink, I did not want to
+                    # replicate the comments, see above for them
+                    try:
+                        st = irisclient.getWaveform(network=net, station=sta,
+                                                    location=loc, channel=cha,
+                                                    starttime=eventtime,
+                                                  endtime=eventtime + timespan)
+                    except Exception, error:
+                        print "error: ",
+                        print error
+                        continue
+                    tr = st[0]
+                    tr.normalize()
+                    pixelcol = np.around(scipy.ndimage.interpolation.zoom(
+                                                  tr,
+                                                  float(pltHeight) / len(tr)),
+                                         7)
+                    if options.debug:
+                        print "pixelcol: ", pixelcol
+                    x_coord = int((distance / 180.0) * pltWidth)
+                    if options.debug:
+                        print "len stack: ", len(np.hstack((1, abs(pixelcol))))
+                        print "len stmatrixslice: ", len(stmatrix[:, x_coord])
+                    try:
+                        stmatrix[:, x_coord] += np.hstack((1, abs(pixelcol)))
+                    except:
+                        print "failed."
+                        continue
+                    if options.debug:
+                        print "stmatrix: ", stmatrix
+                    print "done."
                 del st
                 il_quake += ';%d;%d\n' % (gaps, overlaps)
                 quakefout.write(il_quake)
                 quakefout.flush()
-                print "done."
         # write data quality info into catalog file event info line
         if dqsum == 0:
             infoline += ';0 (OK);'
@@ -734,13 +884,48 @@ def main():
         # write event info line to catalog file (including QC)
         catalogfout.write(infoline)
         catalogfout.flush()
-        # close quake file at end of station loop
+        ### end of station loop ###
+        # close quake file
         quakefout.close()
+        if options.plt:
+            # normalize each distance column - the [0, i] entry works has been
+            # counting, how many stations we did stack for that distance
+            # this will result in NaN values for columns where we do not have
+            # data and will normalize all other columns without the if
+            # statement. NaN will be transparent in plot
+            # XXX which behaviour is preferred?
+            for i in range(pltWidth - 1):
+                if stmatrix[0,i] != 0:
+                    stmatrix[:,i] /= stmatrix[0,i]
+            # construct filename and save event plots
+            print "Done with event %s, saving plots..." % eventid
+            if options.debug:
+                print "stmatrix: ", stmatrix
+            plotfn = os.path.join(datapath, eventid, 'waveforms.png')
+            # [1:,:] because we do not want to display the counter
+            """
+            plt.imsave(fname=plotfn, arr=stmatrix[1:,:], vmin=0, vmax=1,
+                       origin='lower', cmap=plt.cm.gist_earth)
+            cmap=plt.cm.hot_r gelb->rot auf weiß
+           """
+            plt.imshow(stmatrix[1:,:], vmin=0, vmax=1,
+                       origin='lower', cmap=plt.cm.hot_r)
+            plt.xticks(range(0, pltWidth, pltWidth/4),
+                             ('0', '45', '90', '135', '180'), rotation=45)
+            y_incr = timespan / 60 / 4
+            plt.yticks(range(0, pltHeight, pltHeight/4),
+                      ('0', str(y_incr), str(2 * y_incr), str(3 * y_incr),
+                       str(3 * y_incr)))
+            plt.xlabel('Distance from epicenter in degrees')
+            plt.ylabel('Time after origin time in minutes')
+            plt.savefig(plotfn)
+            # XXX: ?if a grey colormap is preferred: plt.cm.gray
     # done with ArcLink, remove ArcLink client
     del arcclient
     # done with iris, remove client
     del irisclient
-    # close event catalog info file and exception file at the end of event loop
+    ### end of event loop ###
+    # close event catalog info file and exception file
     catalogfout.close()
     exceptionfout.close()
     done = True
