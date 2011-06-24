@@ -21,6 +21,13 @@ import pickle
 # left the remainders in the code since it would be nicer to have 1 thread
 # and real ^c handling - perhaps someone will pick up on this, had to give up
 #import signal
+# using threads to be able to capture keypress event without a GUI like
+# tkinter or pyqt and run the main loop at the same time.
+import threading
+import termios
+TERMIOS = termios
+# need a lock for the global quit variable which is used in two threads
+lock = threading.RLock()
 from ConfigParser import ConfigParser
 from optparse import OptionParser
 from obspy.core import UTCDateTime, read
@@ -33,17 +40,27 @@ from obspy.taup import taup
 # using these modules to wrap to custom(long) help function
 from textwrap import wrap
 from itertools import izip_longest
-# using threads to be able to capture keypress event without a GUI like
-# tkinter or pyqt and run the main loop at the same time.
-# This should run cross-platform...
-import threading
-import termios
-TERMIOS = termios
-# need a lock for the global quit variable which is used in two threads
-lock = threading.RLock()
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.ndimage
+
+### may use these abbreviations ###
+# comments:                       #
+# d/l: download                   #
+#                                 #
+# variable/object names:          #
+# net: network                    #
+# sta: station                    #
+# loc: location                   #
+# cha: channel                    #
+# *fp: file pointer               #
+# *fh: file handler               #
+# *fout: file out                 #
+# *fin: file in                   #
+# il: info line                   #
+# hl: headline                    #
+# plt*: plot                      #
+###################################
 
 
 class keypress_thread (threading.Thread):
@@ -108,6 +125,7 @@ def main():
     """
     Main function to run as a dedicated program.
     """
+
     global datapath, quit, done
     # dead networks
     skip_networks = ['AI', 'BA']
@@ -119,14 +137,14 @@ def main():
     # obspy.arclink.getInventory will raise an error if the user does not
     # provide start and end time
     # default for start is three months ago, end is now
-    # default offset is 15 min, default velocity model is 'iasp91'
+    # default offset is 80 min, preset 5min, default velocity model is 'iasp91'
     config = ConfigParser({'magmin': '3',
                            'dt': '10',
                            'start': str(UTCDateTime.utcnow()
                                         - 60 * 60 * 24 * 30 * 3),
                            'end': str(UTCDateTime.utcnow()),
-                           'preset': '15',
-                           'offset': '900',
+                           'preset': '300',
+                           'offset': '4800',
                            'datapath': 'obspysod-data',
                            'model': 'iasp91',
                            'nw': '*',
@@ -136,7 +154,7 @@ def main():
                           })
 
     # read config file, if it exists, possibly overriding defaults as set above
-    config.read('.obspysodrc')
+    config.read('~/.obspysodrc')
 
     # create command line option parser
     # parser = OptionParser("%prog [options]" + __doc__.rstrip())
@@ -179,12 +197,14 @@ def main():
               "the data, either 'iasp91' or 'ak135'. Default: 'iasp91'."
     parser.add_option("-v", "--velocity-model", action="store", dest="model",
                       help=helpmsg)
-    helpmsg = "Time parameter which determines how close the event data " + \
-            "will be cropped before the calculated arrival time. Default: 0."
+    helpmsg = "Time parameter in seconds which determines how close the " + \
+            "event data will be cropped before the calculated arrival " + \
+            "time. Default: 5 minutes."
     parser.add_option("-p", "--preset", action="store", dest="preset",
                       help=helpmsg)
-    helpmsg = "Time parameter which determines how close the event data " + \
-            "will be cropped after the event."
+    helpmsg = "Time parameter in seconds which determines how close the " + \
+            "event data will be cropped after the calculated arrival time." + \
+            " Default: 80 minutes."
     parser.add_option("-o", "--offset", action="store", dest="offset",
                       help=helpmsg)
     parser.add_option("-m", "--magmin", action="store", dest="magmin",
@@ -230,15 +250,23 @@ def main():
                       dest="exceptions", help=helpmsg)
     helpmsg = "For each event, create one plot with the data from all " + \
               "stations together with theoretical arrival times. You may " + \
-              "provide or omit the output size: e.g. -I 900x600. If -I d, " + \
+              "provide or omit the output size: e.g. -I 900x600x5. This " + \
+              "gives you a plot of 900px width, 600px height, and 5px " + \
+              "broad station columns. If -I d, " + \
               "or -I default, the default output size of " + \
-              "1200x800 px will be used. If this command line parameter " + \
+              "1200x800x1 px will be used. If this command line parameter " + \
               "is not passed to ObsPySOD at all, no plots will be created." + \
               " You may additionally specify the timespan of the plot " + \
               "after event origin time in minutes: e.g. for timespan " + \
-              "lasting 80 minutes: -I 1200x800/80 (or -I d/80). The " + \
+              "lasting 30 minutes: -I 1200x800x1/30 (or -I d/30). The " + \
               "default timespan is 100 minutes."
-    parser.add_option("-I", "--image-size", action="store", dest="plt",
+    parser.add_option("-I", "--plot", action="store", dest="plt",
+                      help=helpmsg)
+    helpmsg = "When creating the plot, download all the data needed to " + \
+              "fill the rectangular area of the plot. Note: depending on " + \
+              "your options, this will approximately double the data " + \
+              "download volume (but you'll end up with nicer plots ;-))."
+    parser.add_option("-F", "--fill-plot", action="store_true", dest="fill",
                       help=helpmsg)
     parser.add_option("-d", "--debug", action="store_true", dest="debug",
                       help="Show debugging information.")
@@ -301,15 +329,16 @@ def main():
             # this will do it's job if the user has given a timespan
             size, timespan = options.plt.split('/')
             if size == 'd' or size == 'default':
-                pltWidth, pltHeight = 1200, 800
+                pltWidth, pltHeight, colWidth = 1200, 800, 1
             else:
                 try:
-                    pltWidth, pltHeight = size.split('x')
+                    pltWidth, pltHeight, colWidth = size.split('x')
                     pltWidth = int(pltWidth)
                     pltHeight = int(pltHeight)
+                    colWidth = int(colWidth)
                 except:
                     print "Erroneous plot size given."
-                    print "Format: e.g. -I 800x600/80"
+                    print "Format: e.g. -I 800x600x1/80"
                     sys.exit(0)
             try:
                 timespan = int(timespan)
@@ -322,21 +351,23 @@ def main():
         except:
             # we're in here if the user did not provide a timespan
             if options.plt == 'd' or options.plt == 'default':
-                pltWidth, pltHeight = 1200, 800
+                pltWidth, pltHeight, colWidth = 1200, 800, 1
             else:
                 try:
-                    pltWidth, pltHeight = options.plt.split('x')
+                    pltWidth, pltHeight, colWidth = options.plt.split('x')
                     pltWidth = int(pltWidth)
                     pltHeight = int(pltHeight)
+                    colWidth = int(colWidth)
                 except:
                     print "Erroneous plot size given."
-                    print "Format: e.g. -I 800x600"
+                    print "Format: e.g. -I 800x600x3"
                     sys.exit(0)
             # this is the default timespan if no timespan was provided
             timespan = 100 * 60
     if options.debug:
         print "pltWidth: ", pltWidth
         print "pltHeight: ", pltHeight
+        print "colWidth: ", colWidth
         print "timespan: ", timespan
     ## if the user has given e.g. -r x/x/x/x or -t time1/time
     # extract min. and max. longitude and latitude if the user has given the
@@ -353,7 +384,6 @@ def main():
                 print options.rect
             if len(options.rect) != 4:
                 print "Erroneous rectangle given."
-                help()
                 sys.exit(2)
             options.west = float(options.rect[0])
             options.east = float(options.rect[1])
@@ -362,7 +392,6 @@ def main():
         except:
             print "Erroneous rectangle given."
             print optarg, rect
-            help()
             sys.exit(2)
         if options.debug:
             print options
@@ -377,7 +406,6 @@ def main():
             options.end = options.time.split('/')[1]
         except:
             print "Erroneous timeframe given."
-            help()
             sys.exit(2)
         if options.debug:
             print "options.time", options.time
@@ -407,7 +435,6 @@ def main():
         options.end = UTCDateTime(options.end)
     except:
         print "Given time string not compatible with ObsPy UTCDateTime method."
-        help()
         sys.exit(2)
     if options.debug:
         print "Now it's UTCDateTime:"
@@ -536,8 +563,18 @@ def main():
     hl_eventf = "Station;Data Provider;TQ min;Gaps;Overlaps" + "\n"
     hl_eventf += "#" * 42 + "\n\n"
     catalogfp = os.path.join(datapath, 'catalog.txt')
-    catalogfout = open(catalogfp, 'wt')
+    # open catalog file in read and write mode in case we are continuing d/l,
+    # so we can append to the file
+    try:
+        catalogfout = open(catalogfp, 'r+t')
+    except:
+        # the file did not exist, we are not continuing d/l
+        catalogfout = open(catalogfp, 'wt')
     catalogfout.write(headline)
+    # move to end of catalog file. that way if we are continuing downloading,
+    # we overwrote the headline with the same headline again and now continue
+    # to write new entries to the end of the file.
+    catalogfout.seek(0, 2)
     # initialize ArcLink webservice client
     arcclient = obspy.arclink.Client(timeout=5, debug=options.debug)
     mseed = LibMSEED()
@@ -550,19 +587,25 @@ def main():
     # try open exceptionfile in read and write mode if we continue d/l
     try:
         exceptionfout = open(exceptionfp, 'r+t')
+        # we need to know about exceptions encountered last time, so we can
+        # skip them this time. if the user wants to try again to d/l
+        # exceptions, he will use the -E exception mode
+        # i'll just read the whole file into one string and check for each
+        # station whether it's in the string
+        exceptionstr = exceptionfout.read()
+        if options.debug:
+            print "exceptionstr: ", exceptionstr
+        # go back to beginning of exceptionfout
+        exceptionfout.seek(0)
     except:
         # the file did not exist, we are not continuing d/l
         exceptionfout = open(exceptionfp, 'wt')
+        exceptionstr = ''
     exceptionhl = 'event_id;data provider;station;starttime;endtime;exception'
     exceptionhl += '\n' + '#' * 58 + '\n\n'
     exceptionfout.write(exceptionhl)
-    # move to end of exception file. that way if we are continuing downloading,
-    # we overwrote the headline with the same headline again and now continue
-    # to write new exceptions to the end of the file
+    # just like for the catalog file, move to end of exception file
     exceptionfout.seek(0, 2)
-    # init neriesclient here, need it inside every loop to d/l respective
-    # quakeml xml
-    neriesclient = obspy.neries.Client()
     for eventdict in events:
         check_quit()
         eventid = eventdict['event_id']
@@ -588,14 +631,20 @@ def main():
         eventdir = os.path.join(datapath, eventid)
         if not os.path.exists(eventdir):
             os.mkdir(eventdir)
+        # re-init neriesclient here, seems to reduce problems
+        neriesclient = obspy.neries.Client()
         # download quake ml xml
-        print "Downloading quakeml xml file for event %s..." % eventid,
-        quakeml = neriesclient.getEventDetail(eventid, 'xml')
         quakemlfp = os.path.join(eventdir, 'quakeml.xml')
-        quakemlfout = open(quakemlfp, 'wt')
-        quakemlfout.write(quakeml)
-        quakemlfout.close()
-        print "done."
+        if not os.path.isfile(quakemlfp):
+            print "Downloading quakeml xml file for event %s..." % eventid,
+            quakeml = neriesclient.getEventDetail(eventid, 'xml')
+            quakemlfout = open(quakemlfp, 'wt')
+            quakemlfout.write(quakeml)
+            quakemlfout.close()
+            print "done."
+        else:
+            print "Found existing quakeml xml file for event %s, skip..." \
+                                                                      % eventid
         # init/reset dqsum
         dqsum = 0
         tqlist = []
@@ -603,11 +652,20 @@ def main():
         # DQ: all min entries in event folder txt file differently
         # this is handled inside the station loop
         quakefp = os.path.join(eventdir, 'quake.txt')
-        quakefout = open(quakefp, 'wt')
+        # open quake file in read and write mode in case we are continuing d/l,
+        # so we can append to the file
+        try:
+            quakefout = open(quakefp, 'r+t')
+        except:
+            # the file did not exist, we are not continuing d/l
+            quakefout = open(quakefp, 'wt')
         quakefout.write(headline[:97] + "\n" + "#" * 97 + "\n\n")
         quakefout.write(infoline + '\n\n\n')
         quakefout.write(hl_eventf)
         quakefout.flush()
+        # just like for catalog and exception file, move to end of quake file
+        # to write new stations to the end of it
+        quakefout.seek(0, 2)
         # init matrix containing all station plots - will be used to plot
         # all station waveforms later. +1 because the [0] entry of each col
         # works as a counter
@@ -621,17 +679,28 @@ def main():
             stationlat = station[1]
             stationlon = station[2]
             station = station[0]
+            if options.debug:
+                print "station: ", station
             # skip dead networks
             net, sta, loc, cha = station.split('.')
             if net in skip_networks:
                 print 'Skipping dead network %s...' % net
                 # continue the for-loop to the next iteration
                 continue
-            # create data file handler
+            # create data file pointer
             datafout = os.path.join(eventdir, "%s.mseed" % station)
             if os.path.isfile(datafout):
                 print 'Data file for event %s from %s exists, skip...' \
                                                            % (eventid, station)
+                continue
+            # if this string has already been in the exception file when we
+            # were starting the d/l, we had an exception for this event/data
+            # provider/station combination last time and won't try again.
+            skipstr = eventid + ';ArcLink;' + station
+            if skipstr in exceptionstr:
+                msg = 'Encountered exception for event %s from ArcLink %s last'
+                msg += ' time, skip...'
+                print msg % (eventid, station)
                 continue
             # use taup to calculate the correct starttime and endtime for
             # waveform retrieval at this station
@@ -657,6 +726,10 @@ def main():
             print 'Downloading event %s from ArcLink %s...' \
                                                           % (eventid, station),
             try:
+                # I have been told that initializing the client often reduces
+                # problems
+                arcclient = obspy.arclink.Client(timeout=5,
+                                                 debug=options.debug)
                 # catch exception so the d/l continues if only one doesn't work
                 arcclient.saveWaveform(filename=datafout, network=net,
                                        station=sta, location=loc, channel=cha,
@@ -702,23 +775,29 @@ def main():
                 # if there has been no Exception, assume d/l was ok
                 print "done."
                 if options.plt:
-                    print "Getting and scaling data for station plot...",
-                    del st
-                    # get data for the whole timeframe needed for the
-                    # plot. We don't want to save this, it's just needed for
-                    # the (rectangular) plot
-                    try:
-                        st = arcclient.getWaveform(network=net, station=sta,
-                                                   location=loc, channel=cha,
-                                                   starttime=eventtime,
+                    if options.fill:
+                        # if the user gave -F cmd line option
+                        print "Getting and scaling data for station plot...",
+                        del st
+                        # get data for the whole timeframe needed for the
+                        # plot. We don't want to save this, it's just needed
+                        # for the (rectangular) plot
+                        try:
+                            st = arcclient.getWaveform(network=net,
+                                                     station=sta, location=loc,
+                                              channel=cha, starttime=eventtime,
                                                   endtime=eventtime + timespan)
-                    except Exception, error:
-                        print "error: ",
-                        print error
-                        continue
-                    # the way we downloaded data, there should always be
-                    # exactly one trace in each stream object
-                    tr = st[0]
+                        except Exception, error:
+                            print "error: ",
+                            print error
+                            continue
+                        # the way we downloaded data, there should always be
+                        # exactly one trace in each stream object
+                        tr = st[0]
+                    else:
+                        # if the user did not provide -F, we wont d/l any more
+                        # data. we need to fill up the data we have with zeros:
+                        tr = st[0]
                     # x axis / abscissa - distance
                     # y axis / ordinate - time
                     # normalize the trace, needed for plotting
@@ -771,6 +850,15 @@ def main():
                 print 'Data file for event %s from %s exists, skip...' % \
                                                          (eventid, station)
                 continue
+            # if this string has already been in the exception file when we
+            # were starting the d/l, we had an exception for this event/data
+            # provider/station combination last time and won't try again.
+            skipstr = eventid + ';IRIS;' + station
+            if skipstr in exceptionstr:
+                msg = 'Encountered exception for event %s from IRIS %s last '
+                msg += 'time, skip...'
+                print msg % (eventid, station)
+                continue
             print 'Downloading event %s from IRIS %s...' % (eventid, station),
             # use taup to calculate the correct starttime and endtime for
             # waveform retrieval at this station
@@ -788,6 +876,9 @@ def main():
             starttime = eventtime + arrivaltime - options.preset
             endtime = eventtime + arrivaltime + options.offset
             try:
+                # I have been told that initializing the client often reduces
+                # problems
+                irisclient = obspy.iris.Client(debug=options.debug)
                 irisclient.saveWaveform(filename=irisfnfull,
                                         network=net, station=sta,
                                         location=loc, channel=cha,
@@ -906,7 +997,7 @@ def main():
             """
             plt.imsave(fname=plotfn, arr=stmatrix[1:,:], vmin=0, vmax=1,
                        origin='lower', cmap=plt.cm.gist_earth)
-            cmap=plt.cm.hot_r gelb->rot auf weiß
+            cmap=plt.cm.hot_r gelb->rot auf weiss
            """
             plt.imshow(stmatrix[1:,:], vmin=0, vmax=1,
                        origin='lower', cmap=plt.cm.hot_r)
@@ -1090,7 +1181,7 @@ def get_inventory(start, end, nw, st, lo, ch, permanent, debug=False):
         stations3.append((station, inventory[key]['latitude'],
                                   inventory[key]['longitude']))
     print("Received %d network(s) from ArcLink." % (len(networks)))
-    print("Received %d channels(s) from ArcLink." % (len(stations3)))
+    print("Received %d channel(s) from ArcLink." % (len(stations3)))
     if debug:
         print "stations2 inside get_inventory: ", stations2
         print "stations3 inside get_inventory: ", stations3
@@ -1215,6 +1306,8 @@ def queryMeta(west, east, south, north, start, end, nw, st, lo, ch, permanent,
             continue
         print 'Downloading Resp file for %s from IRIS...' % respfn,
         try:
+            # initializing the client each time should reduce problems
+            irisclient = obspy.iris.Client(debug=debug)
             irisclient.saveResponse(respfnfull, net, sta, loc, cha, start, end,
                                     format='RESP')
         except Exception, error:
@@ -1230,7 +1323,6 @@ def queryMeta(west, east, south, north, start, end, nw, st, lo, ch, permanent,
                              debug=debug)
     # loop over stations to d/l every dataless seed file...
     # skip dead ArcLink networks
-    skip_networks = ['AI', 'BA']
     for station in stations:
         check_quit()
         # we don't need lat and lon
@@ -1253,6 +1345,8 @@ def queryMeta(west, east, south, north, start, end, nw, st, lo, ch, permanent,
                                                                   % dlseedfn,
         try:
             # catch exception so the d/l continues if only one doesn't work
+            # again, initializing the client should reduce problems
+            arclinkclient = obspy.arclink.client.Client(debug=debug)
             arclinkclient.saveResponse(dlseedfnfull, net, sta, loc, cha,
                                        start, end, format='SEED')
         except Exception, error:
@@ -1310,6 +1404,7 @@ def exceptionMode(debug):
                 print "Trying to download event %s from ArcLink %s..." % \
                                                            (eventid, station),
                 try:
+                    arcclient = obspy.arclink.Client(timeout=5, debug=debug)
                     arcclient.saveWaveform(filename=datafout, network=net,
                                        station=sta, location=loc, channel=cha,
                                        starttime=starttime, endtime=endtime)
@@ -1328,6 +1423,7 @@ def exceptionMode(debug):
                 print "Trying to download event %s from IRIS %s..." % \
                                                            (eventid, station),
                 try:
+                    irisclient = obspy.iris.Client(debug=debug)
                     irisclient.saveWaveform(filename=datafout,
                                             network=net, station=sta,
                                             location=loc, channel=cha,
