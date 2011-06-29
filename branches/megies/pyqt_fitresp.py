@@ -91,7 +91,7 @@ class MyMainWindow(QtGui.QMainWindow):
         """
         box_cornfreq = QtGui.QDoubleSpinBox()
         box_cornfreq.setMaximum(1e3)
-        box_cornfreq.setMinimum(-1e3)
+        box_cornfreq.setMinimum(0)
         box_cornfreq.setSingleStep(self.options.step)
         box_cornfreq.setDecimals(4)
         box_cornfreq.setValue(freq)
