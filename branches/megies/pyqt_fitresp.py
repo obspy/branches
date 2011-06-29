@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg
 from matplotlib.backends.backend_qt4agg import NavigationToolbar2QTAgg
 
-from obspy.signal import pazToFreqResp
+from obspy.signal import pazToFreqResp, cornFreq2Paz
 
 class MyMainWindow(QtGui.QMainWindow):
     """
@@ -40,6 +40,15 @@ class MyMainWindow(QtGui.QMainWindow):
         self.paz['poles'] = parse_paz_string(options.poles)
         self.paz['zeros'] = parse_paz_string(options.zeros)
         self.paz['gain'] = options.normalization_factor
+
+        # check if corner frequencies should be used
+        # override paz if corner frequencies used!
+        self.corn_freqs = options.corner_frequencies
+        if self.corn_freqs != 0:
+            self.paz = {}
+            self.paz['poles'] = [0j, 0j] * self.corn_freqs
+            self.paz['zeros'] = [0j, 0j]
+            self.paz['gain'] = 1.0
         
         # setup GUI
         QtGui.QMainWindow.__init__(self)
@@ -47,6 +56,8 @@ class MyMainWindow(QtGui.QMainWindow):
         self.__connect_signals()
 
         # make initial plot and show it
+        if self.corn_freqs != 0:
+            self.on_anyButton_valueChanged(0)
         self.update()
         self.canv.show()
         self.show()
@@ -73,6 +84,29 @@ class MyMainWindow(QtGui.QMainWindow):
         layout.addWidget(box_imag)
         return box_real, box_imag
 
+    def __add_doublespinboxes_cornfreq(self, layout, freq, damping):
+        """
+        Add a new set of corner frequency / damping  QDoubleSpinBox'es to given
+        layout.
+        """
+        box_cornfreq = QtGui.QDoubleSpinBox()
+        box_cornfreq.setMaximum(1e3)
+        box_cornfreq.setMinimum(-1e3)
+        box_cornfreq.setSingleStep(self.options.step)
+        box_cornfreq.setDecimals(4)
+        box_cornfreq.setValue(freq)
+        layout.addWidget(QtGui.QLabel("corn. freq."))
+        layout.addWidget(box_cornfreq)
+        box_damping = QtGui.QDoubleSpinBox()
+        box_damping.setMaximum(1e3)
+        box_damping.setMinimum(-1e3)
+        box_damping.setSingleStep(self.options.step)
+        box_damping.setDecimals(4)
+        box_damping.setValue(damping)
+        layout.addWidget(QtGui.QLabel("damping"))
+        layout.addWidget(box_damping)
+        return box_cornfreq, box_damping
+
 
     def __setup_GUI(self):
         """
@@ -88,23 +122,49 @@ class MyMainWindow(QtGui.QMainWindow):
         main.setLayout(vlayout)
         canv = QMplCanvas()
         vlayout.addWidget(canv)
-        hlayout = QtGui.QHBoxLayout()
-        hlayout.addStretch(1)
-        vlayout.addLayout(hlayout)
+        hlayout_poles = QtGui.QHBoxLayout()
+        hlayout_poles.addStretch(1)
+        vlayout.addLayout(hlayout_poles)
+        hlayout_zeros = QtGui.QHBoxLayout()
+        hlayout_zeros.addStretch(1)
+        vlayout.addLayout(hlayout_zeros)
+        hlayout_normfac = QtGui.QHBoxLayout()
+        hlayout_normfac.addStretch(1)
+        vlayout.addLayout(hlayout_normfac)
+
+        # add boxes for corner frequencies
+        if self.corn_freqs != 0:
+            # add layout
+            hlayout_cf = QtGui.QHBoxLayout()
+            hlayout_cf.addStretch(1)
+            vlayout.addLayout(hlayout_cf)
+            # add boxes
+            self.boxes_corn_freqs = []
+            self.boxes_dampings = []
+            for _i in xrange(self.corn_freqs):
+                if _i == 0:
+                    freq, damping = 1.0, 0.707
+                elif _i == 1:
+                    freq, damping = 10.0, 0.707
+                box_cornfreq, box_damping = \
+                        self.__add_doublespinboxes_cornfreq(hlayout_cf, freq,
+                                                            damping)
+                self.boxes_corn_freqs.append(box_cornfreq)
+                self.boxes_dampings.append(box_damping)
 
         # add some boxes
         self.boxes_poles_real = []
         self.boxes_poles_imag = []
         for i, pole in enumerate(self.paz['poles']):
-            box_real, box_imag = self.__add_doublespinboxes(hlayout, pole,
-                                                            "Pole", i + 1)
+            box_real, box_imag = self.__add_doublespinboxes(hlayout_poles,
+                                                            pole, "Pole", i+1)
             self.boxes_poles_real.append(box_real)
             self.boxes_poles_imag.append(box_imag)
         self.boxes_zeros_real = []
         self.boxes_zeros_imag = []
         for i, zero in enumerate(self.paz['zeros']):
-            box_real, box_imag = self.__add_doublespinboxes(hlayout, zero,
-                                                            "Zero", i + 1)
+            box_real, box_imag = self.__add_doublespinboxes(hlayout_zeros,
+                                                            zero, "Zero", i+1)
             self.boxes_zeros_real.append(box_real)
             self.boxes_zeros_imag.append(box_imag)
         # add box for normalization factor
@@ -113,8 +173,8 @@ class MyMainWindow(QtGui.QMainWindow):
         box_norm.setMinimum(-1e10)
         box_norm.setSingleStep(self.options.step)
         box_norm.setValue(self.paz['gain'])
-        hlayout.addWidget(QtGui.QLabel("Norm.Fac."))
-        hlayout.addWidget(box_norm)
+        hlayout_normfac.addWidget(QtGui.QLabel("Norm.Fac."))
+        hlayout_normfac.addWidget(box_norm)
         self.box_norm = box_norm
 
         qToolBar = QtGui.QToolBar()
@@ -137,6 +197,7 @@ class MyMainWindow(QtGui.QMainWindow):
         connect = QtCore.QObject.connect
         for box in self.boxes_poles_real + self.boxes_poles_imag + \
                    self.boxes_zeros_real + self.boxes_zeros_imag + \
+                   self.boxes_corn_freqs + self.boxes_dampings + \
                    [self.box_norm]:
             connect(box, QtCore.SIGNAL("valueChanged(double)"),
                     self.on_anyButton_valueChanged)
@@ -170,6 +231,25 @@ class MyMainWindow(QtGui.QMainWindow):
         self.canv.draw()
     
     def on_anyButton_valueChanged(self, newvalue):
+        if self.corn_freqs != 0:
+            self.__set_paz_from_cornfreqs()
+        self.__update_paz()
+        self.update()
+
+    def __set_paz_from_cornfreqs(self):
+        for _i, (f, h) in enumerate(zip(self.boxes_corn_freqs,
+                                        self.boxes_dampings)):
+            f = f.value()
+            h = h.value()
+            paz = cornFreq2Paz(f, h)
+            pole1 = paz['poles'][0]
+            pole2 = paz['poles'][1]
+            self.boxes_poles_real[_i*2].setValue(pole1.real)
+            self.boxes_poles_imag[_i*2].setValue(pole1.imag)
+            self.boxes_poles_real[_i*2+1].setValue(pole2.real)
+            self.boxes_poles_imag[_i*2+1].setValue(pole2.imag)
+
+    def __update_paz(self):
         for i, box in enumerate(self.boxes_poles_real):
             real = box.value()
             imag = self.paz['poles'][i].imag
@@ -187,7 +267,6 @@ class MyMainWindow(QtGui.QMainWindow):
             imag = box.value()
             self.paz['zeros'][i] = complex(real, imag)
         self.paz['gain'] = self.box_norm.value()
-        self.update()
 
     #def on_qDoubleSpinBox_high_valueChanged(self, newvalue):
     #    self.high = newvalue
@@ -231,6 +310,11 @@ def main():
                       help="Poles in a string separated by commas")
     parser.add_option("-z", "--zeros", type=str, dest="zeros", default="0j",
                       help="Zeros in a string separated by commas")
+    parser.add_option("-c", "--corner-frequencies", type=int,
+                      dest="corner_frequencies", default=0,
+                      help="Number of corner frequencies in " + \
+                           "instrument response (0, 1 or 2). " + \
+                           "Overrides specified poles/zeros.")
     parser.add_option("-n", "--normalization-factor", type=float,
                       dest="normalization_factor", default=206.0,
                       help="Normalization factor (A0)")
