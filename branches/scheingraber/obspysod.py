@@ -13,6 +13,7 @@ This has been part of a Bachelor's Thesis at the University of Munich.
 
 import sys
 import os
+import operator
 import re
 import fnmatch
 import time
@@ -37,12 +38,16 @@ import obspy.iris
 from obspy.mseed.libmseed import LibMSEED
 from lxml import etree
 from obspy.taup import taup
-# using these modules to wrap to custom(long) help function
+# using these modules to wrap the custom(long) help function
 from textwrap import wrap
 from itertools import izip_longest
-import numpy as np
-import matplotlib.pyplot as plt
-import scipy.ndimage
+try:
+    import numpy as np
+    import matplotlib.pyplot as plt
+    import scipy.ndimage
+except:
+    print "no plotting availableXXX ..."
+    pass
 
 ### may use these abbreviations ###
 # comments:                       #
@@ -147,6 +152,7 @@ def main():
                            'offset': '4800',
                            'datapath': 'obspysod-data',
                            'model': 'iasp91',
+                           'phases': 'P,S',
                            'nw': '*',
                            'st': '*',
                            'lo': '*',
@@ -250,9 +256,11 @@ def main():
                       dest="exceptions", help=helpmsg)
     helpmsg = "For each event, create one plot with the data from all " + \
               "stations together with theoretical arrival times. You may " + \
-              "provide or omit the output size: e.g. -I 900x600x5. This " + \
-              "gives you a plot of 900px width, 600px height, and 5px " + \
-              "broad station columns. If -I d, " + \
+              "provide or omit the data area size: e.g. -I 900x600x5. " + \
+              "This gives you a data area of 900px width, 600px height, " + \
+              "band 5px road station columns. Note that the actual plot " + \
+              "file will be slightly larger, since a title, colorbar, " + \
+              "etc. will be added next to the data area. If -I d, " + \
               "or -I default, the default output size of " + \
               "1200x800x1 px will be used. If this command line parameter " + \
               "is not passed to ObsPySOD at all, no plots will be created." + \
@@ -267,6 +275,13 @@ def main():
               "your options, this will approximately double the data " + \
               "download volume (but you'll end up with nicer plots ;-))."
     parser.add_option("-F", "--fill-plot", action="store_true", dest="fill",
+                      help=helpmsg)
+    helpmsg = "Specify phases for which the theoretical arrival times " + \
+              "should be plotted on top if creating the data plot(see " + \
+              "above, -I option). Usage: -a phase1,phase2,(...)." + \
+              " Default: -a P,S. See the long help for available phases. " + \
+              "If you just want to plot the data and no phases, use -a none."
+    parser.add_option("-a", "--phases", action="store", dest="phases",
                       help=helpmsg)
     parser.add_option("-d", "--debug", action="store_true", dest="debug",
                       help="Show debugging information.")
@@ -341,7 +356,7 @@ def main():
                     print "Format: e.g. -I 800x600x1/80"
                     sys.exit(0)
             try:
-                timespan = int(timespan)
+                timespan = float(timespan)
                 # we need the timespan in seconds later
                 timespan *= 60
             except:
@@ -363,12 +378,22 @@ def main():
                     print "Format: e.g. -I 800x600x3"
                     sys.exit(0)
             # this is the default timespan if no timespan was provided
-            timespan = 100 * 60
+            timespan = 100 * 60.0
     if options.debug:
         print "pltWidth: ", pltWidth
         print "pltHeight: ", pltHeight
         print "colWidth: ", colWidth
         print "timespan: ", timespan
+    # parse phases into a list of strings usable with travelTimePlot
+    try:
+        if options.phases == 'none':
+            pltPhases =  []
+        else:
+            pltPhases = options.phases.split(',')
+    except:
+        print "Erroneous phases given."
+        print "Format: e.g. -a P,S,PKPdiff"
+        sys.exit(0)
     ## if the user has given e.g. -r x/x/x/x or -t time1/time
     # extract min. and max. longitude and latitude if the user has given the
     # coordinates with -r (GMT syntax)
@@ -726,7 +751,7 @@ def main():
             print 'Downloading event %s from ArcLink %s...' \
                                                           % (eventid, station),
             try:
-                # I have been told that initializing the client often reduces
+                # I have been told that often initializing the client reduces
                 # problems
                 arcclient = obspy.arclink.Client(timeout=5,
                                                  debug=options.debug)
@@ -775,6 +800,8 @@ def main():
                 # if there has been no Exception, assume d/l was ok
                 print "done."
                 if options.plt:
+                    # referencing st[0] with tr
+                    tr = st[0]
                     if options.fill:
                         # if the user gave -F cmd line option
                         print "Getting and scaling data for station plot...",
@@ -784,20 +811,22 @@ def main():
                         # for the (rectangular) plot
                         try:
                             st = arcclient.getWaveform(network=net,
-                                                     station=sta, location=loc,
+                                              station=sta, location=loc,
                                               channel=cha, starttime=eventtime,
-                                                  endtime=eventtime + timespan)
+                                              endtime=eventtime + timespan)
                         except Exception, error:
                             print "error: ",
                             print error
                             continue
                         # the way we downloaded data, there should always be
                         # exactly one trace in each stream object
-                        tr = st[0]
                     else:
                         # if the user did not provide -F, we wont d/l any more
-                        # data. we need to fill up the data we have with zeros:
-                        tr = st[0]
+                        # data. we need trim exisiting data:
+                        print "Scaling data for station plot...",
+                        tr.trim(starttime=eventtime,
+                                endtime=eventtime + timespan, pad=True,
+                                fill_value=0)
                     # x axis / abscissa - distance
                     # y axis / ordinate - time
                     # normalize the trace, needed for plotting
@@ -812,8 +841,13 @@ def main():
                     if options.debug:
                         print "pixelcol: ", pixelcol
                     # Find the pixel column that represents the distance of
-                    # this station
+                    # this station. if the colWidth is >1, we need to plot the
+                    # station to the according width, reducing the internal
+                    # resolution of the plot by this factor
                     x_coord = int((distance / 180.0) * pltWidth)
+                    # now we need to floor down to the next multiple of the
+                    # station column width:
+                    x_coord -= x_coord % colWidth
                     # Add trace as one column to waveform matrix. the [0] entry
                     # of the matrix counts how many waveforms have been added
                     # to that column (this will be normalized later)
@@ -825,8 +859,14 @@ def main():
                     if options.debug:
                         print "len stack: ", len(np.hstack((1, abs(pixelcol))))
                         print "len stmatrixslice: ", len(stmatrix[:, x_coord])
+                    # add counter entry to pixelcol and take absolute of all
+                    # values in pixelcol
+                    pixelcol = np.hstack((1, abs(pixelcol)))
                     try:
-                        stmatrix[:, x_coord] += np.hstack((1, abs(pixelcol)))
+                        # add pixelcol to 1 or more columns, depending on the
+                        # chosen width of the station columns
+                        stmatrix[:, x_coord:x_coord + colWidth] += \
+                                   np.vstack([pixelcol] * colWidth).transpose()
                     except:
                         print "failed."
                         continue
@@ -923,21 +963,27 @@ def main():
                         overlaps += 1
                 print "done."
                 if options.plt:
-                    print "Getting and scaling data for station plot...",
-                    del st
-                    # add to waveform matrix
                     # this is the same as for arclink, I did not want to
                     # replicate the comments, see above for them
-                    try:
-                        st = irisclient.getWaveform(network=net, station=sta,
-                                                    location=loc, channel=cha,
-                                                    starttime=eventtime,
-                                                  endtime=eventtime + timespan)
-                    except Exception, error:
-                        print "error: ",
-                        print error
-                        continue
                     tr = st[0]
+                    if options.fill:
+                        print "Getting and scaling data for station plot...",
+                        del st
+                        try:
+                            st = irisclient.getWaveform(network=net,
+                                              station=sta, location=loc,
+                                              channel=cha, starttime=eventtime,
+                                              endtime=eventtime + timespan)
+                        except Exception, error:
+                            print "error: ",
+                            print error
+                            continue
+                    else:
+                    # if the user did not provide -F, fill up existing data:
+                        print "Scaling data for station plot...",
+                        tr.trim(starttime=eventtime,
+                                endtime=eventtime + timespan, pad=True,
+                                fill_value=0)
                     tr.normalize()
                     pixelcol = np.around(scipy.ndimage.interpolation.zoom(
                                                   tr,
@@ -946,11 +992,14 @@ def main():
                     if options.debug:
                         print "pixelcol: ", pixelcol
                     x_coord = int((distance / 180.0) * pltWidth)
+                    x_coord -= x_coord % colWidth
                     if options.debug:
                         print "len stack: ", len(np.hstack((1, abs(pixelcol))))
                         print "len stmatrixslice: ", len(stmatrix[:, x_coord])
+                    pixelcol = np.hstack((1, abs(pixelcol)))
                     try:
-                        stmatrix[:, x_coord] += np.hstack((1, abs(pixelcol)))
+                        stmatrix[:, x_coord:x_coord + colWidth] += \
+                                   np.vstack([pixelcol] * colWidth).transpose()
                     except:
                         print "failed."
                         continue
@@ -979,38 +1028,41 @@ def main():
         # close quake file
         quakefout.close()
         if options.plt:
-            # normalize each distance column - the [0, i] entry works has been
-            # counting, how many stations we did stack for that distance
-            # this will result in NaN values for columns where we do not have
-            # data and will normalize all other columns without the if
-            # statement. NaN will be transparent in plot
-            # XXX which behaviour is preferred?
+            # normalize each distance column - the [0, i] entry has been
+            # counting how many stations we did add at that distance
             for i in range(pltWidth - 1):
-                if stmatrix[0,i] != 0:
-                    stmatrix[:,i] /= stmatrix[0,i]
+                if stmatrix[0, i] != 0:
+                    stmatrix[:, i] /= stmatrix[0, i]
+            # [1:,:] because we do not want to display the counter
+            plt.imshow(stmatrix[1:, :], vmin=0, vmax=1,
+                       origin='lower', cmap=plt.cm.hot_r)
+            plt.xticks(range(0, pltWidth, pltWidth / 4),
+                             ('0', '45', '90', '135', '180'), rotation=45)
+            y_incr = timespan / 60 / 4
+            plt.yticks(range(0, pltHeight, pltHeight / 4),
+                      ('0', str(y_incr), str(2 * y_incr), str(3 * y_incr),
+                       str(3 * y_incr)))
+            plt.xlabel('Distance from epicenter in degrees')
+            plt.ylabel('Time after origin time in minutes')
+            titlemsg = "Event %s:\ndata and " % eventid + \
+                       "theoretical arrival times\n"
+            plt.title(titlemsg)
+            plt.colorbar()
+            # add taupe theoretical arrival times points to plot
+            # plt.plot([10, 100],[10, 13], '.')
+            # invoking travelTimePlot function, taken and fitted to my needs
+            # from the obspy.taupe package
+            # choose npoints value depending on plot size
+            travelTimePlot(npoints=pltWidth, phases=pltPhases,
+                           depth=eventdepth, model=options.model,
+                           pltWidth=pltWidth, pltHeight=pltHeight,
+                           timespan=timespan)
             # construct filename and save event plots
             print "Done with event %s, saving plots..." % eventid
             if options.debug:
                 print "stmatrix: ", stmatrix
             plotfn = os.path.join(datapath, eventid, 'waveforms.png')
-            # [1:,:] because we do not want to display the counter
-            """
-            plt.imsave(fname=plotfn, arr=stmatrix[1:,:], vmin=0, vmax=1,
-                       origin='lower', cmap=plt.cm.gist_earth)
-            cmap=plt.cm.hot_r gelb->rot auf weiss
-           """
-            plt.imshow(stmatrix[1:,:], vmin=0, vmax=1,
-                       origin='lower', cmap=plt.cm.hot_r)
-            plt.xticks(range(0, pltWidth, pltWidth/4),
-                             ('0', '45', '90', '135', '180'), rotation=45)
-            y_incr = timespan / 60 / 4
-            plt.yticks(range(0, pltHeight, pltHeight/4),
-                      ('0', str(y_incr), str(2 * y_incr), str(3 * y_incr),
-                       str(3 * y_incr)))
-            plt.xlabel('Distance from epicenter in degrees')
-            plt.ylabel('Time after origin time in minutes')
             plt.savefig(plotfn)
-            # XXX: ?if a grey colormap is preferred: plt.cm.gray
     # done with ArcLink, remove ArcLink client
     del arcclient
     # done with iris, remove client
@@ -1269,6 +1321,58 @@ def getnparse_availability(west, east, south, north, start, end, nw, st, lo,
             print("Received %d station(s) from IRIS." % (len(stations)))
             print("Received %d channel(s) from IRIS." % (len(avail_list)))
             return avail_list
+
+
+def travelTimePlot(npoints, phases, depth, model, pltWidth, pltHeight,
+                   timespan):
+    """
+    Plots taupe arrival times on top of event data. This is just a modified
+    version of taupe.travelTimePlot()
+
+    :param npoints: int, optional
+        Number of points to plot. Defaults to 500.
+    :param phases: list of strings, optional
+        List of phase names which should be used within the plot. Defaults to
+        all phases if not explicit set.
+    :param depth: float, optional
+        Depth in kilometer. Defaults to 100.
+    :param model: string
+    """
+
+    data = {}
+    for phase in phases:
+        data[phase] = [[], []]
+    degrees = np.linspace(0, 180, npoints)
+    # Loop over all degrees.
+    for degree in degrees:
+        tt = taup.getTravelTimes(degree, depth, model)
+        # Mirror if necessary.
+        if degree > 180:
+            degree = 180 - (degree - 180)
+        for item in tt:
+            phase = item['phase_name']
+            if data.has_key(phase):
+                try:
+                    data[phase][1].append(item['time'])
+                    data[phase][0].append(degree)
+                except:
+                    data[phase][1].append(np.NaN)
+                    data[phase][0].append(degree)
+    # Plot and some formatting.
+    for key, value in data.iteritems():
+        # value[0] stores all degrees, value[1] all times as lists
+        # convert those values to the respective obspysod stmatrix indices:
+        # divide every entry of value[0] list by 180 and sort of "multiply with
+        # pltWidth" to get correct stmatrix index
+        x_coord = map(operator.div, value[0], [180.0 / pltWidth] *
+                  len(value[0]))
+        # for the y coord, divide every entry by the timespan and mulitply with
+        # pltHeight
+        y_coord = map(operator.div, value[1], [timespan / pltHeight] *
+                  len(value[1]))
+        # plot arrival times on top of data
+        plt.plot(x_coord, y_coord, ',', label=key)
+    plt.legend()
 
 
 def queryMeta(west, east, south, north, start, end, nw, st, lo, ch, permanent,
