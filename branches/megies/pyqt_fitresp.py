@@ -8,6 +8,7 @@
 import os
 import sys
 import optparse
+import warnings
 
 from PyQt4 import QtGui, QtCore
 from PyQt4.QtCore import QEvent, Qt
@@ -29,11 +30,13 @@ class MyMainWindow(QtGui.QMainWindow):
         # for convenience set some instance wide attributes
         self.file = options.file
 
-        # put some addtional setup stuff here...
+        # read in the calibration data and set the nfft/max freq
         tmp = np.loadtxt(self.file).T
         self.freq = tmp[0]
         self.ampl = tmp[1]
         self.phase = tmp[2]
+        self.nfft = (len(self.freq) - 1) *2
+        self.spr = 1.0 / 2 * self.freq[-1]
 
         # setup initial poles/zeros
         self.paz = {}
@@ -206,29 +209,33 @@ class MyMainWindow(QtGui.QMainWindow):
         """
         This method should do everything to update the plot.
         """
-        # clear axes before anything else
-        ax1 = self.ax1
-        ax1.clear()
-        ax2 = self.ax2
-        ax2.clear()
+        try:
+            # clear axes before anything else
+            ax1 = self.ax1
+            ax1.clear()
+            ax2 = self.ax2
+            ax2.clear()
 
-        # plot theoretical responses from paz here
-        paz = self.paz
-        h, f = pazToFreqResp(paz['poles'], paz['zeros'], paz['gain'], 0.005,
-                             16384, freq=True)
-        ampl = abs(h)
-        phase = np.unwrap(np.arctan2(-h.imag, h.real)) #take negative of imaginary part
-        ax1.loglog(f, ampl, color="r")
-        ax2.semilogx(f, phase, color="r", label='paz fit')
+            # plot theoretical responses from paz here
+            paz = self.paz
+            h, f = pazToFreqResp(paz['poles'], paz['zeros'], paz['gain'],
+                                 self.spr, self.nfft, freq=True)
+            ampl = abs(h)
+            phase = np.unwrap(np.arctan2(-h.imag, h.real)) #take negative of imaginary part
+            ax1.loglog(f, ampl, color="r")
+            ax2.semilogx(f, phase, color="r", label='paz fit')
 
-        # plot read in calibration output
-        ax1.loglog(self.freq, self.ampl, color="b", ls="--")
-        ax2.semilogx(self.freq, self.phase, color="b", ls="--", label='calibration output')
+            # plot read in calibration output
+            ax1.loglog(self.freq, self.ampl, color="b", ls="--")
+            ax2.semilogx(self.freq, self.phase, color="b", ls="--", label='calibration output')
 
-        ax2.legend()
+            ax2.legend()
 
-        # update matplotlib canvas
-        self.canv.draw()
+            # update matplotlib canvas
+            self.canv.draw()
+        except:
+            msg = "Problem during plot-update. Value ranges OK?"
+            warnings.warn(msg)
     
     def on_anyButton_valueChanged(self, newvalue):
         if self.corn_freqs != 0:
