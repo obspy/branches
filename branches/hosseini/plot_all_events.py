@@ -1,5 +1,6 @@
 """
 Plot a map that shows all requested events...
+ATTENTION: llcrnrlon, llcrnrlat, urcrnrlon, urcrnrlat --> have been imported for local plotting
 """
 
 import pickle
@@ -7,7 +8,8 @@ from mpl_toolkits.basemap import Basemap
 import numpy as np
 import matplotlib.pyplot as plt
 
-def plot_all_events(Address_events, events, lon_event, lat_event, name_event, len_events):
+def plot_all_events(Address_events, events, lon_event, lat_event, name_event, len_events, \
+	llcrnrlon, llcrnrlat, urcrnrlon, urcrnrlat):
 	
 	plt.clf()
 	
@@ -22,19 +24,21 @@ def plot_all_events(Address_events, events, lon_event, lat_event, name_event, le
 	#m.drawcountries(linewidth=2)
 	
 	m.drawcoastlines()
-	m.fillcontinents(color='coral',lake_color='aqua')
-    
+	#m.fillcontinents(color='coral',lake_color='aqua')
+	m.fillcontinents()
 	# draw parallels and meridians.
 	m.drawparallels(np.arange(-90.,120.,30.))
 	m.drawmeridians(np.arange(0.,420.,60.))
-	m.drawmapboundary(fill_color='aqua') 
+	m.drawmapboundary() 
 	
-	plt.title("Mollweide Projection, Events");
+	#plt.title("Mollweide Projection, Events");
+	plt.title("Events");
 	#plt.title("Events, 02.01.2008-01.05.2011");
 	x, y = m(lon_event, lat_event)
-	m.scatter(x, y, 20, color="b", marker="o", edgecolor="k", zorder=3)
-	'''
-	for i in range(0, len_events)
-		plt.text(x[i], y[i], ' ' + name_event[i], va="top", family="monospace", weight="bold")
-	'''
+	m.scatter(x, y, 20, color="red", marker="o", edgecolor="k", zorder=3)
+	
+	for i in range(0, len_events):
+		plt.text(x[i], y[i], ' ' + name_event[i], va="top", family="monospace", \
+		color = 'black', size = 'x-small', weight="bold")
+	
 	plt.savefig(Address_events + '/All_events' + '.pdf')

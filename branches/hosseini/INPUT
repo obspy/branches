@@ -22,11 +22,18 @@ ATTENTION: Restricting returned data by geographical coordinates either
 all of minlat, maxlat, minlon and maxlon have to be specified (for a rectangular bounding box) OR 
 all of lat, lon, minradius and maxradius have to be specified (for a circular bounding area)
 
-lat = None		# Latitude of center point for circular bounding area.
-lon = None		# Longitude of center point for circular bounding area.
-minradius = None		# Minimum radius for circular bounding area.
-maxradius = None		# Maximum radius for circular bounding area.
+lat = 0		# Latitude of center point for circular bounding area.
+lon = 0		# Longitude of center point for circular bounding area.
+minradius = 0		# Minimum radius for circular bounding area.
+maxradius = 1e100000		# Maximum radius for circular bounding area.
 minlat = None		# Minimum latitude for rectangular bounding box.
 maxlat = None		# Maximum latitude for rectangular bounding box.
 minlon = None		# Minimum longitude for rectangular bounding box.
 maxlon = None		# Maximum longitude for rectangular bounding box.
+
+Plot:
+
+llcrnrlon = -180 	# longitude of lower left hand corner of the desired map domain (degrees).
+llcrnrlat = -90  	# latitude of lower left hand corner of the desired map domain (degrees).
+urcrnrlon = 180 	# longitude of upper right hand corner of the desired map domain (degrees).
+urcrnrlat = 90 		# latitude of upper right hand corner of the desired map domain (degrees).

@@ -1,6 +1,7 @@
 #!!!!! CHECK!!!! network and stations and channels!!!!
 """
 Return the available IRIS stations at the IRIS-DMC for all requested events
+ATTENTION: circular bounding area
 """
 
 from obspy.iris import Client as Client_iris
@@ -13,7 +14,7 @@ from lxml import objectify, etree
 client_iris = Client_iris()
 
 def IRIS_get_Network_XML(len_events, events, Address_events, net, sta, loc, cha, lat_cba, lon_cba, mr_cba, \
-		Mr_cba, mlat_rbb, Mlat_rbb, mlon_rbb, Mlon_rbb)
+		Mr_cba, mlat_rbb, Mlat_rbb, mlon_rbb, Mlon_rbb):
 		
 	t_iris_1 = datetime.now()
 	
@@ -25,11 +26,14 @@ def IRIS_get_Network_XML(len_events, events, Address_events, net, sta, loc, cha,
 	for i in range(0, len_events):
 		t.append(UTCDateTime(events[i]['datetime']))
 		dic[i] = {}
-		
+		#import ipdb; ipdb.set_trace()
 		while True:
 			try:
-				Result = client_iris.availability(net, sta, loc, cha, t[i]-10, t[i]+10,lat_cba, lon_cba, mr_cba, \
-					Mr_cba, mlat_rbb, Mlat_rbb, mlon_rbb, Mlon_rbb, output='xml')
+				Result = client_iris.availability(net, sta, loc, cha, \
+					t[i]-10, t[i]+10, lat=lat_cba, lon=lon_cba, minradius=mr_cba, \
+					maxradius=Mr_cba, output='xml')
+
+				 #mlat_rbb, Mlat_rbb, mlon_rbb, Mlon_rbb)
 				 #minlat = 20, maxlat = 50, minlon = -124, maxlon = -70, output='xml')
 				xml_doc = etree.fromstring(Result)
 				xml_doc_string = etree.tostring(xml_doc)
@@ -44,7 +48,7 @@ def IRIS_get_Network_XML(len_events, events, Address_events, net, sta, loc, cha,
 					Sta_sta_code = xml_doc.xpath('/StaMessage/Station')[k].get('sta_code')
 					Sta_Lat = xml_doc.xpath('/StaMessage/Station/Lat')[k].text
 					Sta_Lon = xml_doc.xpath('/StaMessage/Station/Lon')[k].text
-					#Sta_Elevation = xml_doc.xpath('/StaMessage/Station/Elevation')[i].text
+					Sta_Elevation = xml_doc.xpath('/StaMessage/Station/Elevation')[i].text
 					Sta_loc_code = xml_doc.xpath('/StaMessage/Station/Channel')[k].get('loc_code')
 					Sta_chan_code = xml_doc.xpath('/StaMessage/Station/Channel')[k].get('chan_code')
 					#Sta_Start_time = xml_doc.xpath('/StaMessage/Station/Channel/Availability/Extent')[i].get('start')
@@ -57,7 +61,7 @@ def IRIS_get_Network_XML(len_events, events, Address_events, net, sta, loc, cha,
 					#'Location_code': Sta_loc_code, 'Channel_code': Sta_chan_code}
 					dic[i][str(k)] ={'Info': Sta_net_code + '--' + Sta_sta_code, 'Network': Sta_net_code, \
 						'Station': Sta_sta_code, 'Latitude': Sta_Lat, 'Longitude': Sta_Lon, \
-						'Location': Sta_loc_code, 'Channel': Sta_chan_code}
+						'Location': Sta_loc_code, 'Channel': Sta_chan_code, 'Elevation': Sta_Elevation}
 				break
 
 			except Exception, e:

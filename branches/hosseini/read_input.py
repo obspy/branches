@@ -22,7 +22,7 @@ def read_input():
 	maxde = float(S[10].split()[2])
 	maxr = int(S[11].split()[2])
 	pe = S[13].split()[2]
-	
+	#import ipdb; ipdb.set_trace()
 	net = S[15].split()[2]
 	sta = S[16].split()[2]
 	loc = S[17].split()[2]
@@ -35,9 +35,12 @@ def read_input():
 	Mlat_rbb = S[29].split()[2]
 	mlon_rbb = S[30].split()[2]
 	Mlon_rbb = S[31].split()[2]
-	
-	import ipdb; ipdb.set_trace()
-	
+	llcrnrlon = float(S[35].split()[2])
+	llcrnrlat = float(S[36].split()[2])
+	urcrnrlon = float(S[37].split()[2])
+	urcrnrlat = float(S[38].split()[2])
+
 	return Address, mind, maxd, minm, maxm, minla, maxla, minlo, maxlo, \
 		minde, maxde, maxr, pe, net, sta, loc, cha, lat_cba, lon_cba, mr_cba, \
-		Mr_cba, mlat_rbb, Mlat_rbb, mlon_rbb, Mlon_rbb
+		Mr_cba, mlat_rbb, Mlat_rbb, mlon_rbb, Mlon_rbb, llcrnrlon, llcrnrlat, \
+		urcrnrlon, urcrnrlat

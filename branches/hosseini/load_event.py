@@ -1,6 +1,8 @@
 """
 Load events from the directory (pickle)
 get the Lat, Lon and name (depth) of each
+
+ATTENTION: Name of the event = Depth of the event
 """
 
 import pickle
