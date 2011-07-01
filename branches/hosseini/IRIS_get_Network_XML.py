@@ -1,6 +1,6 @@
 #!!!!! CHECK!!!! network and stations and channels!!!!
 """
-Return the available IRIS stations for all requested events
+Return the available IRIS stations at the IRIS-DMC for all requested events
 """
 
 from obspy.iris import Client as Client_iris
@@ -12,8 +12,9 @@ from lxml import objectify, etree
 
 client_iris = Client_iris()
 
-def IRIS_get_Network_XML(len_events, events, Address, Period):
-	
+def IRIS_get_Network_XML(len_events, events, Address_events, net, sta, loc, cha, lat_cba, lon_cba, mr_cba, \
+		Mr_cba, mlat_rbb, Mlat_rbb, mlon_rbb, Mlon_rbb)
+		
 	t_iris_1 = datetime.now()
 	
 	t = []
@@ -27,7 +28,8 @@ def IRIS_get_Network_XML(len_events, events, Address, Period):
 		
 		while True:
 			try:
-				Result = client_iris.availability('*', '*', '', 'BH*', t[i]-10, t[i]+10, output='xml')
+				Result = client_iris.availability(net, sta, loc, cha, t[i]-10, t[i]+10,lat_cba, lon_cba, mr_cba, \
+					Mr_cba, mlat_rbb, Mlat_rbb, mlon_rbb, Mlon_rbb, output='xml')
 				 #minlat = 20, maxlat = 50, minlon = -124, maxlon = -70, output='xml')
 				xml_doc = etree.fromstring(Result)
 				xml_doc_string = etree.tostring(xml_doc)
@@ -68,19 +70,18 @@ def IRIS_get_Network_XML(len_events, events, Address, Period):
 	for i in range(0, len_events):
 		#import os
 		#folder = os.path.join(Address, 'Data', Period, events[i]['event_id'])
-		os.makedirs(Address + '/Data/' + Period + '/' + events[i]['event_id'])
-		os.makedirs(Address + '/Data/' + Period + '/' + events[i]['event_id'] + '/IRIS')
+		os.makedirs(Address_events + '/' + events[i]['event_id'])
+		os.makedirs(Address_events + '/' + events[i]['event_id'] + '/IRIS')
 
 	print 'Folders are Created!'
 
 	t_iris_2 = datetime.now()
-	t_iris_21 = t_iris_2 - t_iris_1
+	t_iris = t_iris_2 - t_iris_1
 	
-	print 'IRIS-Time:'
-	print t_iris_21
+	print 'IRIS-Time: (Availability)'
+	print t_iris
 	
-	print 'length of events:'
-	print len_events
+	
 	
 	#CHECK!
 	#print 'length of required IRIS channels:'

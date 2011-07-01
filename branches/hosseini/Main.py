@@ -38,8 +38,9 @@ Remaining Parts:
 from read_input import *
 (Address, min_datetime, max_datetime, min_magnitude, max_magnitude, \
 	min_latitude, max_latitude, min_longitude, max_longitude, \
-	min_depth, max_depth, max_results, plot_events) = read_input()
-
+	min_depth, max_depth, max_results, plot_events, net, sta, loc, cha, lat_cba, lon_cba, mr_cba, \
+		Mr_cba, mlat_rbb, Mlat_rbb, mlon_rbb, Mlon_rbb) = read_input()
+#import ipdb; ipdb.set_trace()
 # ------------------------Import required Modules (Python and Obspy)-------------
 from obspy.core import read
 from obspy.core import UTCDateTime
@@ -66,19 +67,21 @@ from get_Events import *
 (events, len_events, Period, Address_events) = get_Events(Address, min_datetime, \
 		max_datetime, min_magnitude, max_magnitude,	min_latitude, max_latitude, \
 		min_longitude, max_longitude, min_depth, max_depth, max_results)
-import ipdb; ipdb.set_trace()
+#import ipdb; ipdb.set_trace()
 if plot_events == 'on':
-	from plot_all_events import *
 	from load_event import *
+	from plot_all_events import *
 	(lat_event, lon_event, name_event) = load_event(len_events, Address_events)
 	
 	plot_all_events(Address_events, events = events, lon_event = lon_event, \
-		lat_event = lat_event, name_event = name_event, Num_Event = len_events)
+		lat_event = lat_event, name_event = name_event, len_events = len_events)
 
 # ------------------------IRIS------------------------------------------------
+import ipdb; ipdb.set_trace()
 from IRIS_get_Network_XML import *
 (Networks_iris, t_iris) = \
-	IRIS_get_Network_XML(len_events, events, Address, Period)
+	IRIS_get_Network_XML(len_events, events, Address_events, net, sta, loc, cha, lat_cba, lon_cba, mr_cba, \
+		Mr_cba, mlat_rbb, Mlat_rbb, mlon_rbb, Mlon_rbb)
 
 from IRIS_get_Waveform import *
 (Lat_IRIS, Lon_IRIS, name_IRIS, Len_Lat_Lon_IRIS) = \

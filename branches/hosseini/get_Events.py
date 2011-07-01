@@ -1,5 +1,5 @@
 """
-Getting list of events from NERIES
+Getting list of events from NERIES (a client for the Seismic Data Portal (http://www.seismicportal.eu))
 """
 
 from obspy.neries import Client as Client_neries
@@ -47,14 +47,19 @@ def get_Events(Address, min_datetime, max_datetime, min_magnitude, max_magnitude
 		print "Magnitude:" + " " + str(events[i]['magnitude'])
 		print "-------------------------------------------------"
 	
-	Event_file = open(Address + '/Data/' + Period + '/list_event', 'w')
+	Event_file = open(Address_events + '/list_event', 'w')
 	pickle.dump(events, Event_file)
 	Event_file.close()
 	
 	t_event_2 = datetime.now()
 	t_event = t_event_2 - t_event_1
 	
-	print 'Events are saved!...time:'
+	print 'Events are saved!'
+	
+	print 'length of events:'
+	print len_events
+	
+	print 'time:'
 	print t_event
 	
 	return events, len_events, Period, Address_events

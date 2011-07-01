@@ -6,11 +6,15 @@ from datetime import datetime
 import time
 import pickle
 from obspy.iris import Client as Client_iris
+import os
 
 client_iris = Client_iris()
 
 def IRIS_get_Waveform(Address, Period, len_events, events, Networks_iris, t):
 	
+	for i in range(0, len_events):
+		os.makedirs(Address + '/Data/' + Period + '/' + \
+						events[i]['event_id'] + '/IRIS/RESP/')
 	for i in range(0, len_events):
 		Exception_file = open(Address + '/Data/' + Period + '/' + \
 			events[i]['event_id'] + '/IRIS/' + 'Exception_file_IRIS', 'w')
@@ -32,7 +36,7 @@ def IRIS_get_Waveform(Address, Period, len_events, events, Networks_iris, t):
 		name_temp = []
 		len_req_iris_BH = len(Networks_iris[i]) 
 		
-		
+		'''
 		for j in range(0, len_req_iris_BH):
 		#for j in range(0,10):
 			EC = str(i+1) + '-' + str(j)
@@ -99,7 +103,7 @@ def IRIS_get_Waveform(Address, Period, len_events, events, Networks_iris, t):
 				Exception_file.writelines(ee)
 				print e
 		
-		
+		'''
 		#for j in range(0, len_req_iris_BH):
 		#for j in range(0, len_req_iris_BH, 35):
 		for j in range(0,10):
@@ -111,6 +115,12 @@ def IRIS_get_Waveform(Address, Period, len_events, events, Networks_iris, t):
 				client_iris = Client_iris()
 				
 				# BHZ
+				st = client_iris.saveWaveform(Address + '/Data/' + Period + '/' + \
+					events[i]['event_id'] + '/IRIS/' + Networks_iris[i][str(j)]['Network'] + \
+					'.' + Networks_iris[i][str(j)]['Station'] + '.' + Networks_iris[i][str(j)]['Location'] + \
+					'.' + 'BHZ', Networks_iris[i][str(j)]['Network'], Networks_iris[i][str(j)]['Station'], \
+					Networks_iris[i][str(j)]['Location'], 'BHZ', t[i]-300, t[i]+4800)
+				'''
 				st = client_iris.getWaveform(Networks_iris[i][str(j)]['Network'], Networks_iris[i][str(j)]['Station'], \
 					Networks_iris[i][str(j)]['Location'], 'BHZ', t[i]-300, t[i]+4800)
 				iris_BH_file = open(Address + '/Data/' + Period + '/' + \
@@ -120,7 +130,7 @@ def IRIS_get_Waveform(Address, Period, len_events, events, Networks_iris, t):
 				pickle.dump(st, iris_BH_file)
 				#import ipdb; ipdb.set_trace()
 				iris_BH_file.close()
-				
+				'''
 				Lat_temp.append([i, Networks_iris[i][str(j)]['Latitude']])
 				Lon_temp.append([i, Networks_iris[i][str(j)]['Longitude']])
 				name_temp.append([i, Networks_iris[i][str(j)]['Network'] + '.' + \
@@ -128,10 +138,11 @@ def IRIS_get_Waveform(Address, Period, len_events, events, Networks_iris, t):
 				Lat.append([i, Networks_iris[i][str(j)]['Latitude']])
 				Lon.append([i, Networks_iris[i][str(j)]['Longitude']])
 				name.append([i, Networks_iris[i][str(j)]['Network'] + '.' +Networks_iris[i][str(j)]['Station']])
-				# client_arclink.saveResponse(Address + '/Data/' + Period + \
-				#'/' + events[i]['event_id'] + '/Arc_BH/' + 'Resp/' + str(Nets_Arc_req_BHE[i][j][0]) + \
-				#'-' + str(Nets_Arc_req_BHE[i][j][1]) + '-' + str(Nets_Arc_req_BHE[i][j][2]) + '-' + 'BH', \
-				#Nets_Arc_req_BHE[i][j][0], Nets_Arc_req_BHE[i][j][1], Nets_Arc_req_BHE[i][j][2], 'BH*', t[i]-300, t[i]+4800)
+				client_iris.saveResponse(Address + '/Data/' + Period + '/' + \
+					events[i]['event_id'] + '/IRIS/RESP/' + Networks_iris[i][str(j)]['Network'] + \
+					'.' + Networks_iris[i][str(j)]['Station'] + '.' + Networks_iris[i][str(j)]['Location'] + \
+					'.' + 'BHZ', Networks_iris[i][str(j)]['Network'], Networks_iris[i][str(j)]['Station'], \
+					Networks_iris[i][str(j)]['Location'], 'BHZ', t[i]-300, t[i]+4800)
                
 			except Exception, e:	
 				print Networks_iris[i][str(j)]['Network'], Networks_iris[i][str(j)]['Station']

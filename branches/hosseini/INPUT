@@ -1,7 +1,7 @@
-Address = /media/Elements/Wave       # where you want to save the waveforms and ...
-min_datetime = 2009-09-30            # min datetime
-max_datetime = 2009-10-01            # max datetime
-min_magnitude = 7.4                  # min magnitude
+Address = /media/Elements/Wave		# where you want to save the waveforms and ...
+min_datetime = 2009-09-20		# min datetime
+max_datetime = 2009-10-02		# max datetime
+min_magnitude = 6.0		# min magnitude
 max_magnitude = 8.0					 # max magnitude
 min_latitude = -90					 # min latitude
 max_latitude = 90 					 # max latitude
@@ -11,4 +11,22 @@ min_depth = +10						 # min depth
 max_depth = -6000					 # max depth
 max_results = 2500                   # max Results
 
-plot_events = on                     # whether you want to have a plot of all events or not (on/off)
+plot_events = on                     # whether you want to have a plot of all events or not (on/off)...ATTENTION: you should have "mpl_toolkits.basemap" installed
+
+network = *		# Network code, e.g. ‘BW’, wildcards allowed.
+station = *		# Station code, e.g. ‘MANZ’, wildcards allowed.
+location = *		# Location code, e.g. ‘00’, wildcards allowed.
+channel = BH*		# Channel code, e.g. ‘EHE’, wildcards allowed.
+
+ATTENTION: Restricting returned data by geographical coordinates either
+all of minlat, maxlat, minlon and maxlon have to be specified (for a rectangular bounding box) OR 
+all of lat, lon, minradius and maxradius have to be specified (for a circular bounding area)
+
+lat = None		# Latitude of center point for circular bounding area.
+lon = None		# Longitude of center point for circular bounding area.
+minradius = None		# Minimum radius for circular bounding area.
+maxradius = None		# Maximum radius for circular bounding area.
+minlat = None		# Minimum latitude for rectangular bounding box.
+maxlat = None		# Maximum latitude for rectangular bounding box.
+minlon = None		# Minimum longitude for rectangular bounding box.
+maxlon = None		# Maximum longitude for rectangular bounding box.

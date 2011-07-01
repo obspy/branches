@@ -1,11 +1,11 @@
 """
-Load events from the directory
+Load events from the directory (pickle)
 get the Lat, Lon and name (depth) of each
 """
 
 import pickle
 
-def load_event(Num_Event, Address_events):	
+def load_event(len_events, Address_events):	
 	
 	Event_file = open(Address_events + '/list_event', 'r')
 	events = pickle.load(Event_file)
@@ -14,7 +14,7 @@ def load_event(Num_Event, Address_events):
 	lon_event = []
 	name_event = []
 	
-	for i in range(0, Num_Event):
+	for i in range(0, len_events):
 		lat_event.append(events[i]['latitude'])
 		lon_event.append(events[i]['longitude'])
 		name_event.append(str(events[i]['depth']))
