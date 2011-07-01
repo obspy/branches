@@ -36,7 +36,7 @@ class MyMainWindow(QtGui.QMainWindow):
         self.ampl = tmp[1]
         self.phase = tmp[2]
         self.nfft = (len(self.freq) - 1) *2
-        self.spr = 1.0 / 2 * self.freq[-1]
+        self.spr = 1.0 / (2 * self.freq[-1])
 
         # setup initial poles/zeros
         self.paz = {}
