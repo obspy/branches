@@ -198,10 +198,12 @@ class MyMainWindow(QtGui.QMainWindow):
         Connect box signals to methods...
         """
         connect = QtCore.QObject.connect
-        for box in self.boxes_poles_real + self.boxes_poles_imag + \
-                   self.boxes_zeros_real + self.boxes_zeros_imag + \
-                   self.boxes_corn_freqs + self.boxes_dampings + \
-                   [self.box_norm]:
+        all_boxes = self.boxes_poles_real + self.boxes_poles_imag + \
+                    self.boxes_zeros_real + self.boxes_zeros_imag + \
+                    [self.box_norm]
+        if self.corn_freqs != 0:
+            all_boxes += self.boxes_corn_freqs + self.boxes_dampings
+        for box in all_boxes:
             connect(box, QtCore.SIGNAL("editingFinished()"),
                     self.on_anyButton_editingFinished)
 
