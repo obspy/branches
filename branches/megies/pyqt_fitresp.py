@@ -60,7 +60,7 @@ class MyMainWindow(QtGui.QMainWindow):
 
         # make initial plot and show it
         if self.corn_freqs != 0:
-            self.on_anyButton_valueChanged(0)
+            self.on_anyButton_editingFinished()
         self.update()
         self.canv.show()
         self.show()
@@ -202,8 +202,8 @@ class MyMainWindow(QtGui.QMainWindow):
                    self.boxes_zeros_real + self.boxes_zeros_imag + \
                    self.boxes_corn_freqs + self.boxes_dampings + \
                    [self.box_norm]:
-            connect(box, QtCore.SIGNAL("valueChanged(double)"),
-                    self.on_anyButton_valueChanged)
+            connect(box, QtCore.SIGNAL("editingFinished()"),
+                    self.on_anyButton_editingFinished)
 
     def update(self):
         """
@@ -237,7 +237,7 @@ class MyMainWindow(QtGui.QMainWindow):
             msg = "Problem during plot-update. Value ranges OK?"
             warnings.warn(msg)
     
-    def on_anyButton_valueChanged(self, newvalue):
+    def on_anyButton_editingFinished(self):
         if self.corn_freqs != 0:
             self.__set_paz_from_cornfreqs()
         self.__update_paz()
