@@ -47,6 +47,7 @@ def Arclink_get_Waveform(Address, Period, len_events, events, Nets_Arc_req_BHE, 
 		name_temp = []
 		len_req_Arc_BHE = len(Nets_Arc_req_BHE[i]) 
 		
+		'''
 		for j in range(0, len_req_Arc_BHE):
 		#for j in range(11,20):
 			EC = str(i+1) + '-' + str(j)
@@ -142,7 +143,7 @@ def Arclink_get_Waveform(Address, Period, len_events, events, Nets_Arc_req_BHE, 
 				Exception_file2.writelines(ee)
 				
 				print e
-		
+		'''
 		for j in range(0, len_req_Arc_BHE):
 		#for j in range(11,20):
 			EC = str(i+1) + '-' + str(j)
@@ -166,7 +167,7 @@ def Arclink_get_Waveform(Address, Period, len_events, events, Nets_Arc_req_BHE, 
 					'-' + str(Nets_Arc_req_BHE[i][j][2]) + '-' + 'BH', \
 					Nets_Arc_req_BHE[i][j][0], Nets_Arc_req_BHE[i][j][1], \
 					Nets_Arc_req_BHE[i][j][2], 'BH*', t[i]-300, t[i]+4800)
-								
+						
 				#!!!! You could change this part with PARSER!!!!
 				Inv = client_arclink.getInventory(Nets_Arc_req_BHE[i][j][0], \
 					Nets_Arc_req_BHE[i][j][1], Nets_Arc_req_BHE[i][j][2], 'BH*')

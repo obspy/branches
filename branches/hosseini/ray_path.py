@@ -25,16 +25,18 @@ def ray_path(Address, Period, file_name, events, Ser_name, lon_event, lat_event,
 	#m.drawcountries(linewidth=2)
 	
 	m.drawcoastlines()
-	m.fillcontinents(color='coral',lake_color='aqua')
-
+	#m.fillcontinents(color='coral',lake_color='aqua')
+	m.fillcontinents()
 	# draw parallels and meridians.
 	m.drawparallels(np.arange(-90.,120.,30.))
 	m.drawmeridians(np.arange(0.,420.,60.))
-	m.drawmapboundary(fill_color='aqua') 
+	m.drawmapboundary()
+	
 	#plt.title("Mollweide Projection, Ray path");    # ipdb.set_trace()
-	plt.title("Ray path");    # ipdb.set_trace()
+	    # ipdb.set_trace()
 		
 	if Ser_name == '/IRIS/':
+		plt.title("IRIS");
 		lons_sta_float = []
 		lats_sta_float = []
 		for X in lons_sta:
@@ -43,32 +45,35 @@ def ray_path(Address, Period, file_name, events, Ser_name, lon_event, lat_event,
 			lats_sta_float.append(float(X))
 		x, y = m(lons_sta_float, lats_sta_float)
 		color = 'blue'
+		color1 = 'red'
 	elif Ser_name == '/ARC/':
+		plt.title("Arclink");
 		x, y = m(lons_sta, lats_sta)
-		color = 'b'
+		color = 'blue'
+		color1 = 'cyan'
 	
-	m.scatter(x, y, 100, color="y", marker="v", edgecolor="k", zorder=3)
+	m.scatter(x, y, 20, color=color1, marker="v", edgecolor="k", zorder=10)
 
 	for i in range(0, len(names_sta)):
 		#plt.text(x[i], y[i], ' ' + names_sta[i], va="top", family="monospace", weight="bold")
-		plt.text(x[i], y[i], ' ', va="top", family="monospace", weight="bold")
+		plt.text(x[i], y[i], ' ', va="top", size = 'x-small', family="monospace", weight="bold")
 		
 	x, y = m(lon_event, lat_event)
-	m.scatter(x, y, 50, color="black", marker="o", edgecolor="k", zorder=3)
+	m.scatter(x, y, 20, color="black", marker="o", edgecolor="k", zorder=3)
 	
 	# Return the great circles drawn from one event to all stations
 	if Ser_name == '/IRIS/':
 		for i in range(0, len(lats_sta)):
 			m.drawgreatcircle(lon_event, lat_event, lons_sta_float[i], lats_sta_float[i], \
-			color = color, linestyle='-')
-		plt.text(x, y, ' ' + name_event, va="top", family="monospace", weight="bold")
+			color = color, zorder=2, linestyle='-')
+		plt.text(x, y, ' ' + name_event, va="top", family="monospace", color = 'black', size = 'x-small', weight="bold")
 		plt.savefig(Address + '/Data/' + Period + '/' + events[file_name]['event_id'] + '/IRIS/' + str(file_name) + '.pdf')
 	
 	elif Ser_name == '/ARC/':
 		for i in range(0, len(lats_sta)):
 			m.drawgreatcircle(lon_event, lat_event, lons_sta[i], lats_sta[i], \
 			color = color, linestyle='-')
-		plt.text(x, y, ' ' + name_event, va="top", family="monospace", weight="bold")
+		plt.text(x, y, ' ' + name_event, va="top", size = 'x-small', family="monospace", weight="bold")
 		plt.savefig(Address + '/Data/' + Period + '/' + events[file_name]['event_id'] + '/Arc_BH/' + str(file_name) + '.pdf')
 
 	

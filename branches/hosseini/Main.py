@@ -63,6 +63,8 @@ client_iris = Client_iris()
 client_neries = Client_neries()
 client_arclink = Client_arclink()
 
+	
+#import ipdb; ipdb.set_trace()
 # ------------------------Getting List of Events---------------------------------
 from get_Events import *
 (events, len_events, Period, Address_events) = get_Events(Address, min_datetime, \
@@ -73,7 +75,7 @@ if plot_events == 'on':
 	from load_event import *
 	from plot_all_events import *
 	(lat_event, lon_event, name_event) = load_event(len_events, Address_events)	
-		
+			
 	plot_all_events(Address_events, events = events, lon_event = lon_event, \
 	lat_event = lat_event, name_event = name_event, len_events = len_events, \
 	llcrnrlon = llcrnrlon, llcrnrlat = llcrnrlat, urcrnrlon = urcrnrlon, urcrnrlat = urcrnrlat)
@@ -84,7 +86,9 @@ from IRIS_get_Network_XML import *
 (Networks_iris, t_iris) = \
 	IRIS_get_Network_XML(len_events, events, Address_events, net, sta, loc, cha, lat_cba, lon_cba, mr_cba, \
 		Mr_cba, mlat_rbb, Mlat_rbb, mlon_rbb, Mlon_rbb)
-import ipdb; ipdb.set_trace()
+
+#import ipdb; ipdb.set_trace()
+
 from IRIS_get_Waveform import *
 (Lat_IRIS, Lon_IRIS, name_IRIS, Len_Lat_Lon_IRIS) = \
 	IRIS_get_Waveform(Address, Period, len_events, events, Networks_iris, t_iris)
@@ -104,7 +108,7 @@ from Arclink_get_Waveform import *
 
 # ------------------------Lat, Lon and Name (depth,...) of the events------------
 from load_event import *
-(lat_event, lon_event, name_event) = load_event(len_events, Address, Period)
+(lat_event, lon_event, name_event) = load_event(len_events, Address_events)
 
 # ------------------------Lat, Lon and Name of the Stations----------------------
 from load_stations import *
@@ -151,7 +155,7 @@ for i in range(0, len_events):
 		name_event = name_event[i], Num_Event = len_events, lons_sta = \
 			lons_sta_new_ARC, lats_sta = lats_sta_new_ARC, names_sta = names_sta_new_ARC)
 
-plt.savefig(Address + '/Data/figure.pdf')
+#plt.savefig(Address + '/Data/figure.pdf')
 plt.show()
 
 t2_pro = datetime.now()

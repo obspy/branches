@@ -11,13 +11,13 @@ import matplotlib.pyplot as plt
 def plot_all_events(Address_events, events, lon_event, lat_event, name_event, len_events, \
 	llcrnrlon, llcrnrlat, urcrnrlon, urcrnrlat):
 	
-	plt.clf()
+	#plt.clf()
 	
 	# lon_0 is central longitude of projection.
 	# resolution = 'c' means use crude resolution coastlines.
 	
 	m = Basemap(projection='moll', lon_0=lon_event[0], lat_0=lat_event[0], resolution='c')
-	
+	#m = Basemap(projection='moll', lon_0=180, lat_0=0, resolution='c')
 	# Different Options for drawing the Earth:
 	#m = Basemap(projection='lcc',lon_0=0,resolution='c')
 	#m.bluemarble()
@@ -35,7 +35,7 @@ def plot_all_events(Address_events, events, lon_event, lat_event, name_event, le
 	plt.title("Events");
 	#plt.title("Events, 02.01.2008-01.05.2011");
 	x, y = m(lon_event, lat_event)
-	m.scatter(x, y, 20, color="red", marker="o", edgecolor="k", zorder=3)
+	m.scatter(x, y, 40, color="red", marker="o", edgecolor="k", zorder=3)
 	
 	for i in range(0, len_events):
 		plt.text(x[i], y[i], ' ' + name_event[i], va="top", family="monospace", \

@@ -20,6 +20,7 @@ def load_event(len_events, Address_events):
 		lat_event.append(events[i]['latitude'])
 		lon_event.append(events[i]['longitude'])
 		name_event.append(str(events[i]['depth']))
+		#name_event.append('\n' + '\n' + str(events[i]['flynn_region']) + '\n' + 'Mw:' + str(events[i]['magnitude']) + '\n' + 'Depth:' + str(events[i]['depth']))
 		
 	return lat_event, lon_event, name_event
 		
