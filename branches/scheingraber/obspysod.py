@@ -11,6 +11,9 @@ This has been part of a Bachelor's Thesis at the University of Munich.
  (http://www.gnu.org/copyleft/lesser.html)
 """
 
+#############################################
+# IMPORT SECTION as described in the thesis #
+#############################################
 import sys
 import os
 import operator
@@ -24,11 +27,14 @@ import pickle
 #import signal
 # using threads to be able to capture keypress event without a GUI like
 # tkinter or pyqt and run the main loop at the same time.
-import threading
-import termios
-TERMIOS = termios
-# need a lock for the global quit variable which is used in two threads
-lock = threading.RLock()
+# this only works on posix style unix
+windows = sys.platform.startswith('win')
+if not windows:
+    import threading
+    import termios
+    TERMIOS = termios
+    # need a lock for the global quit variable which is used in two threads
+    lock = threading.RLock()
 from ConfigParser import ConfigParser
 from optparse import OptionParser
 from obspy.core import UTCDateTime, read
@@ -43,15 +49,18 @@ from textwrap import wrap
 from itertools import izip_longest
 try:
     import numpy as np
+    import matplotlib as mpl
     import matplotlib.pyplot as plt
     import scipy.ndimage
-except:
-    print "no plotting availableXXX ..."
+except Exception, error:
+    print error
+    print "Missing dependencies, no plotting available."
     pass
 
 ### may use these abbreviations ###
 # comments:                       #
 # d/l: download                   #
+# wf: waveform                    #
 #                                 #
 # variable/object names:          #
 # net: network                    #
@@ -67,63 +76,85 @@ except:
 # plt*: plot                      #
 ###################################
 
+######################################################
+# KEYPRESS-THREAD SECTION as described in the thesis #
+######################################################
+# this is to support windows without changing the rest of the code
+if windows:
+    class keypress_thread():
+        """
+        Empty class, for windows support.
+        """
+        def __init__(self):
+            print "Detected windows, no keypress-thread started."
 
-class keypress_thread (threading.Thread):
-    """
-    This class will run as a second thread to capture keypress events
-    """
-    global quit, done
+        def start(self):
+            print "No 'q' key support on windows."
 
-    def run(self):
+    def check_quit():
+        """
+        Does nothing, for windows support.
+        """
+        return
+else:
+    class keypress_thread (threading.Thread):
+        """
+        This class will run as a second thread to capture keypress events
+        """
         global quit, done
-        msg = 'Keypress capture thread initialized...\n'
-        msg += "Press 'q' at any time to finish downloading and saving the " \
-        + "last file and then quit."
-        print msg
-        while not done:
-            c = getkey()
-            print c
-            if c == 'q' and not done:
-                with lock:
-                    quit = True
-                print "You pressed q."
-                msg = "Obspysod will finish downloading and saving the last " \
-                + "file and quit gracefully."
+
+        def run(self):
+            global quit, done
+            msg = 'Keypress capture thread initialized...\n'
+            msg += "Press 'q' at any time to finish " \
+            + "the file in progress and quit."
+            print msg
+            while not done:
+                c = getkey()
+                print c
+                if c == 'q' and not done:
+                    with lock:
+                        quit = True
+                    print "You pressed q."
+                    msg = "Obspysod will finish downloading and saving the " \
+                    + "last file and quit gracefully."
+                    print msg
+                    # exit this thread
+                    sys.exit(0)
+
+    def getkey():
+        """
+        Uses termios to wait for a keypress event and return the char.
+        """
+        fd = sys.stdin.fileno()
+        old = termios.tcgetattr(fd)
+        new = termios.tcgetattr(fd)
+        new[3] = new[3] & ~TERMIOS.ICANON & ~TERMIOS.ECHO
+        new[6][TERMIOS.VMIN] = 1
+        new[6][TERMIOS.VTIME] = 0
+        termios.tcsetattr(fd, TERMIOS.TCSANOW, new)
+        c = None
+        try:
+                c = os.read(fd, 1)
+        finally:
+                termios.tcsetattr(fd, TERMIOS.TCSAFLUSH, old)
+        return c
+
+    def check_quit():
+        """
+        Checks if the user pressed q to quit downloading meanwhile.
+        """
+        global quit
+        with lock:
+            if quit:
+                msg = "Quitting. To resume the download, just run " + \
+                "obspysod again, using the same arguments."
                 print msg
-                # exit this thread
                 sys.exit(0)
 
-
-def getkey():
-    """
-    Uses termios to wait for a keypress event and return the char.
-    """
-    fd = sys.stdin.fileno()
-    old = termios.tcgetattr(fd)
-    new = termios.tcgetattr(fd)
-    new[3] = new[3] & ~TERMIOS.ICANON & ~TERMIOS.ECHO
-    new[6][TERMIOS.VMIN] = 1
-    new[6][TERMIOS.VTIME] = 0
-    termios.tcsetattr(fd, TERMIOS.TCSANOW, new)
-    c = None
-    try:
-            c = os.read(fd, 1)
-    finally:
-            termios.tcsetattr(fd, TERMIOS.TCSAFLUSH, old)
-    return c
-
-
-def check_quit():
-    """
-    Checks if the user pressed q to quit downloading meanwhile.
-    """
-    global quit
-    with lock:
-        if quit:
-            msg = "Quitting. To resume the download, just run " + \
-            "obspysod again, using the same arguments."
-            print msg
-            sys.exit(0)
+####################################################
+# MAIN FUNCTION SECTION as described in the thesis #
+####################################################
 
 
 def main():
@@ -131,9 +162,14 @@ def main():
     Main function to run as a dedicated program.
     """
 
-    global datapath, quit, done
-    # dead networks
-    skip_networks = ['AI', 'BA']
+    global datapath, quit, done, skip_networks
+    # dead networks deactivated for now
+    skip_networks = []
+    # if hardcoded skip networks are ok, uncomment this line:
+    # skip_networks = ['AI', 'BA']
+    ##############################################################
+    # CONFIG AND OPTIONPARSER SECTION as described in the thesis #
+    ##############################################################
     # create ConfigParser object.
     # set variable names as dict keys, default values as _STRINGS_!
     # you don't need to provide every possible option here, just the ones with
@@ -256,18 +292,17 @@ def main():
                       dest="exceptions", help=helpmsg)
     helpmsg = "For each event, create one plot with the data from all " + \
               "stations together with theoretical arrival times. You may " + \
-              "provide or omit the data area size: e.g. -I 900x600x5. " + \
-              "This gives you a data area of 900px width, 600px height, " + \
-              "band 5px road station columns. Note that the actual plot " + \
-              "file will be slightly larger, since a title, colorbar, " + \
-              "etc. will be added next to the data area. If -I d, " + \
-              "or -I default, the default output size of " + \
-              "1200x800x1 px will be used. If this command line parameter " + \
+              "provide the internal plotting resolution: e.g. " + \
+              "-I 900x600x5. This gives you a resolution of 900x600, " + \
+              "and 5 units broad station columns. If -I d, " + \
+              "or -I default, the default of " + \
+              "1200x800x1 will be used. If this command line parameter " + \
               "is not passed to ObsPySOD at all, no plots will be created." + \
               " You may additionally specify the timespan of the plot " + \
               "after event origin time in minutes: e.g. for timespan " + \
               "lasting 30 minutes: -I 1200x800x1/30 (or -I d/30). The " + \
-              "default timespan is 100 minutes."
+              "default timespan is 100 minutes. The final output file " + \
+              "will be in pdf format."
     parser.add_option("-I", "--plot", action="store", dest="plt",
                       help=helpmsg)
     helpmsg = "When creating the plot, download all the data needed to " + \
@@ -280,19 +315,20 @@ def main():
               "should be plotted on top if creating the data plot(see " + \
               "above, -I option). Usage: -a phase1,phase2,(...)." + \
               " Default: -a P,S. See the long help for available phases. " + \
-              "If you just want to plot the data and no phases, use -a none."
+              "To plot all available phases, use -a all. If you just " + \
+              "want to plot the data and no phases, use -a none."
     parser.add_option("-a", "--phases", action="store", dest="phases",
                       help=helpmsg)
     parser.add_option("-d", "--debug", action="store_true", dest="debug",
                       help="Show debugging information.")
 
-    # read from ConfigParser object's defaults section into a dictionary
+    # read from ConfigParser object's defaults section into a dictionary.
     # config.defaults() (ConfigParser method) returns a dict of the default
     # options as specified above
     config_options = config.defaults()
 
     # config_options is dictionary of _strings_(see above dict),
-    # over-ride respective correct
+    # override respective correct
     # default types here with .getboolean, .getfloat, .getint
     # * you dont need to provide every possible option here, just the ones with
     # default values for which the type needs to be overriden
@@ -328,11 +364,13 @@ def main():
         options.west = float(options.west)
     if options.east:
         options.east = float(options.east)
+    ##########################################################################
+    # VARIABLE SPLITTING AND SANITY CHECK SECTION as described in the thesis #
+    ##########################################################################
     # print long help if -H
     if options.showhelp:
         help()
         sys.exit()
-    ## Parsing different custom command line options
     # Sanity check for velocity model
     if options.model != 'iasp91' and options.model != 'ak135':
         print "Erroneous velocity model given:"
@@ -379,15 +417,28 @@ def main():
                     sys.exit(0)
             # this is the default timespan if no timespan was provided
             timespan = 100 * 60.0
-    if options.debug:
-        print "pltWidth: ", pltWidth
-        print "pltHeight: ", pltHeight
-        print "colWidth: ", colWidth
-        print "timespan: ", timespan
+        if options.debug:
+            print "pltWidth: ", pltWidth
+            print "pltHeight: ", pltHeight
+            print "colWidth: ", colWidth
+            print "timespan: ", timespan
     # parse phases into a list of strings usable with travelTimePlot
     try:
         if options.phases == 'none':
-            pltPhases =  []
+            pltPhases = []
+        elif options.phases == 'all':
+            pltPhases = ['P', "P'P'ab", "P'P'bc", "P'P'df", 'PKKPab', 'PKKPbc',
+                    'PKKPdf', 'PKKSab', 'PKKSbc', 'PKKSdf', 'PKPab', 'PKPbc',
+                    'PKPdf', 'PKPdiff', 'PKSab', 'PKSbc', 'PKSdf', 'PKiKP',
+                    'PP', 'PS', 'PcP', 'PcS', 'Pdiff', 'Pn', 'PnPn', 'PnS',
+                    'S', "S'S'ac", "S'S'df", 'SKKPab', 'SKKPbc', 'SKKPdf',
+                    'SKKSac', 'SKKSdf', 'SKPab', 'SKPbc', 'SKPdf', 'SKSac',
+                    'SKSdf', 'SKiKP', 'SP', 'SPg', 'SPn', 'SS', 'ScP', 'ScS',
+                    'Sdiff', 'Sn', 'SnSn', 'pP', 'pPKPab', 'pPKPbc', 'pPKPdf',
+                    'pPKPdiff', 'pPKiKP', 'pPdiff', 'pPn', 'pS', 'pSKSac',
+                    'pSKSdf', 'pSdiff', 'sP', 'sPKPab', 'sPKPbc', 'sPKPdf',
+                    'sPKPdiff', 'sPKiKP', 'sPb', 'sPdiff', 'sPg', 'sPn', 'sS',
+                    'sSKSac', 'sSKSdf', 'sSdiff', 'sSn']
         else:
             pltPhases = options.phases.split(',')
     except:
@@ -465,6 +516,9 @@ def main():
         print "Now it's UTCDateTime:"
         print "options.start", options.start
         print "options.end", options.end
+    ###################################################
+    # SPECIAL TASK SECTION as described in the thesis #
+    ###################################################
     cwd = os.getcwd()
     # change default datapath if we're in metadata query mode
     if options.metadata and options.datapath == 'obspysod-data':
@@ -504,6 +558,7 @@ def main():
         try:
             os.remove(os.path.join(datapath, 'events.pickle'))
             os.remove(os.path.join(datapath, 'inventory.pickle'))
+            os.remove(os.path.join(datapath, 'availability.pickle'))
         except:
             pass
     # Warn that datapath will be created and give list of further options
@@ -538,6 +593,9 @@ def main():
             if answer != "y":
                 print "Exiting obspy."
                 sys.exit(2)
+    ############################################################
+    # DATA DOWNLOAD ROUTINE SECTION as described in the thesis #
+    ############################################################
     # create datapath
     if not os.path.exists(datapath):
         os.mkdir(datapath)
@@ -554,10 +612,7 @@ def main():
                             options.north, options.start, options.end,
                             options.magmin, options.magmax)
     if options.debug:
-        print '#############'
-        print 'events from NERIES:'
-        print events
-        print '#############'
+        print 'events from NERIES:', events
     # (2) get inventory data from ArcLink
     # check if the user pressed 'q' while we did d/l eventlists.
     check_quit()
@@ -568,20 +623,15 @@ def main():
     # arclink_stations is a list of tuples of all stations:
     # [(station1, lat1, lon1), (station2, lat2, lon2), ...]
     if options.debug:
-        print '#############'
-        print 'arclink_stations returned from get_inventory:'
-        print arclink_stations
-        print '#############'
+        print 'arclink_stations returned from get_inventory:', arclink_stations
     # (3) Get availability data from IRIS
     # check if the user pressed 'q' while we did d/l the inventory from ArcLink
     check_quit()
-    avail = getnparse_availability(west=options.west, east=options.east,
-                                   south=options.south, north=options.north,
-                                   start=options.start, end=options.end,
+    avail = getnparse_availability(start=options.start, end=options.end,
                                    nw=options.nw, st=options.st, lo=options.lo,
                                    ch=options.ch, debug=options.debug)
     irisclient = obspy.iris.Client(debug=options.debug)
-    # (4) write catalog file, create folders
+    # (4) create and write to catalog file
     headline = "event_id;datetime;origin_id;author;flynn_region;"
     headline += "latitude;longitude;depth;magnitude;magnitude_type;"
     headline += "DataQuality;TimingQualityMin\n" + "#" * 126 + "\n\n"
@@ -631,6 +681,9 @@ def main():
     exceptionfout.write(exceptionhl)
     # just like for the catalog file, move to end of exception file
     exceptionfout.seek(0, 2)
+    if options.plt:
+        alleventsmatrix = np.zeros((pltHeight, pltWidth))
+        alleventsmatrix_counter = 0
     for eventdict in events:
         check_quit()
         eventid = eventdict['event_id']
@@ -662,11 +715,15 @@ def main():
         quakemlfp = os.path.join(eventdir, 'quakeml.xml')
         if not os.path.isfile(quakemlfp):
             print "Downloading quakeml xml file for event %s..." % eventid,
-            quakeml = neriesclient.getEventDetail(eventid, 'xml')
-            quakemlfout = open(quakemlfp, 'wt')
-            quakemlfout.write(quakeml)
-            quakemlfout.close()
-            print "done."
+            try:
+                quakeml = neriesclient.getEventDetail(eventid, 'xml')
+                quakemlfout = open(quakemlfp, 'wt')
+                quakemlfout.write(quakeml)
+                quakemlfout.close()
+            except Exception, error:
+                print "error:", error
+            else:
+                print "done."
         else:
             print "Found existing quakeml xml file for event %s, skip..." \
                                                                       % eventid
@@ -701,9 +758,12 @@ def main():
         for station in arclink_stations:
             check_quit()
             # station is a tuple of (stationname, lat, lon)
-            stationlat = station[1]
-            stationlon = station[2]
-            station = station[0]
+            try:
+                stationlat = station[1]
+                stationlon = station[2]
+                station = station[0]
+            except:
+                continue
             if options.debug:
                 print "station: ", station
             # skip dead networks
@@ -797,6 +857,9 @@ def main():
                         gaps += 1
                     else:
                         overlaps += 1
+                il_quake += ';%d;%d\n' % (gaps, overlaps)
+                quakefout.write(il_quake)
+                quakefout.flush()
                 # if there has been no Exception, assume d/l was ok
                 print "done."
                 if options.plt:
@@ -834,6 +897,8 @@ def main():
                     # obtain the time increment that passes between samples
                     # delta = tr.stats['delta']
                     # scale down the trace array so it matches the output size
+                    # using scipy since that's faster than letting the plotting
+                    # function handle it
                     pixelcol = np.around(scipy.ndimage.interpolation.zoom(
                                                   tr,
                                                   float(pltHeight) / len(tr)),
@@ -874,9 +939,6 @@ def main():
                         print "stmatrix: ", stmatrix
                     print "done."
                 del st
-                il_quake += ';%d;%d\n' % (gaps, overlaps)
-                quakefout.write(il_quake)
-                quakefout.flush()
         # (5.2) Iris wf data download loop
         for net, sta, loc, cha, stationlat, stationlon in avail:
             check_quit()
@@ -1047,13 +1109,15 @@ def main():
             titlemsg = "Event %s:\ndata and " % eventid + \
                        "theoretical arrival times\n"
             plt.title(titlemsg)
-            plt.colorbar()
+            cbar = plt.colorbar()
+            mpl.colorbar.ColorbarBase.set_label(cbar, 'Relative amplitude')
             # add taupe theoretical arrival times points to plot
             # plt.plot([10, 100],[10, 13], '.')
             # invoking travelTimePlot function, taken and fitted to my needs
             # from the obspy.taupe package
-            # choose npoints value depending on plot size
-            travelTimePlot(npoints=pltWidth, phases=pltPhases,
+            # choose npoints value depending on plot size, but not for every
+            # pixel so pdf conversion won't convert the points to a line
+            travelTimePlot(npoints=pltWidth / 10, phases=pltPhases,
                            depth=eventdepth, model=options.model,
                            pltWidth=pltWidth, pltHeight=pltHeight,
                            timespan=timespan)
@@ -1061,8 +1125,36 @@ def main():
             print "Done with event %s, saving plots..." % eventid
             if options.debug:
                 print "stmatrix: ", stmatrix
-            plotfn = os.path.join(datapath, eventid, 'waveforms.png')
+            plotfn = os.path.join(datapath, eventid, 'waveforms.pdf')
             plt.savefig(plotfn)
+            # clear figure
+            plt.clf()
+            alleventsmatrix += stmatrix[1:, :]
+            alleventsmatrix_counter += 1
+            del stmatrix
+    # save plot of all events, similar as above, for comments see above
+    if options.plt:
+        print "Saving plot of all events stacked..."
+        plt.imshow(alleventsmatrix / alleventsmatrix_counter,
+                   origin='lower', cmap=plt.cm.hot_r)
+        plt.xticks(range(0, pltWidth, pltWidth / 4),
+                         ('0', '45', '90', '135', '180'), rotation=45)
+        y_incr = timespan / 60 / 4
+        plt.yticks(range(0, pltHeight, pltHeight / 4),
+                  ('0', str(y_incr), str(2 * y_incr), str(3 * y_incr),
+                   str(3 * y_incr)))
+        plt.xlabel('Distance from epicenter in degrees')
+        plt.ylabel('Time after origin time in minutes')
+        titlemsg = "%s events data stacked\n" % len(events)
+        plt.title(titlemsg)
+        cbar = plt.colorbar()
+        mpl.colorbar.ColorbarBase.set_label(cbar, 'Relative amplitude')
+        travelTimePlot(npoints=pltWidth / 10, phases=pltPhases,
+                       depth=10, model=options.model,
+                       pltWidth=pltWidth, pltHeight=pltHeight,
+                       timespan=timespan)
+        plotfn = os.path.join(datapath, 'allevents_waveforms.pdf')
+        plt.savefig(plotfn)
     # done with ArcLink, remove ArcLink client
     del arcclient
     # done with iris, remove client
@@ -1075,9 +1167,12 @@ def main():
     return
 
 
+#############################################################
+# DATA SERVICE FUNCTIONS SECTION as described in the thesis #
+#############################################################
 def get_events(west, east, south, north, start, end, magmin, magmax):
     """
-    Downloads and saves list of events if not present in datapath.
+    Downloads and saves a list of events if not present in datapath.
 
     Parameters
     ----------
@@ -1110,7 +1205,7 @@ def get_events(west, east, south, north, start, end, magmin, magmax):
     try:
         # b for binary file
         fh = open(eventfp, 'rb')
-        events = pickle.load(fh)
+        result = pickle.load(fh)
         fh.close()
         print "Found eventlist in datapath, skip download."
     except:
@@ -1118,20 +1213,29 @@ def get_events(west, east, south, north, start, end, magmin, magmax):
         client = obspy.neries.Client()
         # the maximum no of allowed results seems to be not allowed to be too
         # large, but 9999 seems to work, 99999 results in a timeout error in
-        # urllib
-        events = client.getEvents(min_latitude=south, max_latitude=north,
+        # urllib. implemented the while-loop to work around this restriction:
+        # query is repeated until we receive less than 9999 results.
+        result = []
+        events = range(9999)
+        while len(events) == 9999:
+            events = client.getEvents(min_latitude=south, max_latitude=north,
                                   min_longitude=west, max_longitude=east,
                                   min_datetime=start, max_datetime=end,
                                   min_magnitude=magmin, max_magnitude=magmax,
                                   max_results=9999)
+            result.extend(events)
+            try:
+                start = events[-1]['datetime']
+            except:
+                pass
         del client
         # dump events to file
         fh = open(eventfp, 'wb')
-        pickle.dump(events, fh)
+        pickle.dump(result, fh)
         fh.close()
         print "done."
-    print("Received %d event(s) from NERIES." % (len(events)))
-    return events
+    print("Received %d event(s) from NERIES." % (len(result)))
+    return result
 
 
 def get_inventory(start, end, nw, st, lo, ch, permanent, debug=False):
@@ -1155,6 +1259,9 @@ def get_inventory(start, end, nw, st, lo, ch, permanent, debug=False):
     -------
         A list of tuples of the form [(station1, lat1, lon1), ...]
     """
+    # create data path:
+    if not os.path.isdir(datapath):
+        os.mkdir(datapath)
     inventoryfp = os.path.join(datapath, 'inventory.pickle')
     try:
         # first check if inventory data has already been downloaded
@@ -1193,21 +1300,17 @@ def get_inventory(start, end, nw, st, lo, ch, permanent, debug=False):
             return ([], [])
         else:
             print "done."
-    networks = sorted([i for i in inventory.keys() if i.count('.') == 0])
     stations = sorted([i for i in inventory.keys() if i.count('.') == 3])
     if debug:
         print "inventory inside get_inventory(): ", inventory
         print "stations inside get_inventory(): ", stations
-    # networks is a list of all networks and not needed again
     # stations is a list of 'nw.st.lo.ch' strings and is what we want
     # check if we need to search for wildcards:
     if nwcheck:
         stations2 = []
         # convert nw (which is 'b?a*' type string, using normal wildcards into
         # equivalent regular expression
-        # nw = nw.replace("*", ".*").replace("?", ".")
-        # using fnmatch.translate to translate ordinary wildcard into regex
-        # expression. the solution commented out above proved to be incorrect
+        # using fnmatch.translate to translate ordinary wildcard into regex.
         nw = fnmatch.translate(nw)
         if debug:
             print "regex nw: ", nw
@@ -1232,7 +1335,6 @@ def get_inventory(start, end, nw, st, lo, ch, permanent, debug=False):
         key = '.'.join((net, sta))
         stations3.append((station, inventory[key]['latitude'],
                                   inventory[key]['longitude']))
-    print("Received %d network(s) from ArcLink." % (len(networks)))
     print("Received %d channel(s) from ArcLink." % (len(stations3)))
     if debug:
         print "stations2 inside get_inventory: ", stations2
@@ -1248,8 +1350,7 @@ def get_inventory(start, end, nw, st, lo, ch, permanent, debug=False):
     return stations3
 
 
-def getnparse_availability(west, east, south, north, start, end, nw, st, lo,
-                           ch, debug):
+def getnparse_availability(start, end, nw, st, lo, ch, debug):
     """
     Downloads and parses IRIS availability XML.
     """
@@ -1271,11 +1372,9 @@ def getnparse_availability(west, east, south, north, start, end, nw, st, lo,
             result = irisclient.availability(
                                      network=nw, station=st, location=lo,
                                      channel=ch, starttime=UTCDateTime(start),
-                                     endtime=UTCDateTime(end), minlat=south,
-                                     maxlat=north, minlon=west, maxlon=east,
-                                     output='xml')
+                                     endtime=UTCDateTime(end), output='xml')
         except Exception, error:
-            print "\nIRIS returned to matching stations."
+            print "\nIRIS returned no matching stations."
             if debug:
                 print "\niris client error: ", error
             # return an empty list (iterable empty result)
@@ -1323,76 +1422,29 @@ def getnparse_availability(west, east, south, north, start, end, nw, st, lo,
             return avail_list
 
 
-def travelTimePlot(npoints, phases, depth, model, pltWidth, pltHeight,
-                   timespan):
-    """
-    Plots taupe arrival times on top of event data. This is just a modified
-    version of taupe.travelTimePlot()
-
-    :param npoints: int, optional
-        Number of points to plot. Defaults to 500.
-    :param phases: list of strings, optional
-        List of phase names which should be used within the plot. Defaults to
-        all phases if not explicit set.
-    :param depth: float, optional
-        Depth in kilometer. Defaults to 100.
-    :param model: string
-    """
-
-    data = {}
-    for phase in phases:
-        data[phase] = [[], []]
-    degrees = np.linspace(0, 180, npoints)
-    # Loop over all degrees.
-    for degree in degrees:
-        tt = taup.getTravelTimes(degree, depth, model)
-        # Mirror if necessary.
-        if degree > 180:
-            degree = 180 - (degree - 180)
-        for item in tt:
-            phase = item['phase_name']
-            if data.has_key(phase):
-                try:
-                    data[phase][1].append(item['time'])
-                    data[phase][0].append(degree)
-                except:
-                    data[phase][1].append(np.NaN)
-                    data[phase][0].append(degree)
-    # Plot and some formatting.
-    for key, value in data.iteritems():
-        # value[0] stores all degrees, value[1] all times as lists
-        # convert those values to the respective obspysod stmatrix indices:
-        # divide every entry of value[0] list by 180 and sort of "multiply with
-        # pltWidth" to get correct stmatrix index
-        x_coord = map(operator.div, value[0], [180.0 / pltWidth] *
-                  len(value[0]))
-        # for the y coord, divide every entry by the timespan and mulitply with
-        # pltHeight
-        y_coord = map(operator.div, value[1], [timespan / pltHeight] *
-                  len(value[1]))
-        # plot arrival times on top of data
-        plt.plot(x_coord, y_coord, ',', label=key)
-    plt.legend()
-
-
+##################################################################
+# ALTERNATIVE MODES FUNCTIONS SECTION as described in the thesis #
+##################################################################
 def queryMeta(west, east, south, north, start, end, nw, st, lo, ch, permanent,
               debug):
     """
     Downloads Resp instrument data and dataless seed files.
     """
-    global quit, done
+    global quit, done, skip_networks
     # start keypress thread, so we can quit by pressing 'q' anytime from now on
     # during the downloads
     done = False
     keypress_thread().start()
     irisclient = obspy.iris.Client(debug=debug)
     arclinkclient = obspy.arclink.client.Client(debug=debug)
-    # (1) IRIS: resp files
+    # (0) get availability and inventory first
     # get and parse IRIS availability xml
-    avail = getnparse_availability(west=west, east=east, south=south,
-                                   north=north, start=start, end=end,
-                                   nw=nw, st=st, lo=lo, ch=ch,
-                                   debug=debug)
+    avail = getnparse_availability(start=start, end=end, nw=nw, st=st, lo=lo,
+                                   ch=ch, debug=debug)
+    # get ArcLink inventory
+    stations = get_inventory(start, end, nw, st, lo, ch, permanent=permanent,
+                             debug=debug)
+    # (1) IRIS: resp files
     # stations is a list of all stations (nw.st.l.ch, so it includes networks)
     # loop over all tuples of a station in avail list:
     for (net, sta, loc, cha, lat, lon) in avail:
@@ -1422,9 +1474,6 @@ def queryMeta(west, east, south, north, start, end, nw, st, lo, ch, permanent,
             # if there has been no exception, the d/l should have worked
             print 'done.'
     # (2) ArcLink: dataless seed
-    # get ArcLink inventory
-    stations = get_inventory(start, end, nw, st, lo, ch, permanent=permanent,
-                             debug=debug)
     # loop over stations to d/l every dataless seed file...
     # skip dead ArcLink networks
     for station in stations:
@@ -1549,6 +1598,61 @@ def exceptionMode(debug):
     return
 
 
+###########################################################
+# ADDITIONAL FUNCTIONS SECTION as described in the thesis #
+###########################################################
+def travelTimePlot(npoints, phases, depth, model, pltWidth, pltHeight,
+                   timespan):
+    """
+    Plots taupe arrival times on top of event data. This is just a modified
+    version of taupe.travelTimePlot()
+
+    :param npoints: int, optional
+        Number of points to plot.
+    :param phases: list of strings, optional
+        List of phase names which should be used within the plot. Defaults to
+        all phases if not explicit set.
+    :param depth: float, optional
+        Depth in kilometer. Defaults to 100.
+    :param model: string
+    """
+
+    data = {}
+    for phase in phases:
+        data[phase] = [[], []]
+    degrees = np.linspace(0, 180, npoints)
+    # Loop over all degrees.
+    for degree in degrees:
+        tt = taup.getTravelTimes(degree, depth, model)
+        # Mirror if necessary.
+        if degree > 180:
+            degree = 180 - (degree - 180)
+        for item in tt:
+            phase = item['phase_name']
+            if phase in data:
+                try:
+                    data[phase][1].append(item['time'])
+                    data[phase][0].append(degree)
+                except:
+                    data[phase][1].append(np.NaN)
+                    data[phase][0].append(degree)
+    # Plot and some formatting.
+    for key, value in data.iteritems():
+        # value[0] stores all degrees, value[1] all times as lists
+        # convert those values to the respective obspysod stmatrix indices:
+        # divide every entry of value[0] list by 180 and sort of "multiply with
+        # pltWidth" to get correct stmatrix index
+        x_coord = map(operator.div, value[0], [180.0 / pltWidth] *
+                  len(value[0]))
+        # for the y coord, divide every entry by the timespan and mulitply with
+        # pltHeight
+        y_coord = map(operator.div, value[1], [timespan / pltHeight] *
+                  len(value[1]))
+        # plot arrival times on top of data
+        plt.plot(x_coord, y_coord, ',', label=key)
+    plt.legend()
+
+
 def getFolderSize(folder):
     """
     Returns the size of a folder in bytes.
@@ -1638,19 +1742,70 @@ def help():
     printWrap("-L[--location]", "<location>")
     printWrap("-C[--channel]", "<channel>")
     printWrap("", "e.g. -N IU -S ANMO -L 00 -C BH*")
+    print "\n\n* specify plotting options:\n"
+    printWrap("Default:", "no plot. If the plot will be created with -I d " + \
+              "(or -I default), the defaults are 1200x800x1/100 and the " + \
+              "default phases to plot are 'P' and 'S'.")
+    print
+    printWrap("-I[--plot]", "<pxHeight>x<pxWidth>x<colWidth>[/<timespan>]")
+    printWrap("", "For each event, create one plot with the data from all " + \
+                "stations together with theoretical arrival times. You " + \
+                "may provide the internal plotting resolution: e.g. -I " + \
+                "900x600x5. This gives you a resolution of 900x600, and " + \
+                "5 units broad station columns. If -I d, or -I default, " + \
+                "the default of 1200x800x1 will be used. If this " + \
+                "command line parameter is not passed to ObsPySOD at " + \
+                "all, no plots will be created. You may additionally " + \
+                "specify the timespan of the plot after event origin " + \
+                "time in minutes: e.g. for timespan lasting 30 minutes: " + \
+                "-I 1200x800x1/30 (or -I d/30). The default timespan is " + \
+                "100 minutes. The final output file will be in pdf " + \
+                "format.")
+    print
+    printWrap("-F[--fill-plot]", "")
+    printWrap("", "When creating the plot, download all the data needed " + \
+              "to fill the rectangular area of the plot. Note: " + \
+              "depending on your options, this will approximately" + \
+              "double the data download volume (but you'll end up" + \
+              "with nicer plots ;-)).")
+    print
+    printWrap("-a[--phases]", "<phase1>,<phase2>,...")
+    printWrap("", "Specify phases for which the theoretical arrival times " + \
+              "should be plotted on top if creating the data plot(see " + \
+              "above, -I option). " + \
+              "Default: -a P,S. To plot all available phases, use -a all. " + \
+              "If you just want to plot the data and no phases, use -a " + \
+              "none.")
+    printWrap("", "Available phases:")
+    printWrap("", "P, P'P'ab, P'P'bc, P'P'df, PKKPab, PKKPbc," + \
+              "PKKPdf, PKKSab, PKKSbc, PKKSdf, PKPab, PKPbc," + \
+              "PKPdf, PKPdiff, PKSab, PKSbc, PKSdf, PKiKP," + \
+              "PP, PS, PcP, PcS, Pdiff, Pn, PnPn, PnS," + \
+              "S, S'S'ac, S'S'df, SKKPab, SKKPbc, SKKPdf," + \
+              "SKKSac, SKKSdf, SKPab, SKPbc, SKPdf, SKSac," + \
+              "SKSdf, SKiKP, SP, SPg, SPn, SS, ScP, ScS," + \
+              "Sdiff, Sn, SnSn, pP, pPKPab, pPKPbc, pPKPdf," + \
+              "pPKPdiff, pPKiKP, pPdiff, pPn, pS, pSKSac," + \
+              "pSKSdf, pSdiff, sP, sPKPab, sPKPbc, sPKPdf," + \
+              "sPKPdiff, sPKiKP, sPb, sPdiff, sPg, sPn, sS," + \
+              "sSKSac, sSKSdf, sSdiff, sSn")
+    printWrap("", "Note: if you select phases with ticks(') in the " + \
+              "phase name, don't forget to use quotes " + \
+              "(-a \"phase1',phase2\") to avoid unintended behaviour.")
     print "\n\n* specify additional options:\n"
     printWrap("-n[--no-temporary]", "")
     printWrap("", "Instead of downloading both temporary and permanent " + \
           "networks (default), download only permanent ones.")
     print
-    # hopefully this will be automatically with taupe arrival times later
     printWrap("-p[--preset]", "<preset>")
     printWrap("", "Time parameter given in seconds which determines how " + \
-        "close the data will be cropped before event origin time. Default: 0")
+        "close the data will be cropped before estimated arrival time at " + \
+        "each individual station. Default: 5 minutes.")
     print
     printWrap("-o[--offset]", "<offset>")
     printWrap("", "Time parameter given in seconds which determines how " + \
-              "close the data will be cropped after the event origin time.")
+        "close the data will be cropped after estimated arrival time at " + \
+        "each individual station. Default: 80 minutes.")
     print
     printWrap("-q[--query-resp]", "")
     printWrap("", "Instead of downloading seismic data, download " + \
@@ -1673,7 +1828,6 @@ def help():
     printWrap("", "Skip working directory warning (auto-confirm folder" + \
               " creation).")
     print "\nType obspysod.py -h for a list of all long and short options."
-    # XXX need better examples
     print "\n\nExamples:"
     print "---------\n"
     printWrap("Alps region, minimum magnitude of 4.2:",
@@ -1687,6 +1841,20 @@ def help():
     print
     printWrap("Mount Hochstaufen area(Ger/Aus), default minimum magnitude:",
               "obspysod.py -r 12.8/12.9/47.72/47.77 -t 2001-01-01/2011-02-28")
+    print
+    printWrap("Only one station, to quickly try out the plot:",
+             "obspysod.py -s 2011-03-01 -m 9 -I 400x300x3 -f " + \
+             "-i IU.YSS.*.*")
+    print
+    printWrap("ArcLink Network wildcard search:", "obspysod.py -N B? -S " + \
+              "FURT -f")
+    print
+    printWrap("Downloading metadata from all available stations " + \
+              "to folder \"metacatalog\":", "obspysod.py -q -f -P metacatalog")
+    print
+    printWrap("Download stations that failed last time " + \
+              "(not necessary to re-enter the event/station restrictions):",
+              "obspysod.py -E -P thisOrderHadExceptions -f")
     print
     return
 
