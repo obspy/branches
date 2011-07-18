@@ -43,7 +43,7 @@ dataquality.
             npts: 11947
            calib: 1.0
          _format: MSEED
-           mseed: AttribDict({'dataquality': 'R', 'record_length': 4096, 'encoding': 'STEIM2', 'byteorder': '>'})
+           mseed: AttribDict({'dataquality': 'R', 'record_length': 4096, 'byteorder': '>', 'encoding': 'STEIM2'})
 
 The actual data is stored as numpy.ndarray in the data attribute of each trace.
 
