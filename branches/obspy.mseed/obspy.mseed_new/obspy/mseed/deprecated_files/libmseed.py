@@ -130,6 +130,12 @@ from obspy.core import UTCDateTime
 from obspy.core.util import scoreatpercentile
 from obspy.mseed.headers import MSFileParam, clibmseed, HPTMODULUS, MSRecord, \
     FRAME, DATATYPES, SAMPLESIZES, blkt_1001_s
+
+
+
+from obspy.mseed import mseed
+from obspy.mseed import util
+
 from struct import unpack
 import ctypes as C
 import math
@@ -148,72 +154,18 @@ class LibMSEED(object):
 
     def isMSEED(self, filename):
         """
-        Tests whether a file is a MiniSEED file or not.
-        
-        Returns True on success or False otherwise.
-        
-        This method only reads the first seven bytes of the file and checks
-        whether its a MiniSEED or fullSEED file.
-        
-        It also is true for fullSEED files because libmseed can read the data
-        part of fullSEED files. If the method finds a fullSEED file it also
-        checks if it has a data part and returns False otherwise.
-        
-        Thus it cannot be used to validate a MiniSEED or SEED file.
-        
-        :param filename: MiniSEED file.
+        Deprecated. Will be passed to obspy.mseed.mseed.isMSEED.
         """
-        fp = open(filename, 'rb')
-        header = fp.read(7)
-        # File has less than 7 characters
-        if len(header) != 7:
-            return False
-        # Sequence number must contains a single number or be empty 
-        seqnr = header[0:6].replace('\x00', ' ').strip()
-        if not seqnr.isdigit() and seqnr != '':
-            return False
-        # Check for any valid control header types.
-        if header[6] in ['D', 'R', 'Q', 'M']:
-            return True
-        # Check if Full-SEED
-        if not header[6] == 'V':
-            return False
-        # Parse the whole file and check whether it has has a data record.
-        fp.seek(1, 1)
-        _i = 0
-        # search for blockettes 010 or 008
-        while True:
-            if fp.read(3) in ['010', '008']:
-                break
-            # the next for bytes are the record length
-            # as we are currently at position 7 (fp.read(3) fp.read(4))
-            # we need to subtract this first before we seek
-            # to the appropriate position
-            try:
-                fp.seek(int(fp.read(4)) - 7, 1)
-            except:
-                return False
-            _i += 1
-            # break after 3 cycles
-            if _i == 3:
-                return False
-        # Try to get a record length.
-        fp.seek(8, 1)
-        try:
-            record_length = pow(2, int(fp.read(2)))
-        except:
-            return False
-        file_size = os.path.getsize(filename)
-        # Jump to the second record.
-        fp.seek(record_length + 6)
-        # Loop over all records and return True if one record is a data
-        # record
-        while fp.tell() < file_size:
-            flag = fp.read(1)
-            if flag in ['D', 'R', 'Q', 'M']:
-                return True
-            fp.seek(record_length - 1, 1)
-        return False
+        return mseed.isMSEED(filename)
+
+    def _readQuality(self, file, filepos, chain, tq, dq):
+        """
+        Deprecated. Will be passed to obspy.mseed.util._readQuality.
+        """
+        util._readQuality(file, filepos, chain, tq, dq)
+
+
+
 
     def readMSTracesViaRecords(self, filename, reclen= -1, dataflag=1,
                                skipnotdata=1, verbose=0, starttime=None,
@@ -315,29 +267,6 @@ class LibMSEED(object):
         if quality:
             file.close()
         return trace_list
-
-    def _readQuality(self, file, filepos, chain, tq, dq):
-        """
-        Reads all quality informations from a file and writes it to tq and dq.
-        """
-        # Seek to correct position.
-        file.seek(filepos, 0)
-        # Skip non data records.
-        data = file.read(39)
-        if data[6] == 'D':
-            # Read data quality byte.
-            data_quality_flags = data[38]
-            # Unpack the binary data.
-            data_quality_flags = unpack('B', data_quality_flags)[0]
-            # Add the value of each bit to the quality_count.
-            for _j in xrange(8):
-                if (data_quality_flags & (1 << _j)) != 0:
-                    dq[_j] += 1
-        try:
-            # Get timing quality in blockette 1001.
-            tq.append(float(chain.Blkt1001.contents.timing_qual))
-        except:
-            pass
 
     def readMSTraces(self, filename, reclen= -1, timetol= -1,
                      sampratetol= -1, dataflag=1, skipnotdata=1,
@@ -589,20 +518,10 @@ class LibMSEED(object):
 
     def getFileformatInformation(self, filename):
         """
-        Reads the first record and returns all information about the Mini-SEED
-        file format is can find.
+        Deprecated. Will be passed to
+        obspy.mseed.mseed.util.getFileFormatInformation
         """
-        # Create _MSStruct instance to read the file.
-        ms = _MSStruct(filename)
-        chain = ms.msr.contents
-        # Read all interesting attributes.
-        attribs = ['byteorder', 'encoding', 'reclen']
-        info = {}
-        for attr in attribs:
-            info[attr] = getattr(chain, attr)
-        # Will delete C pointers and structures.
-        del ms
-        return info
+        return util.getFileFormatInformation(filename)
 
     def getDataQualityFlagsCount(self, filename):
         """
@@ -848,88 +767,42 @@ class LibMSEED(object):
         length_byte = record_length * (end_record - start_record + 1)
         return start_byte, length_byte
 
+
+
+
     def unpack_steim2(self, data_string, npts, swapflag=0, verbose=0):
         """
-        Unpack steim2 compressed data given as string.
-        
-        :param data_string: data as string
-        :param npts: number of data points
-        :param swapflag: Swap bytes, defaults to 0
-        :return: Return data as numpy.ndarray of dtype int32
+        Deprecated. Will be passed to obspy.mseed.util.unpack_steim2.
         """
-        dbuf = data_string
-        datasize = len(dbuf)
-        samplecnt = npts
-        datasamples = np.empty(npts , dtype='int32')
-        diffbuff = np.empty(npts , dtype='int32')
-        x0 = C.c_int32()
-        xn = C.c_int32()
-        nsamples = clibmseed.msr_unpack_steim2(\
-                C.cast(dbuf, C.POINTER(FRAME)), datasize,
-                samplecnt, samplecnt, datasamples, diffbuff,
-                C.byref(x0), C.byref(xn), swapflag, verbose)
-        if nsamples != npts:
-            raise Exception("Error in unpack_steim2")
-        return datasamples
+        return util.unpack_steim2(data_string, npts, swapflag, verbose)
 
     def unpack_steim1(self, data_string, npts, swapflag=0, verbose=0):
         """
-        Unpack steim1 compressed data given as string.
-        
-        :param data_string: data as string
-        :param npts: number of data points
-        :param swapflag: Swap bytes, defaults to 0
-        :return: Return data as numpy.ndarray of dtype int32
+        Deprecated. Will be passed to obspy.mseed.util.unpack_steim1.
         """
-        dbuf = data_string
-        datasize = len(dbuf)
-        samplecnt = npts
-        datasamples = np.empty(npts , dtype='int32')
-        diffbuff = np.empty(npts , dtype='int32')
-        x0 = C.c_int32()
-        xn = C.c_int32()
-        nsamples = clibmseed.msr_unpack_steim1(\
-                C.cast(dbuf, C.POINTER(FRAME)), datasize,
-                samplecnt, samplecnt, datasamples, diffbuff,
-                C.byref(x0), C.byref(xn), swapflag, verbose)
-        if nsamples != npts:
-            raise Exception("Error in unpack_steim1")
-        return datasamples
+        return util.unpack_steim1(data_string, npts, swapflag, verbose)
 
     def _ctypesArray2NumpyArray(self, buffer, buffer_elements, sampletype):
         """
-        Takes a Ctypes array and its length and type and returns it as a
-        NumPy array.
-        
-        This works by reference and no data is copied.
-        
-        :param buffer: Ctypes c_void_p pointer to buffer.
-        :param buffer_elements: length of the whole buffer
-        :param sampletype: type of sample, on of "a", "i", "f", "d"
+        Deprecated. Will be passed to obspy.mseed.util.unpack_steim1.
         """
-        # Allocate NumPy array to move memory to
-        numpy_array = np.empty(buffer_elements, dtype=sampletype)
-        datptr = numpy_array.ctypes.get_data()
-        # Manually copy the contents of the C allocated memory area to
-        # the address of the previously created NumPy array
-        C.memmove(datptr, buffer, buffer_elements * SAMPLESIZES[sampletype])
-        return numpy_array
+        return util._ctypesArray2NumpyArray(buffer, buffer_elements, sampletype)
 
     def _convertDatetimeToMSTime(self, dt):
         """
-        Takes obspy.util.UTCDateTime object and returns an epoch time in ms.
-        
-        :param dt: obspy.util.UTCDateTime object.
+        Deprecated. Will be passed to obspy.mseed.util._convertDatetimeToMSTime.
         """
-        return int(dt.timestamp * HPTMODULUS)
+        return util._convertDatetimeToMSTime(dt)
 
     def _convertMSTimeToDatetime(self, timestring):
         """
-        Takes Mini-SEED timestamp and returns a obspy.util.UTCDateTime object.
-        
-        :param timestamp: Mini-SEED timestring (Epoch time string in ms).
+        Deprecated. Will be passed to obspy.mseed.util._convertMSTimeToDatetime.
         """
-        return UTCDateTime(timestring / HPTMODULUS)
+        return util._convertMSTimeToDatetime(timestring)
+
+
+
+
 
     def _MSRId(self, header):
         ids = ['network', 'station', 'location', 'channel',
@@ -983,28 +856,16 @@ class LibMSEED(object):
 
     def _getMSFileInfo(self, f, real_name):
         """
-        Takes a Mini-SEED filename as an argument and returns a dictionary
-        with some basic information about the file. Also suiteable for Full
-        SEED.
-        
-        :param f: File pointer of opened file in binary format
-        :param real_name: Realname of the file, needed for calculating size
+        Deprecated. Will be passed to obspy.mseed.util._getMSFileInfo.
         """
-        # get size of file
-        info = {'filesize': os.path.getsize(real_name)}
-        pos = f.tell()
-        f.seek(0)
-        rec_buffer = f.read(512)
-        info['record_length'] = clibmseed.ms_detect(rec_buffer, 512)
-        # Calculate Number of Records
-        info['number_of_records'] = long(info['filesize'] // \
-                                         info['record_length'])
-        info['excess_bytes'] = info['filesize'] % info['record_length']
-        f.seek(pos)
-        return info
+        return util._getMSFileInfo(f, real_name)
 
     def _isRateTolerable(self, sr1, sr2):
         """
+        Deprecated and obsolete. If someone uses it please move it to
+        obspy.mseed.util and create a wrapper in this class as done with a lot
+        of other methods.
+
         Tests default sample rate tolerance: abs(1-sr1/sr2) < 0.0001
         """
         return math.fabs(1.0 - (sr1 / float(sr2))) < 0.0001
@@ -1053,126 +914,6 @@ class LibMSEED(object):
         # address of the previously created memory area.
         C.memmove(chain.contents.datasamples, datptr, datasize)
         return mstg
-
-
-class _MSStruct(object):
-    """
-    Class for handling MSRecord and MSFileparam.
-
-    It consists of a MSRecord and MSFileparam and an attached python file
-    pointer.
-
-    :ivar msr: MSRecord
-    :ivar msf: MSFileparam
-    :ivar file: filename
-    :ivar offset: Current offset
-
-    :param filename: file to attach to
-    :param init_msrmsf: initialize msr and msf structure
-        by a first pass of read. Setting this option to
-        false will result in errors when setting e.g.
-        the offset before a call to read
-    """
-    def __init__(self, filename, init_msrmsf=True):
-        # Initialize MSRecord structure
-        self.msr = clibmseed.msr_init(C.POINTER(MSRecord)())
-        self.msf = C.POINTER(MSFileParam)() # null pointer
-        self.file = filename
-        # dummy read once, to avoid null pointer in ms.msf for e.g.
-        # ms.offset
-        if init_msrmsf:
-            self.read(-1, 0, 1, 0)
-            self.offset = 0
-
-    def getEnd(self):
-        """
-        Return endtime
-        """
-        self.read(-1, 0, 1, 0)
-        dtime = clibmseed.msr_endtime(self.msr)
-        return UTCDateTime(dtime / HPTMODULUS)
-
-    def getStart(self):
-        """
-        Return starttime
-        """
-        self.read(-1, 0, 1, 0)
-        dtime = clibmseed.msr_starttime(self.msr)
-        return UTCDateTime(dtime / HPTMODULUS)
-
-    def fileinfo(self):
-        """
-        For details see libmseed._getMSFileInfo
-        """
-        fp = open(self.file, 'rb')
-        self.info = LibMSEED()._getMSFileInfo(fp, self.file)
-        fp.close()
-        return self.info
-
-    def filePosFromRecNum(self, record_number=0):
-        """
-        Return byte position of file given a certain record_number.
-
-        The byte position can be used to seek to certain points in the file
-        """
-        if not hasattr(self, 'info'):
-            self.info = self.fileinfo()
-        # Calculate offset of the record to be read.
-        if record_number < 0:
-            record_number = self.info['number_of_records'] + record_number
-        if record_number < 0 or \
-           record_number >= self.info['number_of_records']:
-            raise ValueError('Please enter a valid record_number')
-        return record_number * self.info['record_length']
-
-    def read(self, reclen= -1, dataflag=1, skipnotdata=1, verbose=0,
-             raise_flag=True):
-        """
-        Read MSRecord using the ms_readmsr_r function. The following
-        parameters are directly passed to ms_readmsr_r.
-        
-        :param ms: _MSStruct (actually consists of a LP_MSRecord,
-            LP_MSFileParam and an attached file pointer). 
-            Given an existing ms the function is much faster.
-        :param reclen: If reclen is 0 the length of the first record is auto-
-            detected. All subsequent records are then expected to have the 
-            same record length. If reclen is negative the length of every 
-            record is automatically detected. Defaults to -1.
-        :param dataflag: Controls whether data samples are unpacked, defaults 
-            to 1.
-        :param skipnotdata: If true (not zero) any data chunks read that to do 
-            not have valid data record indicators will be skipped. Defaults to 
-            True (1).
-        :param verbose: Controls verbosity from 0 to 2. Defaults to None (0).
-        :param record_number: Number of the record to be read. The first record
-            has the number 0. Negative numbers will start counting from the end
-            of the file, e.g. -1 is the last complete record.
-        """
-        errcode = clibmseed.ms_readmsr_r(C.pointer(self.msf),
-                                         C.pointer(self.msr),
-                                         self.file, reclen, None, None,
-                                         skipnotdata, dataflag, verbose)
-        if raise_flag:
-            if errcode != MS_NOERROR:
-                raise Exception("Error %d in ms_readmsr_r" % errcode)
-        return errcode
-
-    def __del__(self):
-        """
-        Method for deallocating MSFileParam and MSRecord structure.
-        """
-        errcode = clibmseed.ms_readmsr_r(C.pointer(self.msf), C.pointer(self.msr),
-                                         None, -1, None, None, 0, 0, 0)
-        if errcode != MS_NOERROR:
-            raise Exception("Error %d in ms_readmsr_r" % errcode)
-
-    def setOffset(self, value):
-        self.msf.contents.readoffset = C.c_int(value)
-
-    def getOffset(self):
-        return int(self.msf.contents.readoffset)
-
-    offset = property(getOffset, setOffset)
 
 
 if __name__ == '__main__':

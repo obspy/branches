@@ -14,6 +14,8 @@ Reading
 -------
 Similar to reading any other waveform data format using obspy.core:
 
+(Lines 2&3 are just to get the absolute path of our test data)
+
 >>> from obspy.core import read
 >>> st = read("/path/to/test.mseed")
 >>> st #doctest: +ELLIPSIS
@@ -84,7 +86,7 @@ So in order to write a STEIM1 encoded Mini-SEED file with a record_length of
 """
 
 from obspy.core.util import _getVersionString
-from obspy.mseed.libmseed import LibMSEED
+#from obspy.mseed.libmseed import LibMSEED
 
 
 __version__ = _getVersionString("obspy.mseed")

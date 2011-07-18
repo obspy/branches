@@ -135,11 +135,11 @@ setup(
     test_suite="obspy.mseed.tests.suite",
     entry_points="""
         [obspy.plugin.waveform]
-        MSEED = obspy.mseed.core
+        MSEED = obspy.mseed.mseed
 
         [obspy.plugin.waveform.MSEED]
-        isFormat = obspy.mseed.core:isMSEED
-        readFormat = obspy.mseed.core:readMSEED
-        writeFormat = obspy.mseed.core:writeMSEED
+        isFormat = obspy.mseed.mseed:isMSEED
+        readFormat = obspy.mseed.mseed:readMSEED
+        writeFormat = obspy.mseed.mseed:writeMSEED
     """,
 )

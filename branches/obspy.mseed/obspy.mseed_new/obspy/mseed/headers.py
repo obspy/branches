@@ -56,6 +56,10 @@ else:
 DATATYPES = {"a": C.c_char, "i": C.c_int32, "f": C.c_float, "d": C.c_double}
 SAMPLESIZES = {'a':1, 'i':4, 'f':4, 'd':8}
 
+# Valid record lengths for MiniSEED files.
+VALID_RECORD_LENGTHS = [256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536,
+                        131072, 262144, 524288, 1048576]
+
 # allowed encodings:
 # SEED id: SEED name, SEED sampletype a, i, f or d, default numpy type)}
 ENCODINGS = {0: ("ASCII", "a", np.dtype("|S1").type),
@@ -65,6 +69,22 @@ ENCODINGS = {0: ("ASCII", "a", np.dtype("|S1").type),
              5: ("FLOAT64", "d", np.dtype("float64")),
              10: ("STEIM1", "i", np.dtype("int32")),
              11: ("STEIM2", "i", np.dtype("int32"))}
+
+# Map the dtype to the samplecode. Redundant information but it is hard coded
+# for performance reasons.
+SAMPLETYPE = {"|S1": "a",
+              "int16": "i",
+              "int32": "i",
+              "float32": "f",
+              "float64": "d",
+              np.dtype("|S1").type: "a",
+              np.dtype("int16").type: "i",
+              np.dtype("int32").type: "i",
+              np.dtype("float32").type: "f",
+              np.dtype("float64").type: "d"}
+# as defined in libmseed.h
+MS_ENDOFFILE = 1
+MS_NOERROR = 0
 
 
 # SEED binary time
@@ -489,6 +509,141 @@ PyFile_FromFile = C.pythonapi.PyFile_FromFile
 PyFile_FromFile.argtypes = [
     Py_ssize_t, C.c_char_p, C.c_char_p, C.CFUNCTYPE(C.c_int, Py_ssize_t)]
 PyFile_FromFile.restype = C.py_object
+
+
+#####################################
+# Define the C structures.
+#####################################
+
+# Container for a continuous trace segment, linkable
+class MSTraceSeg(C.Structure):
+    pass
+MSTraceSeg._fields_ = [
+    ('starttime', C.c_longlong),      # Time of first sample
+    ('endtime', C.c_longlong),        # Time of last sample
+    ('samprate', C.c_double),         # Nominal sample rate (Hz)
+    ('samplecnt', C.c_int),           # Number of samples in trace coverage
+    ('datasamples', C.c_void_p),      # Data samples, 'numsamples' of type 'sampletype'
+    ('numsamples', C.c_int),          # Number of data samples in datasamples
+    ('sampletype', C.c_char),         # Sample type code: a, i, f, d
+    ('prvtptr', C.c_void_p),          # Private pointer for general use, unused by libmseed
+    ('prev', C.POINTER(MSTraceSeg)),  # Pointer to previous segment
+    ('next', C.POINTER(MSTraceSeg))   # Pointer to next segment
+    ]
+
+
+# Container for a trace ID, linkable
+class MSTraceID(C.Structure):
+    pass
+MSTraceID._fields_ = [
+    ('network', C.c_char * 11),       # Network designation, NULL terminated
+    ('station', C.c_char * 11),       # Station designation, NULL terminated
+    ('location', C.c_char * 11),      # Location designation, NULL terminated
+    ('channel', C.c_char * 11),       # Channel designation, NULL terminated
+    ('dataquality', C.c_char),        # Data quality indicator
+    ('srcname', C.c_char * 45),       # Source name (Net_Sta_Loc_Chan_Qual), NULL terminated
+    ('type', C.c_char),               # Trace type code
+    ('earliest', C.c_longlong),       # Time of earliest sample
+    ('latest', C.c_longlong),         # Time of latest sample
+    ('prvtptr', C.c_void_p),          # Private pointer for general use, unused by libmseed
+    ('numsegments', C.c_int),         # Number of segments for this ID
+    ('first', C.POINTER(MSTraceSeg)), # Pointer to first of list of segments
+    ('last', C.POINTER(MSTraceSeg)),  # Pointer to last of list of segments  
+    ('next', C.POINTER(MSTraceID))    # Pointer to next trace
+    ]
+
+
+# Container for a continuous trace segment, linkable
+class MSTraceList(C.Structure):
+    pass
+MSTraceList._fields_ = [
+    ('numtraces', C.c_int),           # Number of traces in list
+    ('traces', C.POINTER(MSTraceID)), # Pointer to list of traces
+    ('last', C.POINTER(MSTraceID))    # Pointer to last used trace in list
+    ]
+
+
+# Data selection structure time window definition containers
+class SelectTime(C.Structure):
+    pass
+SelectTime._fields_ = [
+    ('starttime', C.c_longlong),      # Earliest data for matching channels
+    ('endtime', C.c_longlong),        # Latest data for matching channels
+    ('next', C.POINTER(SelectTime))
+    ]
+
+
+# Data selection structure definition containers
+class Selections(C.Structure):
+    pass
+Selections._fields_ = [
+    ('srcname', C.c_char * 100),      # Matching (globbing) source name: Net_Sta_Loc_Chan_Qual
+    ('timewindows', C.POINTER(SelectTime)),
+    ('next', C.POINTER(Selections))
+    ]
+
+
+# Container for a continuous linked list of records.
+class ContinuousSegment(C.Structure):
+    pass
+ContinuousSegment._fields_ = [
+    ('starttime', C.c_longlong),
+    ('endtime', C.c_longlong),
+    ('samprate', C.c_double),
+    ('sampletype', C.c_char),
+    ('hpdelta', C.c_longlong),
+    ('samplecnt', C.c_int),
+    ('datasamples', C.c_void_p),      # Data samples, 'numsamples' of type 'sampletype'
+    ('firstRecord', C.c_void_p),
+    ('lastRecord', C.c_void_p),
+    ('next', C.POINTER(ContinuousSegment)),
+    ('previous', C.POINTER(ContinuousSegment))
+    ]
+
+
+# A container for continuous segments with the same id
+class LinkedIDList(C.Structure):
+    pass
+LinkedIDList._fields_ = [
+    ('network', C.c_char * 11),       # Network designation, NULL terminated
+    ('station', C.c_char * 11),       # Station designation, NULL terminated
+    ('location', C.c_char * 11),      # Location designation, NULL terminated
+    ('channel', C.c_char * 11),       # Channel designation, NULL terminated
+    ('dataquality', C.c_char),        # Data quality indicator
+    ('firstSegment',  C.POINTER(ContinuousSegment)), # Pointer to first of list of segments
+    ('lastSegment',  C.POINTER(ContinuousSegment)),  # Pointer to last of list of segments
+    ('next',  C.POINTER(LinkedIDList)),              # Pointer to next id
+    ('previous',  C.POINTER(LinkedIDList)),          # Pointer to previous id
+    ]
+
+
+#####################################
+# Done with the C structures defintions.
+#####################################
+
+# Set the necessary arg- and restypes.
+clibmseed.readMSEEDBuffer.argtypes = [
+    np.ctypeslib.ndpointer(dtype='b', ndim=1, flags='C_CONTIGUOUS'),
+    C.c_int,
+    C.POINTER(Selections),
+    C.c_int,
+    C.c_int,
+    C.c_int,
+    C.CFUNCTYPE(C.c_long, C.c_int, C.c_char)
+    ]
+
+clibmseed.readMSEEDBuffer.restype = C.POINTER(LinkedIDList)
+
+clibmseed.mstl_init.restype = C.POINTER(MSTraceList)
+clibmseed.mstl_free.argtypes = [C.POINTER(C.POINTER(MSTraceList)), C.c_int]
+
+clibmseed.lil_init.restype = C.POINTER(LinkedIDList)
+
+clibmseed.lil_free.argtypes = [C.POINTER(LinkedIDList)]
+
+HPTERROR = -2145916800000000L
+
+
 
 
 # Python callback functions for C
