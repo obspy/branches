@@ -1,14 +1,15 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-ObsPySOD: ObsPy Standing Order for Data tool. Meant to be used from the shell.
+ObsPyLoad: ObsPy Seismic Data Downloader tool. Meant to be used from the shell.
 This has been part of a Bachelor's Thesis at the University of Munich.
 
 :copyright:
-    The ObsPy Development Team (devs@obspy.org)
+    The ObsPy Development Team (devs@obspy.org).
+    Developed by Chris Scheingraber.
 :license:
-    GNU Lesser General Public License, Version 3
- (http://www.gnu.org/copyleft/lesser.html)
+    GNU General Public License, Version 3
+    (http://www.gnu.org/licenses/gpl-3.0-standalone.html)
 """
 
 #############################################
@@ -116,7 +117,7 @@ else:
                     with lock:
                         quit = True
                     print "You pressed q."
-                    msg = "Obspysod will finish downloading and saving the " \
+                    msg = "ObsPyLoad will finish downloading and saving the " \
                     + "last file and quit gracefully."
                     print msg
                     # exit this thread
@@ -148,7 +149,7 @@ else:
         with lock:
             if quit:
                 msg = "Quitting. To resume the download, just run " + \
-                "obspysod again, using the same arguments."
+                "ObsPyLoad again, using the same arguments."
                 print msg
                 sys.exit(0)
 
@@ -186,7 +187,7 @@ def main():
                            'end': str(UTCDateTime.utcnow()),
                            'preset': '300',
                            'offset': '4800',
-                           'datapath': 'obspysod-data',
+                           'datapath': 'obspyload-data',
                            'model': 'iasp91',
                            'phases': 'P,S',
                            'nw': '*',
@@ -196,7 +197,7 @@ def main():
                           })
 
     # read config file, if it exists, possibly overriding defaults as set above
-    config.read('~/.obspysodrc')
+    config.read('~/.obspyloadrc')
 
     # create command line option parser
     # parser = OptionParser("%prog [options]" + __doc__.rstrip())
@@ -215,18 +216,18 @@ def main():
               "resp instrument and dataless seed files."
     parser.add_option("-q", "--query-metadata", action="store_true",
                       dest="metadata", help=helpmsg)
-    helpmsg = "The path where obspysod will store the data (default is " + \
-              "./obspysod-data for the data download mode and " + \
-              "./obspysod-metadata for metadata download mode)."
+    helpmsg = "The path where ObsPyLoad will store the data (default is " + \
+              "./ObsPyLoad-data for the data download mode and " + \
+              "./ObsPyLoad-metadata for metadata download mode)."
     parser.add_option("-P", "--datapath", action="store", dest="datapath",
                       help=helpmsg)
-    helpmsg = "Update the event database when obspysod runs on the same " + \
+    helpmsg = "Update the event database when ObsPyLoad runs on the same " + \
               "directory a second time in order to continue data downloading."
     parser.add_option("-u", "--update", help=helpmsg,
                       action="store_true", dest="update")
     helpmsg = "If the datapath is found, do not resume previous downloads " + \
               "as is the default behaviour, but redownload everything. " + \
-              "Same as deleting the datapath before running obspysod."
+              "Same as deleting the datapath before running ObsPyLoad."
     parser.add_option("-R", "--reset", action="store_true",
                       dest="reset", help=helpmsg)
     parser.add_option("-s", "--starttime", action="store", dest="start",
@@ -284,7 +285,7 @@ def main():
                       help="Skip working directory warning.")
     helpmsg = "Instead entering the normal download procedure, read the " + \
               "file exceptions.txt in the datapath, in which all " + \
-              "errors ObsPySOD encountered while downloading are saved. " + \
+              "errors ObsPyLoad encountered while downloading are saved. " + \
               "This mode will try to download the data from every " + \
               "station that returned an error other than 'no data " + \
               "available' last time."
@@ -296,8 +297,8 @@ def main():
               "-I 900x600x5. This gives you a resolution of 900x600, " + \
               "and 5 units broad station columns. If -I d, " + \
               "or -I default, the default of " + \
-              "1200x800x1 will be used. If this command line parameter " + \
-              "is not passed to ObsPySOD at all, no plots will be created." + \
+              "1200x800x1 will be used. If this parameter is not " + \
+              "passed to ObsPyLoad at all, no plots will be created." + \
               " You may additionally specify the timespan of the plot " + \
               "after event origin time in minutes: e.g. for timespan " + \
               "lasting 30 minutes: -I 1200x800x1/30 (or -I d/30). The " + \
@@ -521,8 +522,8 @@ def main():
     ###################################################
     cwd = os.getcwd()
     # change default datapath if we're in metadata query mode
-    if options.metadata and options.datapath == 'obspysod-data':
-        options.datapath = os.path.join(cwd, 'obspysod-metadata')
+    if options.metadata and options.datapath == 'obspyload-data':
+        options.datapath = os.path.join(cwd, 'obspyload-metadata')
     # parse datapath (check if given absolute or relative)
     if os.path.isabs(options.datapath):
         datapath = options.datapath
@@ -539,7 +540,7 @@ def main():
     # if -q oder --query-metadata, do not enter normal data download operation,
     # but download resp instrument and dataless seed files and quit.
     if options.metadata:
-        print "ObsPySOD will download resp and dataless seed instrument " + \
+        print "ObsPyLoad will download resp and dataless seed instrument " + \
               "files and quit.\n"
         queryMeta(options.west, options.east, options.south, options.north,
                   options.start, options.end, options.nw, options.st,
@@ -548,8 +549,8 @@ def main():
     # if -E oder --exceptions, do not enter normal data download operation,
     # operation, but read exceptions.txt and try to download again and quit.
     if options.exceptions:
-        print "ObsPySOD will now try to download the data that returned an" + \
-              " error other than 'no data available' last time.\n"
+        print "ObsPyLoad will now try to download the data that returned " + \
+              "an error other than 'no data available' last time.\n"
         exceptionMode(debug=options.debug)
         return
 
@@ -569,14 +570,14 @@ def main():
                 print "you provided no options, using all default values will"
                 print "download every event that occurred in the last 3 months"
                 print "with magnitude > 3 from every available station."
-            print "\nObsPySOD will now create the folder %s" % datapath
+            print "\nObsPyLoad will now create the folder %s" % datapath
             print "and possibly download vast amounts of data. Continue?"
             print "Note: you can suppress this message with -f or --force"
-            print "Brief help: obspysod -h"
-            print "Long help: obspysod -H"
+            print "Brief help: obspyload.py -h"
+            print "Long help: obspyload.py -H"
             answer = raw_input("[y/N]> ")
             if answer != "y":
-                print "Exiting ObsPySOD."
+                print "Exiting ObsPyLoad."
                 sys.exit(2)
         else:
             print "Found existing data folder %s" % datapath
@@ -586,8 +587,8 @@ def main():
             msg += "with -u or --update\n"
             msg += "- reset and redownload everything, including all data, "
             msg += "with -R or --reset\n"
-            msg += "Brief help: obspysod -h\n"
-            msg += "Long help: obspysod -H"
+            msg += "Brief help: obspyload.py -h\n"
+            msg += "Long help: obspyload.py -H"
             print msg
             answer = raw_input("[y/N]> ")
             if answer != "y":
@@ -885,7 +886,7 @@ def main():
                         # exactly one trace in each stream object
                     else:
                         # if the user did not provide -F, we wont d/l any more
-                        # data. we need trim exisiting data:
+                        # data. we need trim existing data:
                         print "Scaling data for station plot...",
                         tr.trim(starttime=eventtime,
                                 endtime=eventtime + timespan, pad=True,
@@ -1339,7 +1340,7 @@ def get_inventory(start, end, nw, st, lo, ch, permanent, debug=False):
     if debug:
         print "stations2 inside get_inventory: ", stations2
         print "stations3 inside get_inventory: ", stations3
-    # dump result to file so we can quickly resume d/l if obspysod
+    # dump result to file so we can quickly resume d/l if obspyload
     # runs in the same dir more than once. we're only dumping stations (the
     # regex matched ones, since only those are needed. see the try statement
     # above, if this file is found later, we don't have to perform the regex
@@ -1639,7 +1640,7 @@ def travelTimePlot(npoints, phases, depth, model, pltWidth, pltHeight,
     # Plot and some formatting.
     for key, value in data.iteritems():
         # value[0] stores all degrees, value[1] all times as lists
-        # convert those values to the respective obspysod stmatrix indices:
+        # convert those values to the respective obspyload stmatrix indices:
         # divide every entry of value[0] list by 180 and sort of "multiply with
         # pltWidth" to get correct stmatrix index
         x_coord = map(operator.div, value[0], [180.0 / pltWidth] *
@@ -1686,14 +1687,16 @@ def help():
     """
     Print more help.
     """
-    print "\nObsPySOD: ObsPy Standing Order for Data tool"
+    print "\nObsPyLoad: ObsPy Seismic Data Download tool."
     print "============================================\n\n"
     print "The CLI allows for different flavors of usage, in short:"
     print "--------------------------------------------------------\n"
-    printWrap("e.g.:", "obspysod.py -r <west>/<east>/<south>/<north> -t " + \
+    printWrap("e.g.:", "obspyload.py -r <west>/<east>/<south>/<north> -t " + \
           "<start>/<end> -m <min_mag> -M <max_mag> -i <nw>.<st>.<l>.<ch>")
-    printWrap("e.g.:", "obspysod.py -y <min_lon> -Y <max_lon> -x <min_lat>" + \
-       "-X <max_lat> -s <start> -e <end> -P <datapath> -o <offset> --reset -f")
+    printWrap("e.g.:", "obspyload.py -y <min_lon> -Y <max_lon> " + \
+          "-x <min_lat> -X <max_lat> -s <start> -e <end> -P <datapath> " + \
+          "-o <offset> --reset -f")
+
     print "\n\nYou may (no mandatory options):"
     print "-------------------------------\n"
     print "* specify a geographical rectangle:\n"
@@ -1754,7 +1757,7 @@ def help():
                 "900x600x5. This gives you a resolution of 900x600, and " + \
                 "5 units broad station columns. If -I d, or -I default, " + \
                 "the default of 1200x800x1 will be used. If this " + \
-                "command line parameter is not passed to ObsPySOD at " + \
+                "command line parameter is not passed to ObsPyLoad at " + \
                 "all, no plots will be created. You may additionally " + \
                 "specify the timespan of the plot after event origin " + \
                 "time in minutes: e.g. for timespan lasting 30 minutes: " + \
@@ -1765,8 +1768,8 @@ def help():
     printWrap("-F[--fill-plot]", "")
     printWrap("", "When creating the plot, download all the data needed " + \
               "to fill the rectangular area of the plot. Note: " + \
-              "depending on your options, this will approximately" + \
-              "double the data download volume (but you'll end up" + \
+              "depending on your options, this will approximately " + \
+              "double the data download volume (but you'll end up " + \
               "with nicer plots ;-)).")
     print
     printWrap("-a[--phases]", "<phase1>,<phase2>,...")
@@ -1777,17 +1780,17 @@ def help():
               "If you just want to plot the data and no phases, use -a " + \
               "none.")
     printWrap("", "Available phases:")
-    printWrap("", "P, P'P'ab, P'P'bc, P'P'df, PKKPab, PKKPbc," + \
-              "PKKPdf, PKKSab, PKKSbc, PKKSdf, PKPab, PKPbc," + \
-              "PKPdf, PKPdiff, PKSab, PKSbc, PKSdf, PKiKP," + \
-              "PP, PS, PcP, PcS, Pdiff, Pn, PnPn, PnS," + \
-              "S, S'S'ac, S'S'df, SKKPab, SKKPbc, SKKPdf," + \
-              "SKKSac, SKKSdf, SKPab, SKPbc, SKPdf, SKSac," + \
-              "SKSdf, SKiKP, SP, SPg, SPn, SS, ScP, ScS," + \
-              "Sdiff, Sn, SnSn, pP, pPKPab, pPKPbc, pPKPdf," + \
-              "pPKPdiff, pPKiKP, pPdiff, pPn, pS, pSKSac," + \
-              "pSKSdf, pSdiff, sP, sPKPab, sPKPbc, sPKPdf," + \
-              "sPKPdiff, sPKiKP, sPb, sPdiff, sPg, sPn, sS," + \
+    printWrap("", "P, P'P'ab, P'P'bc, P'P'df, PKKPab, PKKPbc, " + \
+              "PKKPdf, PKKSab, PKKSbc, PKKSdf, PKPab, PKPbc, " + \
+              "PKPdf, PKPdiff, PKSab, PKSbc, PKSdf, PKiKP, " + \
+              "PP, PS, PcP, PcS, Pdiff, Pn, PnPn, PnS, " + \
+              "S, S'S'ac, S'S'df, SKKPab, SKKPbc, SKKPdf, " + \
+              "SKKSac, SKKSdf, SKPab, SKPbc, SKPdf, SKSac, " + \
+              "SKSdf, SKiKP, SP, SPg, SPn, SS, ScP, ScS, " + \
+              "Sdiff, Sn, SnSn, pP, pPKPab, pPKPbc, pPKPdf, " + \
+              "pPKPdiff, pPKiKP, pPdiff, pPn, pS, pSKSac, " + \
+              "pSKSdf, pSdiff, sP, sPKPab, sPKPbc, sPKPdf, " + \
+              "sPKPdiff, sPKiKP, sPb, sPdiff, sPg, sPn, sS, " + \
               "sSKSac, sSKSdf, sSdiff, sSn")
     printWrap("", "Note: if you select phases with ticks(') in the " + \
               "phase name, don't forget to use quotes " + \
@@ -1818,43 +1821,43 @@ def help():
     printWrap("", "If the datapath is found, do not resume previous " + \
               "downloads as is the default behaviour, but redownload " + \
               "everything. Same as deleting the datapath before running " + \
-              "ObsPySOD.")
+              "ObsPyLoad.")
     print
     printWrap("-u[--update]", "")
-    printWrap("", "Update the event database if ObsPySOD runs on the " + \
+    printWrap("", "Update the event database if ObsPyLoad runs on the " + \
               "same directory for a second time.")
     print
     printWrap("-f[--force]", "")
     printWrap("", "Skip working directory warning (auto-confirm folder" + \
               " creation).")
-    print "\nType obspysod.py -h for a list of all long and short options."
+    print "\nType obspyload.py -h for a list of all long and short options."
     print "\n\nExamples:"
     print "---------\n"
     printWrap("Alps region, minimum magnitude of 4.2:",
-              "obspysod.py -r 5/16.5/45.75/48 -t 2007-01-13T08:24:00/" + \
+              "obspyload.py -r 5/16.5/45.75/48 -t 2007-01-13T08:24:00/" + \
               "2011-02-25T22:41:00 -m 4.2")
     print
     printWrap("Sumatra region, Christmas 2004, different timestring, " + \
               "mind the quotation marks:",
-              "obspysod.py -r 90/108/-7/7 -t \"2004-12-24 01:23:45/" + \
+              "obspyload.py -r 90/108/-7/7 -t \"2004-12-24 01:23:45/" + \
               "2004-12-26 12:34:56\" -m 9")
     print
     printWrap("Mount Hochstaufen area(Ger/Aus), default minimum magnitude:",
-              "obspysod.py -r 12.8/12.9/47.72/47.77 -t 2001-01-01/2011-02-28")
+              "obspyload.py -r 12.8/12.9/47.72/47.77 -t 2001-01-01/2011-02-28")
     print
     printWrap("Only one station, to quickly try out the plot:",
-             "obspysod.py -s 2011-03-01 -m 9 -I 400x300x3 -f " + \
+             "obspyload.py -s 2011-03-01 -m 9 -I 400x300x3 -f " + \
              "-i IU.YSS.*.*")
     print
-    printWrap("ArcLink Network wildcard search:", "obspysod.py -N B? -S " + \
+    printWrap("ArcLink Network wildcard search:", "obspyload.py -N B? -S " + \
               "FURT -f")
     print
     printWrap("Downloading metadata from all available stations " + \
-              "to folder \"metacatalog\":", "obspysod.py -q -f -P metacatalog")
+             "to folder \"metacatalog\":", "obspyload.py -q -f -P metacatalog")
     print
     printWrap("Download stations that failed last time " + \
               "(not necessary to re-enter the event/station restrictions):",
-              "obspysod.py -E -P thisOrderHadExceptions -f")
+              "obspyload.py -E -P thisOrderHadExceptions -f")
     print
     return
 
@@ -1876,8 +1879,8 @@ if __name__ == "__main__":
         global quit
         if not quit:
             print "You pressed ^C (SIGINT)."
-            msg = "Obspysod will finish downloading and saving the last file"+\
-                    " and quit gracefully."
+            msg = "ObsPyLoad will finish downloading and saving the last " + \
+                  "file and quit gracefully."
             print msg
             print "Press ^C again to interrupt immediately."
         else:
