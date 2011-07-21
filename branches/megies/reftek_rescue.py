@@ -10,12 +10,11 @@
 """
 Restore REFTEK data from formatted storage media.
 
-This program is intended for restoring REFTEK packets from dumped disk
+This program is intended for restoring REFTEK 130-01 packets from dumped disk
 images, e.g. from formatted but not yet overwritten storage media.
-The raw dumped data is searched for a header pattern consisting of
-experiment number, year and REFTEK DAS ID.
-Currently every packet is written to an individual file which can lead to an
-enormous amount of files.
+The raw dumped data is searched for a header pattern consisting of experiment
+number, year and REFTEK DAS ID.
+Packets are written to one file per day.
 
 :copyright:
     The ObsPy Development Team (devs@obspy.org)
@@ -36,6 +35,7 @@ file_dd = "/export/data/A03F.IMG"
 experiment_number = "00" # two chars, usually "00" (?)
 year = "11" # last two digits of year as string
 reftek_id = "A03F" # four char REFTEK DAS ID
+# outfolder should be empty! data might get appended to existing files!
 outfolder = "/export/data/rescue/all_daily_test/"
 #==============================================================================
 
@@ -72,14 +72,9 @@ with open(file_dd, 'r') as f:
                 header = header.upper()
                 # all packets consist of 1024 bytes
                 packet = m[ind:ind+1024]
-                # write to outfolder with header representation as filename
-                filename = os.path.join(outfolder, header)
-                # mark as *possibly* corrupted if a packet type string is found
-                # inside the packet again.
-                if any([pt in packet[1:] for pt in PACKET_TYPES]):
-                    filename += "X"
-                if pattern in packet[3:]:
-                    filename += "XX"
-                open(filename, "wb").write(packet)
+                # write to outfolder, one file per day
+                filename = header[2:13] + ".reftek"
+                filename = os.path.join(outfolder, filename)
+                open(filename, "ab").write(packet)
             # search for pattern in memory map starting right of last position
             pos = m.find(pattern, pos + 1)
