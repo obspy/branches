@@ -160,9 +160,9 @@ def IRIS_get_Waveform(input, Address_events, len_events, events, Networks_iris_B
 		for k in dic_BHE.keys():
 			Syn_file = open(Address_events + '/' + events[i]['event_id'] + \
 				'/IRIS/STATION/' + 'Input_Syn_BHE', 'a')
-			syn = dic_BHE[k]['Network'] + '  ' + dic_BHE[k]['Station'] + '  ' + \
-				dic_BHE[k]['Location'] + '  ' + dic_BHE[k]['Channel'] + '  ' + dic_BHE[k]['Latitude'] + \
-				'  ' + dic_BHE[k]['Longitude'] + '  ' + dic_BHE[k]['Elevation'] + '\n'
+			syn = dic_BHE[k]['Network'] + ' , ' + dic_BHE[k]['Station'] + ' , ' + \
+				dic_BHE[k]['Location'] + ' , ' + dic_BHE[k]['Channel'] + ' , ' + dic_BHE[k]['Latitude'] + \
+				' , ' + dic_BHE[k]['Longitude'] + ' , ' + dic_BHE[k]['Elevation'] + '\n'
 			Syn_file.writelines(syn)
 			Syn_file.close()
 		
@@ -276,9 +276,9 @@ def IRIS_get_Waveform(input, Address_events, len_events, events, Networks_iris_B
 		for k in dic_BHN.keys():
 			Syn_file = open(Address_events + '/' + events[i]['event_id'] + \
 				'/IRIS/STATION/' + 'Input_Syn_BHN', 'a')
-			syn = dic_BHN[k]['Network'] + '  ' + dic_BHN[k]['Station'] + '  ' + \
-				dic_BHN[k]['Location'] + '  ' + dic_BHN[k]['Channel'] + '  ' + dic_BHN[k]['Latitude'] + \
-				'  ' + dic_BHN[k]['Longitude'] + '  ' + dic_BHN[k]['Elevation'] + '\n'
+			syn = dic_BHN[k]['Network'] + ' , ' + dic_BHN[k]['Station'] + ' , ' + \
+				dic_BHN[k]['Location'] + ' , ' + dic_BHN[k]['Channel'] + ' , ' + dic_BHN[k]['Latitude'] + \
+				' , ' + dic_BHN[k]['Longitude'] + ' , ' + dic_BHN[k]['Elevation'] + '\n'
 			Syn_file.writelines(syn)
 			Syn_file.close()
 			
@@ -392,9 +392,9 @@ def IRIS_get_Waveform(input, Address_events, len_events, events, Networks_iris_B
 		for k in dic_BHZ.keys():
 			Syn_file = open(Address_events + '/' + events[i]['event_id'] + \
 				'/IRIS/STATION/' + 'Input_Syn_BHZ', 'a')
-			syn = dic_BHZ[k]['Network'] + '  ' + dic_BHZ[k]['Station'] + '  ' + \
-				dic_BHZ[k]['Location'] + '  ' + dic_BHZ[k]['Channel'] + '  ' + dic_BHZ[k]['Latitude'] + \
-				'  ' + dic_BHZ[k]['Longitude'] + '  ' + dic_BHZ[k]['Elevation'] + '\n'
+			syn = dic_BHZ[k]['Network'] + ' , ' + dic_BHZ[k]['Station'] + ' , ' + \
+				dic_BHZ[k]['Location'] + ' , ' + dic_BHZ[k]['Channel'] + ' , ' + dic_BHZ[k]['Latitude'] + \
+				' , ' + dic_BHZ[k]['Longitude'] + ' , ' + dic_BHZ[k]['Elevation'] + '\n'
 			Syn_file.writelines(syn)
 			Syn_file.close()
 					

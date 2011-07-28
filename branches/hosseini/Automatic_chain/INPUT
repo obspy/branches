@@ -44,9 +44,9 @@ urcrnrlon = 180 					# longitude of upper right hand corner of the desired map d
 urcrnrlat = 90 						# latitude of upper right hand corner of the desired map domain (degrees).
 
 mass = Y							# mass downloading of waveforms
-IRIS = Y							# IRIS will be used (Y)
-ArcLink = Y							# ArcLink will be used (Y)
+IRIS = N							# IRIS will be used (Y)
+ArcLink = N							# ArcLink will be used (Y)
 QC_IRIS = Y							# Quality Control for IRIS
 QC_ARC = Y							# Quality Control for ArcLink
-get_events = Y						# To get events (Y)
+get_events = N						# To get events (Y)
 nodes = Y							# Do it on nodes

@@ -18,7 +18,14 @@ def QC_IRIS(input):
 	len_events = len(events)
 
 	for k in range(0, len_events):
-			os.makedirs(Address_events + '/' + events[k]['event_id'] + '/IRIS/QC/')
+		
+			if os.path.exists(Address_events + '/' + events[k]['event_id'] + '/IRIS/QC/') == 'True':
+			
+				shutil.rmtree(Address_events + '/' + events[k]['event_id'] + '/IRIS/QC/')
+				os.makedirs(Address_events + '/' + events[k]['event_id'] + '/IRIS/QC/')
+			
+			else:
+				os.makedirs(Address_events + '/' + events[k]['event_id'] + '/IRIS/QC/')	
 
 	for k in range(0, len_events):
 		gapfile = open(Address_events + '/' + events[k]['event_id'] + \
@@ -52,6 +59,7 @@ def QC_IRIS(input):
 	
 	
 	for k in range(0, len_events):
+		
 		List_IRIS_BHE.append(glob.glob(Address_events + '/' + events[k]['event_id'] + '/IRIS/' + '*.BHE'))
 		List_IRIS_BHN.append(glob.glob(Address_events + '/' + events[k]['event_id'] + '/IRIS/' + '*.BHN'))
 		List_IRIS_BHZ.append(glob.glob(Address_events + '/' + events[k]['event_id'] + '/IRIS/' + '*.BHZ'))
@@ -111,8 +119,28 @@ def QC_IRIS(input):
 		TQ_BHE = []
 		
 		for i in range(0, len(List_IRIS_BHE[k])):
-			DQ_BHE.append(mseed.getDataQualityFlagsCount(List_IRIS_BHE[k][i]))
-			TQ_BHE.append(mseed.getTimingQuality(List_IRIS_BHE[k][i]))
+			
+			try:
+				
+				TQ_BHE.append(mseed.getTimingQuality(List_IRIS_BHE[k][i]))
+				DQ_BHE.append(mseed.getDataQualityFlagsCount(List_IRIS_BHE[k][i]))				
+		
+			except Exception, e:	
+					
+				print 'TQ-DQ' + '---' + Sta_BHE[i][0] +	'.' + Sta_BHE[i][1] + \
+					'.' +Sta_BHE[i][2] + '.' + 'BHE'
+					
+				Exception_file = open(Address_events + '/' + \
+					events[i]['event_id'] + '/IRIS/EXCEP/' + 'Exception_file_IRIS', 'a')
+
+				ee = 'TQ-DQ' + '---' + str(k) + '-' + str(i) + '---' + Sta_BHE[i][0] + \
+					'.' + Sta_BHE[i][1] + '.' + Sta_BHE[i][2] + '.' + 'BHE' + \
+					'---' + str(e) + '\n'
+					
+				Exception_file.writelines(ee)
+				Exception_file.close()
+				print e
+
 			
 		TQ_prob_BHE = []
 		
@@ -211,8 +239,28 @@ def QC_IRIS(input):
 		TQ_BHN = []
 		
 		for i in range(0, len(List_IRIS_BHN[k])):
-			DQ_BHN.append(mseed.getDataQualityFlagsCount(List_IRIS_BHN[k][i]))
-			TQ_BHN.append(mseed.getTimingQuality(List_IRIS_BHN[k][i]))
+			
+			try:
+					
+				TQ_BHN.append(mseed.getTimingQuality(List_IRIS_BHN[k][i]))
+				DQ_BHN.append(mseed.getDataQualityFlagsCount(List_IRIS_BHN[k][i]))
+							
+			except Exception, e:	
+					
+				print 'TQ-DQ' + '---' + Sta_BHN[i][0] +	'.' + Sta_BHN[i][1] + \
+					'.' +Sta_BHN[i][2] + '.' + 'BHN'
+					
+				Exception_file = open(Address_events + '/' + \
+					events[i]['event_id'] + '/IRIS/EXCEP/' + 'Exception_file_IRIS', 'a')
+
+				ee = 'TQ-DQ' + '---' + str(k) + '-' + str(i) + '---' + Sta_BHN[i][0] + \
+					'.' + Sta_BHN[i][1] + '.' + Sta_BHN[i][2] + '.' + 'BHN' + \
+					'---' + str(e) + '\n'
+					
+				Exception_file.writelines(ee)
+				Exception_file.close()
+				print e
+		
 			
 		TQ_prob_BHN = []
 		
@@ -311,8 +359,28 @@ def QC_IRIS(input):
 		TQ_BHZ = []
 		
 		for i in range(0, len(List_IRIS_BHZ[k])):
-			DQ_BHZ.append(mseed.getDataQualityFlagsCount(List_IRIS_BHZ[k][i]))
-			TQ_BHZ.append(mseed.getTimingQuality(List_IRIS_BHZ[k][i]))
+			
+			try:
+					
+				TQ_BHZ.append(mseed.getTimingQuality(List_IRIS_BHZ[k][i]))
+				DQ_BHZ.append(mseed.getDataQualityFlagsCount(List_IRIS_BHZ[k][i]))
+			
+			except Exception, e:	
+					
+				print 'TQ-DQ' + '---' + Sta_BHZ[i][0] +	'.' + Sta_BHZ[i][1] + \
+					'.' +Sta_BHZ[i][2] + '.' + 'BHZ'
+					
+				Exception_file = open(Address_events + '/' + \
+					events[i]['event_id'] + '/IRIS/EXCEP/' + 'Exception_file_IRIS', 'a')
+
+				ee = 'TQ-DQ' + '---' + str(k) + '-' + str(i) + '---' + Sta_BHZ[i][0] + \
+					'.' + Sta_BHZ[i][1] + '.' + Sta_BHZ[i][2] + '.' + 'BHZ' + \
+					'---' + str(e) + '\n'
+					
+				Exception_file.writelines(ee)
+				Exception_file.close()
+				print e
+			
 			
 		TQ_prob_BHZ = []
 		
