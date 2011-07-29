@@ -9,10 +9,43 @@ import pickle
 
 def QC_IRIS(input):
 	
+	'''
 	Period = input['min_date'] + '_' + input['max_date'] + '_' + str(input['min_mag']) + '_' + str(input['max_mag'])
 	Address_events = input['Address'] + '/Data/' + Period
+	'''
 	
-	Event_file = open(Address_events + '/list_event', 'r')
+	Address_data = input['Address'] + '/Data'
+	ls_period = os.listdir(Address_data)
+	
+	pre_ls_event = []
+	for i in range(0, len(ls_period)):
+		pre_ls_event.append(Address_data + '/' + ls_period[i])
+	
+	ls_event = []
+	
+	for i in range(0, len(ls_period)):
+		for j in range(0, len(pre_ls_event[i])):
+			if pre_ls_event[i][j] == 'list_event':
+				print 'boo'
+			else:
+				ls_event.append(Address_data + '/' + ls_period[i] + '/' + pre_ls_event[i][j])
+				print pre_ls_event[i][j]
+	
+	add_IRIS_QC = []
+	
+	for i in ls_event:
+		add_IRIS_QC.append(i + '/IRIS/QC')	
+	
+	add_IRIS_events = []
+	for i in pre_ls_event:
+		add_IRIS_events.append(i + '/list_event')
+		
+	events_all = []
+	
+	for i in add_IRIS_events:
+		Event_file = open(add_IRIS_events, 'r')
+		events_all.append(Event_file)
+		
 	events = pickle.load(Event_file)
 	
 	len_events = len(events)

@@ -8,7 +8,7 @@ from datetime import datetime
 import time
 from obspy.arclink.client import ArcLinkException as ArcLinkException
 import pickle
-from obspy.xseed import Parser
+#from obspy.xseed import Parser
 
 # client_arclink = Client_arclink(timeout = 30, command_delay=0.1)
 
@@ -89,6 +89,7 @@ def Arclink_get_Waveform(input, Address_events, len_events, events, Nets_Arc_req
 						Nets_Arc_req_BHE[i][j][2] + '.' + 'BHE', Nets_Arc_req_BHE[i][j][0], Nets_Arc_req_BHE[i][j][1], \
 						Nets_Arc_req_BHE[i][j][2], 'BHE', t[i]-input['t_before'], t[i]+input['t_after'])
 					
+					'''
 					pars = Parser()
 						
 					pars.read(Address_events + '/' + events[i]['event_id'] + \
@@ -98,7 +99,8 @@ def Arclink_get_Waveform(input, Address_events, len_events, events, Nets_Arc_req
 					pars.writeRESP(Address_events + '/' + events[i]['event_id'] + \
 						'/ARC/RESP/' + 'RESP' + '.' + Nets_Arc_req_BHE[i][j][0] +	'.' + Nets_Arc_req_BHE[i][j][1] + '.' + \
 						Nets_Arc_req_BHE[i][j][2] + '.' + 'BHE')	
-						
+					'''	
+					
 					print "Saving Response for: " + Nets_Arc_req_BHE[i][j][0] + '.' + Nets_Arc_req_BHE[i][j][1] + '.' + \
 						Nets_Arc_req_BHE[i][j][2] + '.' + 'BHE' + "  ---> DONE"
 						
@@ -209,7 +211,7 @@ def Arclink_get_Waveform(input, Address_events, len_events, events, Nets_Arc_req
 						Nets_Arc_req_BHN[i][j][2] + '.' + 'BHN', Nets_Arc_req_BHN[i][j][0], Nets_Arc_req_BHN[i][j][1], \
 						Nets_Arc_req_BHN[i][j][2], 'BHN', t[i]-input['t_before'], t[i]+input['t_after'])
 										
-					
+					'''
 					pars = Parser()
 						
 					pars.read(Address_events + '/' + events[i]['event_id'] + \
@@ -219,10 +221,12 @@ def Arclink_get_Waveform(input, Address_events, len_events, events, Nets_Arc_req
 					pars.writeRESP(Address_events + '/' + events[i]['event_id'] + \
 						'/ARC/RESP/' + 'RESP' + '.' + Nets_Arc_req_BHN[i][j][0] +	'.' + Nets_Arc_req_BHN[i][j][1] + '.' + \
 						Nets_Arc_req_BHN[i][j][2] + '.' + 'BHN')
+					'''
+					
 										
 					print "Saving Response for: " + Nets_Arc_req_BHN[i][j][0] + '.' + Nets_Arc_req_BHN[i][j][1] + '.' + \
 						Nets_Arc_req_BHN[i][j][2] + '.' + 'BHN' + "  ---> DONE"
-						
+					
 					
 					dummy = 'Inventory'
 					
@@ -329,7 +333,7 @@ def Arclink_get_Waveform(input, Address_events, len_events, events, Nets_Arc_req
 						Nets_Arc_req_BHZ[i][j][2] + '.' + 'BHZ', Nets_Arc_req_BHZ[i][j][0], Nets_Arc_req_BHZ[i][j][1], \
 						Nets_Arc_req_BHZ[i][j][2], 'BHZ', t[i]-input['t_before'], t[i]+input['t_after'])
 										
-					
+					'''
 					pars = Parser()
 						
 					pars.read(Address_events + '/' + events[i]['event_id'] + \
@@ -339,7 +343,7 @@ def Arclink_get_Waveform(input, Address_events, len_events, events, Nets_Arc_req
 					pars.writeRESP(Address_events + '/' + events[i]['event_id'] + \
 						'/ARC/RESP/' + 'RESP' + '.' + Nets_Arc_req_BHZ[i][j][0] +	'.' + Nets_Arc_req_BHZ[i][j][1] + '.' + \
 						Nets_Arc_req_BHZ[i][j][2] + '.' + 'BHZ')
-					
+					'''
 					
 					print "Saving Response for: " + Nets_Arc_req_BHZ[i][j][0] + '.' + Nets_Arc_req_BHZ[i][j][1] + '.' + \
 						Nets_Arc_req_BHZ[i][j][2] + '.' + 'BHZ' + "  ---> DONE"
