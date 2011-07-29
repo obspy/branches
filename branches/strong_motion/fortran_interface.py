@@ -20,7 +20,7 @@ class FortranHandler():
             self.dest = self.inputfn.replace('.dat','_tmp.dat')
             if os.path.isfile(self.dest):
                 raise FortranHandlerError("File %s already exists.\n \
-                This could be the result of a previous run that crashed\n \
+                This could be the result of a previous run that crashed.\n \
                 Please check the file %s and %s before you run this program again."%(self.dest,self.inputfn,self.dest))
             print "copy %s --> %s"%(self.inputfn,self.dest)
             shutil.copy(self.inputfn,self.dest)
@@ -36,7 +36,8 @@ class FortranHandler():
 
     
     def __del__(self):
-        self.fin.close()
+        if hasattr(self,'fin'):
+            self.fin.close()
         if not os.path.isfile(self.inputfn):
             print "mv %s --> %s"%(self.dest,self.inputfn)
             os.rename(self.dest,self.inputfn)
