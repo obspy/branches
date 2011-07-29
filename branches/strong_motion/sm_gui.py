@@ -106,11 +106,8 @@ class SmGui(DataHandler, PlotIterator):
         self.p = {}
         self.p['hlow'] = Tk.DoubleVar();self.p['hlow'].set(self.highp[0])
         self.p['hhgh'] = Tk.DoubleVar();self.p['hhgh'].set(self.highp[1])
-        self.p['llow'] = Tk.DoubleVar();self.p['llow'].set(self.lowp[0])
-        self.p['lhgh'] = Tk.DoubleVar();self.p['lhgh'].set(self.lowp[1])
-
+  
         self.textentry(self.entry_frame, self.p['hlow'], self.p['hhgh'], 'Highpass filter')
-        #self.textentry(self.entry_frame, self.p['llow'], self.p['lhgh'], 'Low-pass filter')
         flt_button = Tk.Button(self.entry_frame, text='Enter', width=8, command=self.recalc)
         flt_button.pack(side='left', padx=20)
         p_button = Tk.Button(self.entry_frame, text='Previous', width=8, command=self.prev)
@@ -180,44 +177,32 @@ class SmGui(DataHandler, PlotIterator):
         self.canvas2.draw()
         self.p['hlow'].set(self.highp[0])
         self.p['hhgh'].set(self.highp[1])
-        self.p['llow'].set(self.lowp[0])
-        self.p['lhgh'].set(self.lowp[1])
 
     def check_filterband(self):
-        f1low = self.p['llow'].get()
-        f2low = self.p['lhgh'].get()
         f1high = self.p['hlow'].get()
         f2high = self.p['hhgh'].get()
         tr = self.v1.stream[0]
         npts = tr.stats.npts
         dt = tr.stats.delta
-        if f1low >= f2low:
-            raise FilterError("%.2f has to be smaller than %.2f" % (f1low, f2low))
         if f1high >= f2high:
             raise FilterError("%.2f has to be smaller than %.2f" % (f1high, f2high))
         fnyq = 0.5 / dt
         nf = npts / 2 + 1
-        fclow = (f1low + f2low) / 2.
         fchigh = (f1high + f2high) / 2.
         res = fnyq / float(nf - 1)
-        dfl = f2low - f1low
         dfh = f2high - f1high
-        if abs(dfl) <= res:
-            raise FilterError("Filter transition bandwidth (%.2f) <= frequency resolution (%.2f)." % (abs(dfl), res))
         if abs(dfh) <= res:
             raise FilterError("Filter transition bandwidth (%.2f) <= frequency resolution (%.2f)." % (abs(dfh), res))
-        print fclow, fchigh, 0.25 / dt + res
             
     def recalc(self):
         line = self.data[self.counter]
         a = line.split()
-        nline = "%s%6.2f%6.2f%6.2f%6.2f" % (a[0], self.p['hlow'].get(), self.p['hhgh'].get(), \
-                                                self.p['llow'].get(), self.p['lhgh'].get())
-        idx = line.find(a[4]) + len(a[4])
+        nline = "%s%6.2f%6.2f" % (a[0], self.p['hlow'].get(), self.p['hhgh'].get())
+        idx = line.find(a[2]) + len(a[2])
         nline += line[idx::]
         print line
         print nline
-        #self.data[self.counter] = nline
+        self.data[self.counter] = nline
         try:
             self.check_filterband()
         except FilterError,e:
