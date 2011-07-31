@@ -1008,12 +1008,15 @@ def main():
                 # Timing Quality, trying to get all stations into one line in
                 # eventfile, and handling the case that some station's mseeds
                 # provide TQ data, and some do not
-                tq = mseed.getTimingQuality(irisfnfull)
-                if tq != {}:
-                    tqlist.append(tq['min'])
-                    il_quake += str(tq['min'])
-                else:
-                    il_quake += str('None')
+                try:
+                    tq = mseed.getTimingQuality(irisfnfull)
+                    if tq != {}:
+                        tqlist.append(tq['min'])
+                        il_quake += str(tq['min'])
+                    else:
+                        il_quake += str('None')
+                except:
+                    pass
                 # finally, gaps&overlaps into quakefile
                 # read mseed into stream, use .getGaps method
                 st = read(irisfnfull)
