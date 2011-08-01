@@ -49,16 +49,7 @@ import time
 import os
 
 t1_pro = datetime.now()
-'''
-from obspy.iris import Client as Client_iris
-from obspy.neries import Client as Client_neries
-from obspy.arclink import Client as Client_arclink
 
-# ------------------------Initializing the Clients-------------------------------
-client_iris = Client_iris()
-client_neries = Client_neries()
-client_arclink = Client_arclink()
-'''
 # ------------------------Getting List of Events---------------------------------
 if input['get_events'] == 'Y':
 	from get_Events import *

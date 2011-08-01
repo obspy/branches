@@ -1,4 +1,5 @@
 """
+?????????? ['BW', 'WETR', '', 'BHE']
 Arclink: Gets the information about the available stations in a specific period of time (Events)
 """
 
@@ -86,6 +87,24 @@ def Arclink_get_Network(len_events, events, Address_events):
 		len_req_Arc_BHZ = len(Nets_Arc_req_BHZ[i])
 		for j in range(0, len_req_Arc_BHZ):
 			Nets_Arc_req_BHZ[i][j] = Nets_Arc_req_BHZ[i][j].split('.')
+	
+	import ipdb; ipdb.set_trace()
+	
+	for j in range(0, len_events):
+		for i in range(0, len(Nets_Arc_req_BHE[j])):
+			if Nets_Arc_req_BHE[j][i] == ['BW', 'WETR', '', 'BHE']:
+				del Nets_Arc_req_BHE[j][i]
+				break
+		
+		for i in range(0, len(Nets_Arc_req_BHN[j])):
+			if Nets_Arc_req_BHN[j][i] == ['BW', 'WETR', '', 'BHN']:
+				del Nets_Arc_req_BHN[j][i]
+				break
+		
+		for i in range(0, len(Nets_Arc_req_BHZ[j])):
+			if Nets_Arc_req_BHZ[j][i] == ['BW', 'WETR', '', 'BHZ']:
+				del Nets_Arc_req_BHZ[j][i]
+				break
 	
 	
 	for i in range(0, len_events):

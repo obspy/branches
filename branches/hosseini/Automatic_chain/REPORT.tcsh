@@ -1,6 +1,6 @@
 #!/bin/tcsh
 
-set add = "/import/neptun-radler/hosseini-downloads/Data_old"
+set add = "/import/neptun-radler/hosseini-downloads/Data"
 
 
 set rep_IRIS = "$add/*/*/IRIS/STATION/Report_station"
@@ -24,11 +24,11 @@ cat $rep_ARC >> ~/Desktop/report/report_ARC.txt
 cat $exc_IRIS >> ~/Desktop/report/excep_IRIS.txt
 cat $exc_ARC >> ~/Desktop/report/excep_ARC.txt
 
-cat $DQ_IRIS >> ~/Desktop/report/DQ_IRIS.txt
-cat $DQ_ARC >> ~/Desktop/report/DQ_ARC.txt
+#cat $DQ_IRIS >> ~/Desktop/report/DQ_IRIS.txt
+#cat $DQ_ARC >> ~/Desktop/report/DQ_ARC.txt
 
-cat $TQ_IRIS >> ~/Desktop/report/TQ_IRIS.txt
-cat $TQ_ARC >> ~/Desktop/report/TQ_ARC.txt
+#cat $TQ_IRIS >> ~/Desktop/report/TQ_IRIS.txt
+#cat $TQ_ARC >> ~/Desktop/report/TQ_ARC.txt
 
-cat $GAP_IRIS >> ~/Desktop/report/GAP_IRIS.txt
-cat $GAP_ARC >> ~/Desktop/report/GAP_ARC.txt
+#cat $GAP_IRIS >> ~/Desktop/report/GAP_IRIS.txt
+#cat $GAP_ARC >> ~/Desktop/report/GAP_ARC.txt
