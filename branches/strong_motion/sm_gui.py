@@ -5,11 +5,15 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolb
 from matplotlib.figure import Figure, rcParams
 from obspy.core import Trace, UTCDateTime, Stream
 import obspy.mseed
-import Tkinter as Tk
+#import Tkinter as Tk
 import sys
 import os
 import numpy as np
 from fortran_interface import *
+import Tix as Tk
+from Tkconstants import *
+import tkMessageBox
+from tkFileDialog import asksaveasfilename
 
 rcParams['figure.subplot.hspace'] = 0.1 
 rcParams['figure.subplot.bottom'] = 0.2
@@ -77,7 +81,7 @@ class SmGui(DataHandler, PlotIterator):
         ### Window setup
         self.root = parent
         self.entry_frame = Tk.Frame(root)
-        self.entry_frame.pack(side='top', pady=20)
+        self.entry_frame.pack(side='top', pady=5)
         self.figure_frame = Tk.Frame(root)
         self.figure_frame.pack(side='top', anchor='n', expand=1, fill=Tk.BOTH)
         self.left_frame = Tk.Frame(self.figure_frame)
@@ -114,7 +118,29 @@ class SmGui(DataHandler, PlotIterator):
         p_button.pack(side='left', padx=10)
         n_button = Tk.Button(self.entry_frame, text='Next', width=8, command=self.next)
         n_button.pack(side='left', padx=10)
-
+        n_button = Tk.Button(self.entry_frame, text='Save', width=8, command=self.savefile)
+        n_button.pack(side='left', padx=10)
+        
+#        self.testvar = Tk.IntVar()
+#        testcntrl = Tk.Control(self.entry_frame,label='test',max=10,min=0,integer=True,step=2,
+#                               variable=self.testvar,validatecmd=self.printtest)
+#        testcntrl.pack(side='left',padx=10)
+        
+#        self.savefn = Tk.StringVar()
+#        fileentry = Tk.FileEntry(self.entry_frame,label='Save',variable=self.savefn,
+#                                 command=self.savefile,dialogtype='tk_getSaveFile')
+#        fileentry.pack(side='left',padx=10)
+                
+    def savefile(self):
+        #tkMessageBox.showinfo(message='Hello')
+        filename = asksaveasfilename(filetypes=[("allfiles","*")])
+        if filename == '':
+            print "no filename given"
+        else:
+            print "saving %s"%filename
+            f = open(filename,'w')
+            f.writelines(self.data)
+            f.close()
 
     def plotcanvas(self):
         self.run_fortran()
@@ -142,11 +168,14 @@ class SmGui(DataHandler, PlotIterator):
         ax3.loglog(freqs, abs(fspec3))
         ymin, ymax = ax1.get_ylim()
         ax1.vlines(self.highp[0], ymin, ymax)
+        ax1.vlines(self.highp[1], ymin, ymax)
         ax1.set_ylim(ymin, ymax)
         ymin, ymax = ax2.get_ylim()
         ax2.vlines(self.highp[0], ymin, ymax)
+        ax2.vlines(self.highp[1], ymin, ymax)
         ymin, ymax = ax3.get_ylim()
         ax3.vlines(self.highp[0], ymin, ymax)
+        ax3.vlines(self.highp[1], ymin, ymax)
         ax1.set_xlim(0.01, 20)
         ax2.set_xlim(0.01, 20)
         ax3.set_xlim(0.01, 20)
