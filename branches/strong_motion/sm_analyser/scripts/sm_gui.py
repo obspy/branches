@@ -12,7 +12,7 @@ from sm_analyser.fortran_interface import *
 import Tix as Tk
 from Tkconstants import *
 import tkMessageBox
-from tkFileDialog import asksaveasfilename
+from tkFileDialog import asksaveasfilename, askdirectory
 
 rcParams['figure.subplot.hspace'] = 0.1 
 rcParams['figure.subplot.bottom'] = 0.2
@@ -23,14 +23,11 @@ rcParams['legend.fontsize'] = 8
 class FilterError(Exception): pass
  
 class DataHandler(FortranHandler):
-    def __init__(self):
-        bindir = u'H:\workspace\svn.obspy.org\\branches\strong_motion\\fortran_stripped'
+    def __init__(self, bindir):
+        #bindir = u'H:\workspace\svn.obspy.org\\branches\strong_motion\\fortran_stripped'
         FortranHandler.__init__(self, bindir=bindir)
-        #self.dirdat = u"H:\workspace\svn.obspy.org\\branches\strong_motion"
     
     def getspectra(self):
-        #testfn1 = os.path.join(self.dirdat, 'O90400A1.V1A')
-        #v1 = Vol12Reader(testfn1)
         tr1 = self.v1.stream[0]
         tr2 = self.v1.stream[1]
         tr3 = self.v1.stream[2]
@@ -41,8 +38,6 @@ class DataHandler(FortranHandler):
         return fspec1, fspec2, fspec3, freqs
         
     def gettimeseries(self):
-        #testfn2 = os.path.join(self.dirdat,'19900210032700E_Vol2_O90400A1.V2A')
-        #v2 = Vol12Reader(testfn2)
         tr1 = self.v2.stream[2]
         tr2 = self.v2.stream[5]
         tr3 = self.v2.stream[8]
@@ -74,11 +69,10 @@ class PlotIterator:
 
    
 class SmGui(DataHandler, PlotIterator):
-    def __init__(self, parent):
-        DataHandler.__init__(self)
-        PlotIterator.__init__(self)
+    def __init__(self, parent, bindir):
         ### Window setup
         self.root = parent
+        self.bindir = bindir
         self.entry_frame = Tk.Frame(root)
         self.entry_frame.pack(side='top', pady=5)
         self.figure_frame = Tk.Frame(root)
@@ -88,6 +82,10 @@ class SmGui(DataHandler, PlotIterator):
         self.right_frame = Tk.Frame(self.figure_frame)
         self.right_frame.pack(side='left', anchor='n', expand=1, fill=Tk.BOTH)
         self.root.wm_title("Strong motion analyser")
+        if self.bindir is None:
+            self.choose_bin_directory()
+        if self.bindir == '':
+            sys.exit()
         self.f1 = Figure(figsize=(5., 5.), dpi=100)
         self.f2 = Figure(figsize=(6.4, 5.), dpi=100)
         self.canvas1 = FigureCanvasTkAgg(self.f1, master=self.left_frame)
@@ -102,10 +100,13 @@ class SmGui(DataHandler, PlotIterator):
         toolbar1.update()
         self.canvas2._tkcanvas.pack(side=Tk.TOP, fill=Tk.BOTH, expand=1)
 
-        #self.highp = [0.25, 0.5]
-        #self.lowp = [20., 30.]
+        DataHandler.__init__(self, self.bindir)
+        PlotIterator.__init__(self)
+
+        # Make initial plot of first record
         self.plotcanvas()
 
+        # set filter to default filter
         self.p = {}
         self.p['hlow'] = Tk.DoubleVar();self.p['hlow'].set(self.highp[0])
         self.p['hhgh'] = Tk.DoubleVar();self.p['hhgh'].set(self.highp[1])
@@ -129,15 +130,32 @@ class SmGui(DataHandler, PlotIterator):
 #        fileentry = Tk.FileEntry(self.entry_frame,label='Save',variable=self.savefn,
 #                                 command=self.savefile,dialogtype='tk_getSaveFile')
 #        fileentry.pack(side='left',padx=10)
+    
+    def choose_bin_directory(self):
+        self.bindir = askdirectory()
+        while True:
+            if self.bindir == '': break
+            if os.path.isdir(self.bindir):
+                if os.path.isfile(os.path.join(self.bindir, 'esvol2m.exe')) or \
+                    os.path.isfile(os.path.join(self.bindir, 'esvol2m_special.exe')):
+                    print "Fortran executable found in ", self.bindir
+                    break
+                else:
+                    print "Can't find fortran executable %s or %s in specified directory" % ('esvol2m', 'esvol2m_special')
+                    print "Please try again"
+                    self.bindir = askdirectory()
+            else:
+                print "Directory %s does not exist" % (self.bindir)
+                self.bindir = askdirectory()
                 
     def savefile(self):
         #tkMessageBox.showinfo(message='Hello')
-        filename = asksaveasfilename(filetypes=[("allfiles","*")])
+        filename = asksaveasfilename(filetypes=[("allfiles", "*")])
         if filename == '':
             print "no filename given"
         else:
-            print "saving %s"%filename
-            f = open(filename,'w')
+            print "saving %s" % filename
+            f = open(filename, 'w')
             f.writelines(self.data)
             f.close()
 
@@ -233,11 +251,18 @@ class SmGui(DataHandler, PlotIterator):
         self.data[self.counter] = nline
         try:
             self.check_filterband()
-        except FilterError,e:
+        except FilterError, e:
             print e
         else:
             self.update()     
             
-root = Tk.Tk()               # root (main) window
-smviz = SmGui(root)
-root.mainloop()
+if __name__ == '__main__':
+    from optparse import OptionParser
+    parser = OptionParser()
+    parser.add_option("","--fdir",dest="fdir",
+                      help="Path to directory holding the Fortran standard processing executables and the 'filt.dat' file.",
+                      default=None)
+    (opts,args) = parser.parse_args()
+    root = Tk.Tk()               # root (main) window
+    smviz = SmGui(root,opts.fdir)
+    root.mainloop()
