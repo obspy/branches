@@ -1,3 +1,8 @@
+"""
+Downloading in Parallel way
+Suggestion: Do not request more than 10 in parallel...
+"""
+
 import commands
 
 def nodes(input):
@@ -46,8 +51,8 @@ def nodes(input):
 			input['max_date'] = '2011-03-11'
 		
 		if commands.getoutput('tty') == '/dev/pts/8':
-			input['min_date'] = '2011-03-11'
-			input['max_date'] = '2011-03-13'
+			input['min_date'] = '2011-06-19'
+			input['max_date'] = '2011-06-21'
 		
 		if commands.getoutput('tty') == '/dev/pts/9':
 			input['min_date'] = '2011-03-23'

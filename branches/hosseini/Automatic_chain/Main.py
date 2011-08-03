@@ -3,7 +3,9 @@
 #import ipdb; ipdb.set_trace()
 
 """
-Management of Large Seismic Datasets
+ObsPyDMT (ObsPy Data Management Tool)
+
+Goal: Management of Large Seismic Datasets
 
 :copyright:
     The ObsPy Development Team (devs@obspy.org)
@@ -12,17 +14,13 @@ Management of Large Seismic Datasets
  (http://www.gnu.org/copyleft/lesser.html)
 """
 
-"""
-Remaining Parts:
-- All available clients: Fissures, Seishub --> check the saved stations 
-(save all stations in a file for each web-services)
-"""
 
 """
-- Defining the Parameters
+- Read INPUT file (Parameters)
+- Parallel Requests
 - Import required Modules (Python and Obspy)
-- Initializing the Clients
 - Getting list of Events
+- Plot all requested events
 - IRIS (available stations+waveform)
 - Arclink (available stations+waveform)
 - Load events (Lat, Lon and Name of each)
@@ -30,10 +28,11 @@ Remaining Parts:
 - Plot Ray Paths (event --> stations)
 """
 
-# ------------------------Getting List of Events (Parameters)--------------------
-from read_input_new import *
-(input) = read_input_new()
+# ------------------------Read INPUT file (Parameters)--------------------
+from read_input import *
+(input) = read_input()
 
+# ------------------------Parallel Requests--------------------
 if input['nodes'] == 'Y':
 	from nodes import *
 	nodes(input)
@@ -49,6 +48,18 @@ import time
 import os
 
 t1_pro = datetime.now()
+
+print '--------------------------------------------------------------------------------'
+bold = "\033[1m"
+reset = "\033[0;0m"
+print '\t\t' + bold + 'ObsPyDMT ' + reset + '(' + bold + 'ObsPy D' + reset + 'ata ' + bold + 'M' + reset + 'anagement ' + bold + 'T' + reset + 'ool)' + reset + '\n'
+print '\t' + 'Automatic tool for Management of Large Seismic Datasets' + '\n'
+print ':copyright:'
+print 'The ObsPy Development Team (devs@obspy.org)' + '\n'
+print ':license:'
+print 'GNU Lesser General Public License, Version 3'
+print '(http://www.gnu.org/copyleft/lesser.html)'
+print '--------------------------------------------------------------------------------'
 
 # ------------------------Getting List of Events---------------------------------
 if input['get_events'] == 'Y':
@@ -87,12 +98,6 @@ if input['IRIS'] == 'Y':
 		from IRIS_get_Waveform_single import *
 		IRIS_get_Waveform_single(input, Address_events, len_events, events, Networks_iris, t_iris)
 
-# ------------------------Quality Control------------------------
-
-if input['QC_IRIS'] == 'Y':
-	from QC_IRIS import *
-	QC_IRIS(input)
-
 # ------------------------Arclink------------------------------------------------
 if input['ArcLink'] == 'Y':
 	
@@ -118,10 +123,22 @@ if input['ArcLink'] == 'Y':
 		Arclink_get_Waveform_single(input, Address_events, len_events, events, Networks_ARC, t_arclink)
 
 # ------------------------Quality Control------------------------
+if input['QC_IRIS'] == 'Y':
+	from QC_IRIS import *
+	QC_IRIS(input)
 
 if input['QC_ARC'] == 'Y':
 	from QC_ARC import *
 	QC_ARC(input)
+
+# ------------------------Updating--------------------------------
+if input['update_iris'] == 'Y':
+	from update_IRIS import *
+	update_IRIS(input)
+
+if input['update_arc'] == 'Y':
+	from update_ARC import *
+	update_ARC()
 
 # ---------------------------------------------------------------
 

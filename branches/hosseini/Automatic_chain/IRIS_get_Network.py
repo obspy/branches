@@ -108,23 +108,45 @@ def IRIS_get_Network(Address_events, len_events, events, input):
 		Report.writelines(rep3)
 		Report.writelines('----------------------------------' + '\n')
 		Report.close()
-		
+	
+	#import ipdb; ipdb.set_trace()
+	
 	for i in range(0, len_events):
+		Sta_BHE_target = Sta_BHE[i]
+		Sta_BHN_target = Sta_BHN[i]
+		Sta_BHZ_target = Sta_BHZ[i]
+				
 		Station_file1 = open(Address_events + '/' + events[i]['event_id'] + \
 			'/IRIS/STATION/' + 'All_IRIS_Stations_BHE', 'w')
-		pickle.dump(Sta_BHE[i], Station_file1)
+		pickle.dump(Sta_BHE_target, Station_file1)
 		Station_file1.close()
 		
 		Station_file2 = open(Address_events + '/' + events[i]['event_id'] + \
 			'/IRIS/STATION/' + 'All_IRIS_Stations_BHN', 'w')
-		pickle.dump(Sta_BHN[i], Station_file2)
+		pickle.dump(Sta_BHN_target, Station_file2)
 		Station_file2.close()
 		
 		Station_file3 = open(Address_events + '/' + events[i]['event_id'] + \
 			'/IRIS/STATION/' + 'All_IRIS_Stations_BHZ', 'w')
-		pickle.dump(Sta_BHZ[i], Station_file3)
+		pickle.dump(Sta_BHZ_target, Station_file3)
 		Station_file3.close()
+	
+	'''
+	########################
+	
+	All_IRIS_Stations_BHE = []
+	
+	for i in range(0, 1):
 		
+		Stations_BHE = open(Address_events + '/' + events[i]['event_id'] + \
+				'/IRIS/STATION/' + 'All_IRIS_Stations_BHE')
+		All_IRIS_Stations_BHE.append(pickle.load(Stations_BHE))
+		Stations_BHE.close()
+	########################
+		
+	import ipdb; ipdb.set_trace()
+	'''
+	
 	t_iris_2 = datetime.now()
 	t_iris = t_iris_2 - t_iris_1
 	

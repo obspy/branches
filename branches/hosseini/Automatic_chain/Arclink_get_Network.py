@@ -88,7 +88,7 @@ def Arclink_get_Network(len_events, events, Address_events):
 		for j in range(0, len_req_Arc_BHZ):
 			Nets_Arc_req_BHZ[i][j] = Nets_Arc_req_BHZ[i][j].split('.')
 	
-	import ipdb; ipdb.set_trace()
+	#import ipdb; ipdb.set_trace()
 	
 	for j in range(0, len_events):
 		for i in range(0, len(Nets_Arc_req_BHE[j])):

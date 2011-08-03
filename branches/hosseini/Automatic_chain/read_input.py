@@ -1,6 +1,6 @@
-'''
+"""
 Read inputs from INPUT file
-'''
+"""
 
 import os
 
@@ -9,38 +9,67 @@ def read_input():
 	add += '/INPUT'
 	f = open(add)
 	S = f.readlines()
-	Address = S[0].split()[2]
-	mind = S[1].split()[2]
-	maxd = S[2].split()[2]
-	minm = float(S[3].split()[2])
-	maxm = float(S[4].split()[2])
-	minla = float(S[5].split()[2])
-	maxla = float(S[6].split()[2])
-	minlo = float(S[7].split()[2])
-	maxlo = float(S[8].split()[2])
-	minde = float(S[9].split()[2])
-	maxde = float(S[10].split()[2])
-	maxr = int(S[11].split()[2])
-	pe = S[13].split()[2]
-	#import ipdb; ipdb.set_trace()
-	net = S[15].split()[2]
-	sta = S[16].split()[2]
-	loc = S[17].split()[2]
-	cha = S[18].split()[2]
-	lat_cba = S[24].split()[2]
-	lon_cba = S[25].split()[2]
-	mr_cba = S[26].split()[2]
-	Mr_cba = S[27].split()[2]
-	mlat_rbb = S[28].split()[2]
-	Mlat_rbb = S[29].split()[2]
-	mlon_rbb = S[30].split()[2]
-	Mlon_rbb = S[31].split()[2]
-	llcrnrlon = float(S[35].split()[2])
-	llcrnrlat = float(S[36].split()[2])
-	urcrnrlon = float(S[37].split()[2])
-	urcrnrlat = float(S[38].split()[2])
+	input = {}
+	input['Address'] = S[0].split()[2]
+	input['min_date'] = S[1].split()[2]
+	input['max_date'] = S[2].split()[2]
+	input['min_mag'] = float(S[3].split()[2])
+	input['max_mag'] = float(S[4].split()[2])
+	input['min_lat'] = float(S[5].split()[2])
+	input['max_lat'] = float(S[6].split()[2])
+	input['min_lon'] = float(S[7].split()[2])
+	input['max_lon'] = float(S[8].split()[2])
+	input['min_depth'] = float(S[9].split()[2])
+	input['max_depth'] = float(S[10].split()[2])
+	input['max_result'] = int(S[11].split()[2])
+	input['t_before'] = float(S[12].split()[2])
+	input['t_after'] = float(S[13].split()[2])
+	input['plt_event'] = S[15].split()[2]
+	input['net'] = S[17].split()[2]
+	input['sta'] = S[18].split()[2]
+	input['loc'] = S[19].split()[2]
+	input['cha'] = S[20].split()[2]
+	input['BHE'] = S[21].split()[2]
+	input['BHN'] = S[22].split()[2]
+	input['BHZ'] = S[23].split()[2]
+	input['lat_cba'] = S[29].split()[2]
+	input['lon_cba'] = S[30].split()[2]
+	input['mr_cba'] = S[31].split()[2]
+	input['Mr_cba'] = S[32].split()[2]
+	
+	if S[33].split()[2] == 'None':
+		input['mlat_rbb'] = None
+	else:
+		input['mlat_rbb'] = S[33].split()[2]
+	
+	if S[34].split()[2] == 'None':
+		input['Mlat_rbb'] = None
+	else:
+		input['Mlat_rbb'] = S[34].split()[2]
+	
+	if S[35].split()[2] == 'None':
+		input['mlon_rbb'] = None
+	else:
+		input['mlon_rbb'] = S[35].split()[2]
+	
+	if S[36].split()[2] == 'None':
+		input['Mlon_rbb'] = None
+	else:
+		input['Mlon_rbb'] = S[36].split()[2]
 
-	return Address, mind, maxd, minm, maxm, minla, maxla, minlo, maxlo, \
-		minde, maxde, maxr, pe, net, sta, loc, cha, lat_cba, lon_cba, mr_cba, \
-		Mr_cba, mlat_rbb, Mlat_rbb, mlon_rbb, Mlon_rbb, llcrnrlon, llcrnrlat, \
-		urcrnrlon, urcrnrlat
+	input['llcrnrlon'] = float(S[40].split()[2])
+	input['llcrnrlat'] = float(S[41].split()[2])
+	input['urcrnrlon'] = float(S[42].split()[2])
+	input['urcrnrlat'] = float(S[43].split()[2])
+	
+	input['mass'] = S[45].split()[2]
+	input['IRIS'] = S[46].split()[2]
+	input['ArcLink'] = S[47].split()[2]
+	input['QC_IRIS'] = S[48].split()[2]
+	input['QC_ARC'] = S[49].split()[2]
+	input['get_events'] = S[50].split()[2]
+	input['nodes'] = S[51].split()[2]
+	input['update_iris'] = S[52].split()[2]
+	input['update_arc'] = S[53].split()[2]
+
+	return input
