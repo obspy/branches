@@ -38,7 +38,7 @@ class FortranHandler():
     def __del__(self):
         if hasattr(self,'fin'):
             self.fin.close()
-        if hasattr(self,'inputfn'):
+        if hasattr(self,'inputfn') and hasattr(self,'dest'):
             if not os.path.isfile(self.inputfn):
                 print "mv %s --> %s"%(self.dest,self.inputfn)
                 os.rename(self.dest,self.inputfn)

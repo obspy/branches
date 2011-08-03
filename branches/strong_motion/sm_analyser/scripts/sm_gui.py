@@ -4,7 +4,6 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolb
 from matplotlib.figure import Figure, rcParams
 from obspy.core import Trace, UTCDateTime, Stream
 import obspy.mseed
-#import Tkinter as Tk
 import sys
 import os
 import numpy as np
@@ -24,23 +23,43 @@ class FilterError(Exception): pass
  
 class DataHandler(FortranHandler):
     def __init__(self, bindir):
-        #bindir = u'H:\workspace\svn.obspy.org\\branches\strong_motion\\fortran_stripped'
         FortranHandler.__init__(self, bindir=bindir)
     
-    def getspectra(self):
-        tr1 = self.v1.stream[0]
-        tr2 = self.v1.stream[1]
-        tr3 = self.v1.stream[2]
+    def getspectra(self, choices, spec_old):
+        idx = choices.index(spec_old)
+        if idx == 0:
+            tr1 = self.v2.stream[2]
+            tr2 = self.v2.stream[5]
+            tr3 = self.v2.stream[8]
+        if idx == 1:
+            tr1 = self.v2.stream[0]
+            tr2 = self.v2.stream[3]
+            tr3 = self.v2.stream[6]
+        if idx == 2:
+            tr1 = self.v1.stream[0]
+            tr2 = self.v1.stream[1]
+            tr3 = self.v1.stream[2]
         fspec1 = np.fft.fft(tr1.data)
         fspec2 = np.fft.fft(tr2.data)
         fspec3 = np.fft.fft(tr3.data)
         freqs = np.fft.fftfreq(tr1.stats.npts, tr1.stats.delta)
         return fspec1, fspec2, fspec3, freqs
         
-    def gettimeseries(self):
-        tr1 = self.v2.stream[2]
-        tr2 = self.v2.stream[5]
-        tr3 = self.v2.stream[8]
+    def gettimeseries(self, choices, hist_old):
+        idx = choices.index(hist_old)
+        if idx == 0:
+            tr1 = self.v2.stream[2]
+            tr2 = self.v2.stream[5]
+            tr3 = self.v2.stream[8]
+        if idx == 1:
+            tr1 = self.v2.stream[0]
+            tr2 = self.v2.stream[3]
+            tr3 = self.v2.stream[6]
+        if idx == 2:
+            tr1 = self.v1.stream[0]
+            tr2 = self.v1.stream[1]
+            tr3 = self.v1.stream[2]
+            
         time = np.arange(tr1.stats.npts) * tr1.stats.delta
         return tr1, tr2, tr3, time
     
@@ -70,9 +89,16 @@ class PlotIterator:
    
 class SmGui(DataHandler, PlotIterator):
     def __init__(self, parent, bindir):
+        self.bindir = bindir
+        self.choices_ts = ['Displacement (filtered)', 'Acceleration (filtered)',
+                        'Acceleration (unfiltered)']
+        self.hist_old = self.choices_ts[0]
+        self.spec_old = self.choices_ts[2]
+        self.p = {} # dictionary to hold all Tk variables
+        self.p['pmax'] = Tk.IntVar(); self.p['pmax'].set(0)
+        self.p['fltrng'] = Tk.IntVar(); self.p['fltrng'].set(1)
         ### Window setup
         self.root = parent
-        self.bindir = bindir
         self.entry_frame = Tk.Frame(root)
         self.entry_frame.pack(side='top', pady=5)
         self.figure_frame = Tk.Frame(root)
@@ -107,13 +133,53 @@ class SmGui(DataHandler, PlotIterator):
         self.plotcanvas()
 
         # set filter to default filter
-        self.p = {}
         self.p['hlow'] = Tk.DoubleVar();self.p['hlow'].set(self.highp[0])
         self.p['hhgh'] = Tk.DoubleVar();self.p['hhgh'].set(self.highp[1])
   
-        self.textentry(self.entry_frame, self.p['hlow'], self.p['hhgh'], 'Highpass filter')
-        flt_button = Tk.Button(self.entry_frame, text='Enter', width=8, command=self.recalc)
+        # setting up radio buttons
+        maxb = Tk.Checkbutton(self.entry_frame, text='Max', command=self.plotmax, 
+                              variable=self.p['pmax'],indicatoron=0,width=4)
+        maxb.pack(side='left')
+        balmaxb = Tk.Balloon(self.entry_frame)
+        balmaxb.bind_widget(maxb,balloonmsg='Plot maxima of timeseries.') 
+
+        fltrng = Tk.Checkbutton(self.entry_frame, text='Flt', command=self.plotfltrng, 
+                                variable=self.p['fltrng'],indicatoron=0,width=4)
+        fltrng.pack(side='left')
+        balfltrng = Tk.Balloon(self.entry_frame)
+        balfltrng.bind_widget(fltrng,balloonmsg='Plot cutoff and corner frequencies of highpass filter.') 
+
+        
+        # setting up spin boxes
+        hp_cntrl_lw = Tk.Control(self.entry_frame, label='cutoff', max=10, min=0, integer=False, step=0.01,
+                                 variable=self.p['hlow'])
+        hp_cntrl_lw.pack(side='left', padx=5)
+        hp_cntrl_hg = Tk.Control(self.entry_frame, label='corner', max=10, min=0, integer=False, step=0.01,
+                                 variable=self.p['hhgh'])
+        hp_cntrl_hg.pack(side='left', padx=5)
+
+        # setting up filter button
+        flt_button = Tk.Button(self.entry_frame, text='Filter', width=8, command=self.recalc)
         flt_button.pack(side='left', padx=20)
+        
+        
+        # setting up combo box for spectra
+        hist_box = Tk.ComboBox(self.entry_frame, label='Spectra', editable=False, dropdown=True,
+                               command=self.choose_spec, value=self.choices_ts[2])
+        hist_box.insert('end', self.choices_ts[0])
+        hist_box.insert('end', self.choices_ts[1])
+        hist_box.insert('end', self.choices_ts[2])
+        hist_box.pack(side='left', padx=10)
+
+        # setting up combo box for timeseries
+        hist_box = Tk.ComboBox(self.entry_frame, label='Timeseries', editable=False, dropdown=True,
+                               command=self.choose_ts, value=self.choices_ts[0])
+        hist_box.insert('end', self.choices_ts[0])
+        hist_box.insert('end', self.choices_ts[1])
+        hist_box.insert('end', self.choices_ts[2])
+        hist_box.pack(side='left', padx=10)
+
+        # setting up navigation and save button
         p_button = Tk.Button(self.entry_frame, text='Previous', width=8, command=self.prev)
         p_button.pack(side='left', padx=10)
         n_button = Tk.Button(self.entry_frame, text='Next', width=8, command=self.next)
@@ -121,16 +187,40 @@ class SmGui(DataHandler, PlotIterator):
         n_button = Tk.Button(self.entry_frame, text='Save', width=8, command=self.savefile)
         n_button.pack(side='left', padx=10)
         
-#        self.testvar = Tk.IntVar()
-#        testcntrl = Tk.Control(self.entry_frame,label='test',max=10,min=0,integer=True,step=2,
-#                               variable=self.testvar,validatecmd=self.printtest)
-#        testcntrl.pack(side='left',padx=10)
+    def plotmax(self):
+        self.f2.clf()
+        self.plottimeseries()
+        self.canvas2.draw()
         
-#        self.savefn = Tk.StringVar()
-#        fileentry = Tk.FileEntry(self.entry_frame,label='Save',variable=self.savefn,
-#                                 command=self.savefile,dialogtype='tk_getSaveFile')
-#        fileentry.pack(side='left',padx=10)
-    
+    def plotfltrng(self):
+        self.f1.clf()
+        self.plotspectra()
+        self.canvas1.draw()
+        
+    def choose_ts(self, value):
+        """
+        Choose a timeseries to display
+        """    
+        if value != self.hist_old:
+            self.hist_old = value
+            self.f2.clf()
+            self.plottimeseries()
+            self.canvas2.draw()
+        else:
+            pass
+        
+    def choose_spec(self, value):
+        """
+        Choose a timeseries to display
+        """    
+        if value != self.spec_old:
+            self.spec_old = value
+            self.f1.clf()
+            self.plotspectra()
+            self.canvas1.draw()
+        else:
+            pass
+        
     def choose_bin_directory(self):
         self.bindir = askdirectory()
         while True:
@@ -176,43 +266,56 @@ class SmGui(DataHandler, PlotIterator):
         return widget
 
     def plotspectra(self):
-        fspec1, fspec2, fspec3, freqs = self.getspectra()
+        fspec1, fspec2, fspec3, freqs = self.getspectra(self.choices_ts, self.spec_old)
         ax1 = self.f1.add_subplot(3, 1, 1)
-        ax2 = self.f1.add_subplot(3, 1, 2)
-        ax3 = self.f1.add_subplot(3, 1, 3)
+        ax2 = self.f1.add_subplot(3, 1, 2, sharex=ax1)
+        ax3 = self.f1.add_subplot(3, 1, 3, sharex=ax1)
         ax1.loglog(freqs, abs(fspec1))
         ax2.loglog(freqs, abs(fspec2))
         ax3.loglog(freqs, abs(fspec3))
-        ymin, ymax = ax1.get_ylim()
-        ax1.vlines(self.highp[0], ymin, ymax)
-        ax1.vlines(self.highp[1], ymin, ymax)
-        ax1.set_ylim(ymin, ymax)
-        ymin, ymax = ax2.get_ylim()
-        ax2.vlines(self.highp[0], ymin, ymax)
-        ax2.vlines(self.highp[1], ymin, ymax)
-        ymin, ymax = ax3.get_ylim()
-        ax3.vlines(self.highp[0], ymin, ymax)
-        ax3.vlines(self.highp[1], ymin, ymax)
+        if self.p['fltrng'].get():
+            ymin, ymax = ax1.get_ylim()
+            ax1.vlines(self.highp[0], ymin, ymax)
+            ax1.vlines(self.highp[1], ymin, ymax)
+            ax1.set_ylim(ymin, ymax)
+            ymin, ymax = ax2.get_ylim()
+            ax2.vlines(self.highp[0], ymin, ymax)
+            ax2.vlines(self.highp[1], ymin, ymax)
+            ax2.set_ylim(ymin, ymax)
+            ymin, ymax = ax3.get_ylim()
+            ax3.vlines(self.highp[0], ymin, ymax)
+            ax3.vlines(self.highp[1], ymin, ymax)
+            ax3.set_ylim(ymin, ymax)
         ax1.set_xlim(0.01, 20)
         ax2.set_xlim(0.01, 20)
         ax3.set_xlim(0.01, 20)
-        ax1.set_xticks([])
-        ax2.set_xticks([])
+        ax1.set_xticklabels(ax1.get_xticks(), visible=False)
+        ax2.set_xticklabels(ax2.get_xticks(), visible=False)
         ax3.set_xlabel('Frequency [Hz]')
     
     def plottimeseries(self):
-        tr1, tr2, tr3, time = self.gettimeseries()
+        tr1, tr2, tr3, time = self.gettimeseries(self.choices_ts, self.hist_old)
         ax1 = self.f2.add_subplot(3, 1, 1)
-        ax2 = self.f2.add_subplot(3, 1, 2)
-        ax3 = self.f2.add_subplot(3, 1, 3)
+        ax2 = self.f2.add_subplot(3, 1, 2, sharex=ax1)
+        ax3 = self.f2.add_subplot(3, 1, 3, sharex=ax1)
         ax1.plot(time, tr1.data, label=tr1.stats.channel)
         ax1.legend(loc='upper right')
         ax2.plot(time, tr2.data, label=tr2.stats.channel)
         ax2.legend(loc='upper right')
         ax3.plot(time, tr3.data, label=tr3.stats.channel)
         ax3.legend(loc='upper right')
-        ax1.set_xticks([])
-        ax2.set_xticks([])
+        if self.p['pmax'].get():
+            idmax1 = abs(tr1.data).argmax()
+            max1 = tr1.data[idmax1]
+            ax1.plot(idmax1*tr1.stats.delta,max1,'ro')
+            idmax2 = abs(tr2.data).argmax()
+            max2 = tr2.data[idmax2]
+            ax2.plot(idmax2*tr2.stats.delta,max2,'ro')
+            idmax3 = abs(tr3.data).argmax()
+            max3 = tr3.data[idmax3]
+            ax3.plot(idmax3*tr3.stats.delta,max3,'ro')
+        ax1.set_xticklabels(ax1.get_xticks(), visible=False)
+        ax2.set_xticklabels(ax2.get_xticks(), visible=False)
         ax3.set_xlabel('Time [s]')
         ax1.set_title(tr1.stats.station)
 
@@ -246,8 +349,8 @@ class SmGui(DataHandler, PlotIterator):
         nline = "%s%6.2f%6.2f" % (a[0], self.p['hlow'].get(), self.p['hhgh'].get())
         idx = line.find(a[2]) + len(a[2])
         nline += line[idx::]
-        print line
-        print nline
+        #print line
+        #print nline
         self.data[self.counter] = nline
         try:
             self.check_filterband()
@@ -259,10 +362,10 @@ class SmGui(DataHandler, PlotIterator):
 if __name__ == '__main__':
     from optparse import OptionParser
     parser = OptionParser()
-    parser.add_option("","--fdir",dest="fdir",
+    parser.add_option("", "--fdir", dest="fdir",
                       help="Path to directory holding the Fortran standard processing executables and the 'filt.dat' file.",
                       default=None)
-    (opts,args) = parser.parse_args()
+    (opts, args) = parser.parse_args()
     root = Tk.Tk()               # root (main) window
-    smviz = SmGui(root,opts.fdir)
+    smviz = SmGui(root, opts.fdir)
     root.mainloop()
