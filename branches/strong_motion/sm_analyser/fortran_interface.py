@@ -12,8 +12,11 @@ from read_gns_sm_data import Vol12Reader
 class FortranHandlerError(Exception): pass
 
 class FortranHandler():
+    """
+    Main class to interface the Fortran program.
+    """
     def __init__(self,bindir):
-        self.inputfn = 'filt.dat'
+        self.inputfn = 'filt_special.dat'
         self.curdir = os.getcwd()
         os.chdir(bindir)
         if os.path.isfile(self.inputfn):
@@ -28,7 +31,7 @@ class FortranHandler():
             raise FortranHandlerError("Can't find %s.\n \
                 Please make sure you provide this file in the same folder as the fortran executables.\n"\
                 %(self.inputfn))
-        self.cmd = 'esvol2m'
+        self.cmd = 'esvol2m_special'
         self.pattern = re.compile(r'\d+\s+(s:\\[\w\\ -_.\d]*)')
         self.fin = open(self.dest,'r')
         self.data = self.fin.readlines()
@@ -50,6 +53,10 @@ class FortranHandler():
         return self.v1, self.v2
         
     def run_fortran(self):
+        """
+        Run the Fortran program esvol2m_special and read in the 
+        resulting Volume 2 file as well as the source Volume 1 file.'
+        """
         line = self.data[self.counter]
         filtdat = open(self.inputfn,'w')
         filtdat.writelines(line)
@@ -57,6 +64,7 @@ class FortranHandler():
         a = line.split()
         self.highp = [float(a[1]),float(a[2])]
         self.lowp = [float(a[3]),float(a[4])]
+        self.npts = a[9]
         p = sp.Popen([self.cmd],stdout=sp.PIPE).communicate()[0]
         for line in p.split('\n'):
             match = self.pattern.match(line.strip())

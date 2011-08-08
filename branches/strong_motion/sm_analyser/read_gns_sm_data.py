@@ -7,8 +7,14 @@ from obspy.core import Trace, UTCDateTime, Stream
 import numpy as np
 
 class Vol12Error(Exception): pass
+"""
+Raised if inconsistencies in the file reading occur.
+"""
 
 class Vol12Reader(object):
+    """
+    Main class containing the routines to read Volume 1 and Volume 2 records.
+    """
     def __init__(self,filename):
         self.fn = filename
         self.f = open(self.fn, 'r')
@@ -17,6 +23,10 @@ class Vol12Reader(object):
             self.stream += self.read_comp(self.f)
         
     def read_comp(self,f):
+        """
+        Read all time series for one sensor orientation. Can be called several 
+        times to read data from all three sensor orientations.
+        """
         smdict = {}
         f.readline()
         a = f.readline().split()

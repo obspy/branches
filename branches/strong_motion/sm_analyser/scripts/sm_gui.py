@@ -1,9 +1,14 @@
+"""
+This is the main script which builds the GUI and 
+thereby provides the user interface to the Fortran
+program 'esvol2m_special'. 
+"""
+
 import matplotlib
 matplotlib.use('TkAgg')
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2TkAgg
 from matplotlib.figure import Figure, rcParams
 from obspy.core import Trace, UTCDateTime, Stream
-import obspy.mseed
 import sys
 import os
 import numpy as np
@@ -20,12 +25,24 @@ rcParams['ytick.labelsize'] = 8
 rcParams['legend.fontsize'] = 8
 
 class FilterError(Exception): pass
+"""
+Raised if the filter range input by the user is not
+compliant with the Fortran program.
+"""
  
 class DataHandler(FortranHandler):
+    """
+    Return the spectra and time series of the filtered acceleration records, 
+    the unfiltered acceleration records or the filtered displacement records. 
+    """
+    
     def __init__(self, bindir):
         FortranHandler.__init__(self, bindir=bindir)
     
     def getspectra(self, choices, spec_old):
+        """
+        Compute the fft and return the spectra and their corresponding frequencies.
+        """
         idx = choices.index(spec_old)
         if idx == 0:
             tr1 = self.v2.stream[2]
@@ -46,6 +63,9 @@ class DataHandler(FortranHandler):
         return fspec1, fspec2, fspec3, freqs
         
     def gettimeseries(self, choices, hist_old):
+        """
+        Return the timeseries.
+        """
         idx = choices.index(hist_old)
         if idx == 0:
             tr1 = self.v2.stream[2]
@@ -64,6 +84,10 @@ class DataHandler(FortranHandler):
         return tr1, tr2, tr3, time
     
 class PlotIterator:
+    """
+    This is an Iterator class to go through the list of filenames.
+    """
+    
     def __init__(self):
         self.counter = 0
 
@@ -88,6 +112,9 @@ class PlotIterator:
 
    
 class SmGui(DataHandler, PlotIterator):
+    """
+    This is the main class which constructs the GUI and calls the plotting routines.
+    """
     def __init__(self, parent, bindir):
         self.bindir = bindir
         self.choices_ts = ['Displacement (filtered)', 'Acceleration (filtered)',
@@ -132,6 +159,9 @@ class SmGui(DataHandler, PlotIterator):
         # Make initial plot of first record
         self.plotcanvas()
 
+        # set number of points variable
+        self.p['npts'] = Tk.IntVar(); self.p['npts'].set(self.npts)
+
         # set filter to default filter
         self.p['hlow'] = Tk.DoubleVar();self.p['hlow'].set(self.highp[0])
         self.p['hhgh'] = Tk.DoubleVar();self.p['hhgh'].set(self.highp[1])
@@ -150,7 +180,15 @@ class SmGui(DataHandler, PlotIterator):
         balfltrng.bind_widget(fltrng,balloonmsg='Plot cutoff and corner frequencies of highpass filter.') 
 
         
-        # setting up spin boxes
+        # setting up spin box for trimming
+        trim_cntrl = Tk.Control(self.entry_frame, label='npts',integer=True, step=100,
+                                 variable=self.p['npts'])
+        trim_cntrl.pack(side='left', padx=5)
+        # setting up trim button
+        trim_button = Tk.Button(self.entry_frame, text='Trim', width=8, command=self.recalc)
+        trim_button.pack(side='left', padx=10)
+    
+        # setting up spin boxes for filtering
         hp_cntrl_lw = Tk.Control(self.entry_frame, label='cutoff', max=10, min=0, integer=False, step=0.01,
                                  variable=self.p['hlow'])
         hp_cntrl_lw.pack(side='left', padx=5)
@@ -160,16 +198,16 @@ class SmGui(DataHandler, PlotIterator):
 
         # setting up filter button
         flt_button = Tk.Button(self.entry_frame, text='Filter', width=8, command=self.recalc)
-        flt_button.pack(side='left', padx=20)
+        flt_button.pack(side='left', padx=10)
         
         
         # setting up combo box for spectra
-        hist_box = Tk.ComboBox(self.entry_frame, label='Spectra', editable=False, dropdown=True,
+        spec_box = Tk.ComboBox(self.entry_frame, label='Spectra', editable=False, dropdown=True,
                                command=self.choose_spec, value=self.choices_ts[2])
-        hist_box.insert('end', self.choices_ts[0])
-        hist_box.insert('end', self.choices_ts[1])
-        hist_box.insert('end', self.choices_ts[2])
-        hist_box.pack(side='left', padx=10)
+        spec_box.insert('end', self.choices_ts[0])
+        spec_box.insert('end', self.choices_ts[1])
+        spec_box.insert('end', self.choices_ts[2])
+        spec_box.pack(side='left', padx=10)
 
         # setting up combo box for timeseries
         hist_box = Tk.ComboBox(self.entry_frame, label='Timeseries', editable=False, dropdown=True,
@@ -188,18 +226,24 @@ class SmGui(DataHandler, PlotIterator):
         n_button.pack(side='left', padx=10)
         
     def plotmax(self):
+        """
+        Function called by 'Max' radio button
+        """
         self.f2.clf()
         self.plottimeseries()
         self.canvas2.draw()
         
     def plotfltrng(self):
+        """
+        Function called by 'Flt' radio button
+        """
         self.f1.clf()
         self.plotspectra()
         self.canvas1.draw()
         
     def choose_ts(self, value):
         """
-        Choose a timeseries to display
+        Choose timeseries to display; called by combo box 'hist_box'
         """    
         if value != self.hist_old:
             self.hist_old = value
@@ -211,7 +255,7 @@ class SmGui(DataHandler, PlotIterator):
         
     def choose_spec(self, value):
         """
-        Choose a timeseries to display
+        Choose spectra to display. Called by the combo box 'spec box'
         """    
         if value != self.spec_old:
             self.spec_old = value
@@ -222,6 +266,12 @@ class SmGui(DataHandler, PlotIterator):
             pass
         
     def choose_bin_directory(self):
+        """
+        If the path to the directory holding the Fortran programs
+        and the input file is not given on the command line this 
+        function is called. It allows to choose the directory using a 
+        directory browser before the program starts. 
+        """
         self.bindir = askdirectory()
         while True:
             if self.bindir == '': break
@@ -239,7 +289,9 @@ class SmGui(DataHandler, PlotIterator):
                 self.bindir = askdirectory()
                 
     def savefile(self):
-        #tkMessageBox.showinfo(message='Hello')
+        """
+        Function to save the modified filelist; called by the 'Save' button.
+        """
         filename = asksaveasfilename(filetypes=[("allfiles", "*")])
         if filename == '':
             print "no filename given"
@@ -250,22 +302,17 @@ class SmGui(DataHandler, PlotIterator):
             f.close()
 
     def plotcanvas(self):
+        """
+        Routine called everytime the fortran program needs to be run.
+        """
         self.run_fortran()
         self.plotspectra()
         self.plottimeseries()
         
-    def textentry(self, parent, variable1, variable2, label):
-        """Make a textentry field tied to variable."""
-        # pack a label and entry horizontally in a frame:
-        l = Tk.Label(parent, text=label)
-        l.pack(side='left', expand=0, padx=20)
-        widget = Tk.Entry(parent, textvariable=variable1, width=8)
-        widget.pack(side='left', expand=0, padx=10)
-        widget = Tk.Entry(parent, textvariable=variable2, width=8)
-        widget.pack(side='left', expand=0, padx=10)
-        return widget
-
     def plotspectra(self):
+        """
+        Plot the spectra using Matplotlib.
+        """
         fspec1, fspec2, fspec3, freqs = self.getspectra(self.choices_ts, self.spec_old)
         ax1 = self.f1.add_subplot(3, 1, 1)
         ax2 = self.f1.add_subplot(3, 1, 2, sharex=ax1)
@@ -294,6 +341,9 @@ class SmGui(DataHandler, PlotIterator):
         ax3.set_xlabel('Frequency [Hz]')
     
     def plottimeseries(self):
+        """
+        Plot the timeseries using Matplotlib.
+        """
         tr1, tr2, tr3, time = self.gettimeseries(self.choices_ts, self.hist_old)
         ax1 = self.f2.add_subplot(3, 1, 1)
         ax2 = self.f2.add_subplot(3, 1, 2, sharex=ax1)
@@ -317,9 +367,22 @@ class SmGui(DataHandler, PlotIterator):
         ax1.set_xticklabels(ax1.get_xticks(), visible=False)
         ax2.set_xticklabels(ax2.get_xticks(), visible=False)
         ax3.set_xlabel('Time [s]')
+        ymax = abs(tr1.data).max()
+        ymax += 0.1 * ymax
+        ax1.set_ylim(-ymax,ymax)
+        ymax = abs(tr2.data).max()
+        ymax += 0.1 * ymax
+        ax2.set_ylim(-ymax,ymax)
+        ymax = abs(tr3.data).max()
+        ymax += 0.1 * ymax
+        ax3.set_ylim(-ymax,ymax)
         ax1.set_title(tr1.stats.station)
 
     def update(self):
+        """
+        This function is called when the filter parameter or the length of the 
+        time series changes.
+        """
         self.f1.clf();self.f2.clf()
         self.plotcanvas()
         self.canvas1.draw()
@@ -328,6 +391,9 @@ class SmGui(DataHandler, PlotIterator):
         self.p['hhgh'].set(self.highp[1])
 
     def check_filterband(self):
+        """
+        Make some checks before passing the filter parameters to the Fortran program.
+        """
         f1high = self.p['hlow'].get()
         f2high = self.p['hhgh'].get()
         tr = self.v1.stream[0]
@@ -344,13 +410,21 @@ class SmGui(DataHandler, PlotIterator):
             raise FilterError("Filter transition bandwidth (%.2f) <= frequency resolution (%.2f)." % (abs(dfh), res))
             
     def recalc(self):
+        """
+        Construct a new input line to the Fortran program from the user input for filter range and length of the 
+        time series.
+        """
         line = self.data[self.counter]
         a = line.split()
         nline = "%s%6.2f%6.2f" % (a[0], self.p['hlow'].get(), self.p['hhgh'].get())
-        idx = line.find(a[2]) + len(a[2])
-        nline += line[idx::]
-        #print line
-        #print nline
+        idx1 = line.find(a[2]) + len(a[2])
+        idx2 = line.find(a[9]) + len(a[9]) - 12
+        idx3 = idx2 + 12
+        nline += line[idx1:idx2]
+        nline += "%12d"%self.p['npts'].get()
+        nline += line[idx3::]
+        print line
+        print nline
         self.data[self.counter] = nline
         try:
             self.check_filterband()
@@ -358,6 +432,8 @@ class SmGui(DataHandler, PlotIterator):
             print e
         else:
             self.update()     
+
+
             
 if __name__ == '__main__':
     from optparse import OptionParser
