@@ -12,6 +12,7 @@ from obspy.core import Trace, UTCDateTime, Stream
 import sys
 import os
 import numpy as np
+import math as m
 from sm_analyser.fortran_interface import *
 import Tix as Tk
 from Tkconstants import *
@@ -124,6 +125,8 @@ class SmGui(DataHandler, PlotIterator):
         self.p = {} # dictionary to hold all Tk variables
         self.p['pmax'] = Tk.IntVar(); self.p['pmax'].set(0)
         self.p['fltrng'] = Tk.IntVar(); self.p['fltrng'].set(1)
+        self.p['pltlog2'] = Tk.IntVar(); self.p['pltlog2'].set(1)
+        self.p['pltgrid'] = Tk.IntVar(); self.p['pltgrid'].set(1)
         ### Window setup
         self.root = parent
         self.entry_frame = Tk.Frame(root)
@@ -167,37 +170,57 @@ class SmGui(DataHandler, PlotIterator):
         self.p['hhgh'] = Tk.DoubleVar();self.p['hhgh'].set(self.highp[1])
   
         # setting up radio buttons
-        maxb = Tk.Checkbutton(self.entry_frame, text='Max', command=self.plotmax, 
-                              variable=self.p['pmax'],indicatoron=0,width=4)
+        maxb = Tk.Checkbutton(self.entry_frame, text='Max', command=self.plotmax,
+                              variable=self.p['pmax'], indicatoron=0, width=4,font=10)
         maxb.pack(side='left')
         balmaxb = Tk.Balloon(self.entry_frame)
-        balmaxb.bind_widget(maxb,balloonmsg='Plot maxima of timeseries.') 
+        balmaxb.bind_widget(maxb, balloonmsg='Plot maxima of timeseries.') 
 
-        fltrng = Tk.Checkbutton(self.entry_frame, text='Flt', command=self.plotfltrng, 
-                                variable=self.p['fltrng'],indicatoron=0,width=4)
+        fltrng = Tk.Checkbutton(self.entry_frame, text='Flt', command=self.plotfltrng,
+                                variable=self.p['fltrng'], indicatoron=0, width=4,font=10)
         fltrng.pack(side='left')
         balfltrng = Tk.Balloon(self.entry_frame)
-        balfltrng.bind_widget(fltrng,balloonmsg='Plot cutoff and corner frequencies of highpass filter.') 
+        balfltrng.bind_widget(fltrng, balloonmsg='Plot cutoff and corner frequencies of highpass filter.') 
+
+        pltlog2 = Tk.Checkbutton(self.entry_frame, text='log2', command=self.plotfltrng,
+                                 variable=self.p['pltlog2'], indicatoron=0, width=4,font=10)
+        pltlog2.pack(side='left')
+        balpltlog2 = Tk.Balloon(self.entry_frame)
+        balpltlog2.bind_widget(pltlog2, balloonmsg='Plot line with slope 2.0 through the maximum of the power spectrum.') 
+
+        pltgrid = Tk.Checkbutton(self.entry_frame, text='Grid', command=self.plotfltrng,
+                                 variable=self.p['pltgrid'], indicatoron=0, width=4,font=10)
+        pltgrid.pack(side='left')
+        balpltgrid = Tk.Balloon(self.entry_frame)
+        balpltgrid.bind_widget(pltgrid, balloonmsg='Plot grid lines.') 
 
         
         # setting up spin box for trimming
-        trim_cntrl = Tk.Control(self.entry_frame, label='npts',integer=True, step=100,
+        trim_cntrl = Tk.Control(self.entry_frame, label='npts', integer=True, step=100,
                                  variable=self.p['npts'])
+        trim_cntrl.entry.config(font=10)
+        trim_cntrl.label.config(font=10)
         trim_cntrl.pack(side='left', padx=5)
+
         # setting up trim button
-        trim_button = Tk.Button(self.entry_frame, text='Trim', width=8, command=self.recalc)
+        trim_button = Tk.Button(self.entry_frame, text='Trim', width=8, command=self.recalc,font=10)
         trim_button.pack(side='left', padx=10)
+        
     
         # setting up spin boxes for filtering
         hp_cntrl_lw = Tk.Control(self.entry_frame, label='cutoff', max=10, min=0, integer=False, step=0.01,
                                  variable=self.p['hlow'])
+        hp_cntrl_lw.entry.config(font=10)
+        hp_cntrl_lw.label.config(font=10)
         hp_cntrl_lw.pack(side='left', padx=5)
         hp_cntrl_hg = Tk.Control(self.entry_frame, label='corner', max=10, min=0, integer=False, step=0.01,
                                  variable=self.p['hhgh'])
+        hp_cntrl_hg.entry.config(font=10)
+        hp_cntrl_hg.label.config(font=10)
         hp_cntrl_hg.pack(side='left', padx=5)
 
         # setting up filter button
-        flt_button = Tk.Button(self.entry_frame, text='Filter', width=8, command=self.recalc)
+        flt_button = Tk.Button(self.entry_frame, text='Filter', width=8, command=self.recalc,font=10)
         flt_button.pack(side='left', padx=10)
         
         
@@ -207,6 +230,9 @@ class SmGui(DataHandler, PlotIterator):
         spec_box.insert('end', self.choices_ts[0])
         spec_box.insert('end', self.choices_ts[1])
         spec_box.insert('end', self.choices_ts[2])
+        spec_box.label.config(font=10)
+        spec_box.entry.config(font=10)
+        #spec_box.listbox.config(font=10)
         spec_box.pack(side='left', padx=10)
 
         # setting up combo box for timeseries
@@ -215,14 +241,16 @@ class SmGui(DataHandler, PlotIterator):
         hist_box.insert('end', self.choices_ts[0])
         hist_box.insert('end', self.choices_ts[1])
         hist_box.insert('end', self.choices_ts[2])
+        hist_box.label.config(font=10)
+        hist_box.entry.config(font=10)
         hist_box.pack(side='left', padx=10)
 
         # setting up navigation and save button
-        p_button = Tk.Button(self.entry_frame, text='Previous', width=8, command=self.prev)
+        p_button = Tk.Button(self.entry_frame, text='Previous', width=8, command=self.prev,font=10)
         p_button.pack(side='left', padx=10)
-        n_button = Tk.Button(self.entry_frame, text='Next', width=8, command=self.next)
+        n_button = Tk.Button(self.entry_frame, text='Next', width=8, command=self.next,font=10)
         n_button.pack(side='left', padx=10)
-        n_button = Tk.Button(self.entry_frame, text='Save', width=8, command=self.savefile)
+        n_button = Tk.Button(self.entry_frame, text='Save', width=8, command=self.savefile,font=10)
         n_button.pack(side='left', padx=10)
         
     def plotmax(self):
@@ -240,6 +268,7 @@ class SmGui(DataHandler, PlotIterator):
         self.f1.clf()
         self.plotspectra()
         self.canvas1.draw()
+
         
     def choose_ts(self, value):
         """
@@ -309,33 +338,78 @@ class SmGui(DataHandler, PlotIterator):
         self.plotspectra()
         self.plottimeseries()
         
-    def plotspectra(self):
+    def plotspectra(self, xrange=(0.01, 20.),yrngfact=0.2):
         """
         Plot the spectra using Matplotlib.
         """
         fspec1, fspec2, fspec3, freqs = self.getspectra(self.choices_ts, self.spec_old)
+        idx = np.where((freqs >= xrange[0]) & (freqs <= xrange[1]))
+        # get maxima within the plotting range of interest
+        max1 = abs(fspec1[idx]).max()
+        min1 = abs(fspec1[idx]).min()
+        fmax1 = freqs[abs(fspec1[idx]).argmax()]
+        ymin1 = min1 - yrngfact * min1
+        ymax1 = max1 + yrngfact * max1
+        max2 = abs(fspec2[idx]).max()
+        min2 = abs(fspec2[idx]).min()
+        fmax2 = freqs[abs(fspec2[idx]).argmax()]
+        ymin2 = min2 - yrngfact * min2
+        ymax2 = max2 + yrngfact * max2
+        max3 = abs(fspec3[idx]).max()
+        min3 = abs(fspec3[idx]).min()
+        fmax3 = freqs[abs(fspec3[idx]).argmax()]
+        ymin3 = min3 - yrngfact * min3
+        ymax3 = max3 + yrngfact * max3
+
         ax1 = self.f1.add_subplot(3, 1, 1)
         ax2 = self.f1.add_subplot(3, 1, 2, sharex=ax1)
         ax3 = self.f1.add_subplot(3, 1, 3, sharex=ax1)
         ax1.loglog(freqs, abs(fspec1))
         ax2.loglog(freqs, abs(fspec2))
         ax3.loglog(freqs, abs(fspec3))
+        
         if self.p['fltrng'].get():
-            ymin, ymax = ax1.get_ylim()
-            ax1.vlines(self.highp[0], ymin, ymax)
-            ax1.vlines(self.highp[1], ymin, ymax)
-            ax1.set_ylim(ymin, ymax)
-            ymin, ymax = ax2.get_ylim()
-            ax2.vlines(self.highp[0], ymin, ymax)
-            ax2.vlines(self.highp[1], ymin, ymax)
-            ax2.set_ylim(ymin, ymax)
-            ymin, ymax = ax3.get_ylim()
-            ax3.vlines(self.highp[0], ymin, ymax)
-            ax3.vlines(self.highp[1], ymin, ymax)
-            ax3.set_ylim(ymin, ymax)
-        ax1.set_xlim(0.01, 20)
-        ax2.set_xlim(0.01, 20)
-        ax3.set_xlim(0.01, 20)
+            ax1.vlines(self.highp[0], ymin1, ymax1)
+            ax1.vlines(self.highp[1], ymin1, ymax1)
+            ax2.vlines(self.highp[0], ymin2, ymax2)
+            ax2.vlines(self.highp[1], ymin2, ymax2)
+            ax3.vlines(self.highp[0], ymin3, ymax3)
+            ax3.vlines(self.highp[1], ymin3, ymax3)
+            
+        if self.p['pltlog2'].get():
+            try:
+                ax1.plot(fmax1, max1, 'k+')
+                ax1.plot([fmax1, xrange[1]], [max1, max1 * 10 ** (2. * m.log10(xrange[1] / fmax1))], 'k--')
+                ax1.plot([fmax1, xrange[0]], [max1, max1 * 10 ** (-2. * m.log10(fmax1 / xrange[0]))], 'k--')
+            except Exception, e:
+                print e
+                print fmax1, max1
+            try: 
+                ax2.plot(fmax2, max2, 'k+')
+                ax2.plot([fmax2, xrange[1]], [max2, max2 * 10 ** (2. * m.log10(xrange[1] / fmax2))], 'k--')
+                ax2.plot([fmax2, xrange[0]], [max2, max2 * 10 ** (-2. * m.log10(fmax2 / xrange[0]))], 'k--')
+            except Exception, e:
+                print e
+                print fmax2, max2
+            try:
+                ax3.plot(fmax3, max3, 'k+')
+                ax3.plot([fmax3, xrange[1]], [max3, max3 * 10 ** (2. * m.log10(xrange[1] / fmax3))], 'k--')
+                ax3.plot([fmax3, xrange[0]], [max3, max3 * 10 ** (-2. * m.log10(fmax3 / xrange[0]))], 'k--')
+            except Exception, e:
+                print e
+                print fmax3, max3
+
+        if self.p['pltgrid'].get():
+            ax1.grid()
+            ax2.grid()
+            ax3.grid()
+            
+        ax1.set_xlim(xrange)
+        ax2.set_xlim(xrange)
+        ax3.set_xlim(xrange)
+        ax1.set_ylim(ymin1, ymax1)
+        ax2.set_ylim(ymin2, ymax2)
+        ax3.set_ylim(ymin3, ymax3)
         ax1.set_xticklabels(ax1.get_xticks(), visible=False)
         ax2.set_xticklabels(ax2.get_xticks(), visible=False)
         ax3.set_xlabel('Frequency [Hz]')
@@ -357,25 +431,25 @@ class SmGui(DataHandler, PlotIterator):
         if self.p['pmax'].get():
             idmax1 = abs(tr1.data).argmax()
             max1 = tr1.data[idmax1]
-            ax1.plot(idmax1*tr1.stats.delta,max1,'ro')
+            ax1.plot(idmax1 * tr1.stats.delta, max1, 'ro')
             idmax2 = abs(tr2.data).argmax()
             max2 = tr2.data[idmax2]
-            ax2.plot(idmax2*tr2.stats.delta,max2,'ro')
+            ax2.plot(idmax2 * tr2.stats.delta, max2, 'ro')
             idmax3 = abs(tr3.data).argmax()
             max3 = tr3.data[idmax3]
-            ax3.plot(idmax3*tr3.stats.delta,max3,'ro')
+            ax3.plot(idmax3 * tr3.stats.delta, max3, 'ro')
         ax1.set_xticklabels(ax1.get_xticks(), visible=False)
         ax2.set_xticklabels(ax2.get_xticks(), visible=False)
         ax3.set_xlabel('Time [s]')
         ymax = abs(tr1.data).max()
         ymax += 0.1 * ymax
-        ax1.set_ylim(-ymax,ymax)
+        ax1.set_ylim(-ymax, ymax)
         ymax = abs(tr2.data).max()
         ymax += 0.1 * ymax
-        ax2.set_ylim(-ymax,ymax)
+        ax2.set_ylim(-ymax, ymax)
         ymax = abs(tr3.data).max()
         ymax += 0.1 * ymax
-        ax3.set_ylim(-ymax,ymax)
+        ax3.set_ylim(-ymax, ymax)
         ax1.set_title(tr1.stats.station)
 
     def update(self):
@@ -421,7 +495,7 @@ class SmGui(DataHandler, PlotIterator):
         idx2 = line.find(a[9]) + len(a[9]) - 12
         idx3 = idx2 + 12
         nline += line[idx1:idx2]
-        nline += "%12d"%self.p['npts'].get()
+        nline += "%12d" % self.p['npts'].get()
         nline += line[idx3::]
         print line
         print nline
