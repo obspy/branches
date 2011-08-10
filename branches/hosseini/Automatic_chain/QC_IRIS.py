@@ -1,3 +1,9 @@
+"""
+Quality Control (Gap, Timing Quality, Data Quality) for IRIS stations.
+Attention: This module check the Quality of whole events in one folder. So you should run it just once...
+"""
+
+
 from obspy.mseed.libmseed import LibMSEED
 from obspy.core import read
 import numpy as np
@@ -8,14 +14,11 @@ import pickle
 import shutil
 
 
-def QC_IRIS(input):
+def QC_IRIS(Address_data):
 	
-	'''
-	Period = input['min_date'] + '_' + input['max_date'] + '_' + str(input['min_mag']) + '_' + str(input['max_mag'])
-	Address_events = input['Address'] + '/Data/' + Period
-	'''
+	print 'Quality Check for all events in: ' + '\n' + str(Address_data)
+	print '*************************************************************'
 	
-	Address_data = input['Address'] + '/Data_TEST3'
 	ls_period = os.listdir(Address_data)
 	
 	pre_ls_event = []
@@ -26,16 +29,15 @@ def QC_IRIS(input):
 	ls_event_file = []
 	for i in pre_ls_event:
 		ls_event_file.append(os.listdir(i))
-	
+		
 	ls_event = []
 	
 	for i in range(0, len(ls_event_file)):
 		for j in range(0, len(ls_event_file[i])):
-			if ls_event_file[i][j] == 'list_event':
-				print ' '
-			else:
-				ls_event.append(Address_data + '/' + ls_period[i] + '/' + ls_event_file[i][j])
-				print ls_event_file[i][j]
+			if ls_event_file[i][j] != 'list_event':
+				if ls_event_file[i][j] != 'EVENT':
+					ls_event.append(Address_data + '/' + ls_period[i] + '/' + ls_event_file[i][j])
+					print ls_event_file[i][j]
 	
 	add_IRIS_QC = []
 	
@@ -56,7 +58,7 @@ def QC_IRIS(input):
 		
 		events = pickle.load(events_all[l])
 		len_events = len(events)
-		#import ipdb; ipdb.set_trace()
+		
 		for k in range(0, len_events):
 		
 			if os.path.exists(pre_ls_event[l] + '/' + events[k]['event_id'] + '/IRIS/QC/') == True:
@@ -149,12 +151,9 @@ def QC_IRIS(input):
 			gap_prob_BHE = []
 
 			for i in range(0, len(gap_BHE)):
-				if gap_BHE[i] == []:
-					print 'GAP -- Done' + ' -- ' + str(l+1) + '/' + str(len(events_all))
-				
-				else:
+				if gap_BHE[i] != []:
 					gap_prob_BHE.append(i)
-					print 'GAP -- ' + str(i) + ' -- ' + str(l+1) + '/' + str(len(events_all))
+					print 'GAP -- ' + str(i) + ' -- ' + str(l+1) + '/' + str(len(events_all)) + ' -- ' + str(k+1) + '/' + str(len_events)
 			
 			GAP_str = []
 			
@@ -197,7 +196,7 @@ def QC_IRIS(input):
 					Exception_file = open(pre_ls_event[l] + '/' + \
 						events[k]['event_id'] + '/IRIS/EXCEP/' + 'Exception_file_IRIS', 'a')
 
-					ee = 'TQ-DQ' + '---' + str(k) + '-' + str(i) + '---' + Sta_BHE[i][0] + \
+					ee = 'TQ-DQ' + '---' + str(l) + '-' + str(k) + '-' + str(i) + '---' + Sta_BHE[i][0] + \
 						'.' + Sta_BHE[i][1] + '.' + Sta_BHE[i][2] + '.' + 'BHE' + \
 						'---' + str(e) + '\n'
 						
@@ -209,23 +208,18 @@ def QC_IRIS(input):
 			TQ_prob_BHE = []
 			
 			for i in range(0, len(TQ_BHE)):
-				if TQ_BHE[i] == {}:
-					print 'TQ -- Done' + ' -- ' + str(l+1) + '/' + str(len(events_all))
-				else:
+				if TQ_BHE[i] != {}:
 					TQ_prob_BHE.append(i)
-					print 'TQ -- ' + str(i) + ' -- ' + str(l+1) + '/' + str(len(events_all))
-
+					print 'TQ -- ' + str(i) + ' -- ' + str(l+1) + '/' + str(len(events_all)) + ' -- ' + str(k+1) + '/' + str(len_events)
 
 			
 			TIME_str = []
-			#import ipdb; ipdb.set_trace()
 			
 			if len(TQ_prob_BHE) == 0:
 				TIME_str.append('None')
 			
 			else:
 				for i in TQ_prob_BHE:
-					#import ipdb; ipdb.set_trace()
 					time_str = str(i) + '  ' + Sta_BHE[i][0] + '  ' + Sta_BHE[i][1] + '  ' + \
 						Sta_BHE[i][2] + '  ' + Sta_BHE[i][3] + '  ' + str(TQ_BHE[i]['min']) + '  ' + str(TQ_BHE[i]['max']) + '\n'
 					TIME_str.append(time_str)
@@ -235,8 +229,7 @@ def QC_IRIS(input):
 					'/IRIS/QC/' + 'TimingQuality', 'a')
 			timefile.writelines(TIME_str)
 			timefile.writelines('\n')
-			timefile.close()
-			
+			timefile.close()			
 			
 			
 			DATA_str = []
@@ -252,6 +245,7 @@ def QC_IRIS(input):
 			datafile.writelines(DATA_str)
 			datafile.writelines('\n')
 			datafile.close()
+
 
 		
 		#-------------------------------get-GAP--------------------------------
@@ -270,12 +264,9 @@ def QC_IRIS(input):
 			gap_prob_BHN = []
 
 			for i in range(0, len(gap_BHN)):
-				if gap_BHN[i] == []:
-					print 'GAP -- Done' + ' -- ' + str(l+1) + '/' + str(len(events_all))
-				
-				else:
+				if gap_BHN[i] != []:
 					gap_prob_BHN.append(i)
-					print 'GAP -- ' + str(i) + ' -- ' + str(l+1) + '/' + str(len(events_all))
+					print 'GAP -- ' + str(i) + ' -- ' + str(l+1) + '/' + str(len(events_all)) + ' -- ' + str(k+1) + '/' + str(len_events)
 			
 			GAP_str = []
 			
@@ -306,10 +297,10 @@ def QC_IRIS(input):
 			for i in range(0, len(List_IRIS_BHN[k])):
 				
 				try:
-						
+					
 					TQ_BHN.append(mseed.getTimingQuality(List_IRIS_BHN[k][i]))
-					DQ_BHN.append(mseed.getDataQualityFlagsCount(List_IRIS_BHN[k][i]))
-								
+					DQ_BHN.append(mseed.getDataQualityFlagsCount(List_IRIS_BHN[k][i]))				
+			
 				except Exception, e:	
 						
 					print 'TQ-DQ' + '---' + Sta_BHN[i][0] +	'.' + Sta_BHN[i][1] + \
@@ -318,28 +309,24 @@ def QC_IRIS(input):
 					Exception_file = open(pre_ls_event[l] + '/' + \
 						events[k]['event_id'] + '/IRIS/EXCEP/' + 'Exception_file_IRIS', 'a')
 
-					ee = 'TQ-DQ' + '---' + str(k) + '-' + str(i) + '---' + Sta_BHN[i][0] + \
+					ee = 'TQ-DQ' + '---' + str(l) + '-' + str(k) + '-' + str(i) + '---' + Sta_BHN[i][0] + \
 						'.' + Sta_BHN[i][1] + '.' + Sta_BHN[i][2] + '.' + 'BHN' + \
 						'---' + str(e) + '\n'
 						
 					Exception_file.writelines(ee)
 					Exception_file.close()
 					print e
-			
+
 				
 			TQ_prob_BHN = []
 			
 			for i in range(0, len(TQ_BHN)):
-				if TQ_BHN[i] == {}:
-					print 'TQ -- Done' + ' -- ' + str(l+1) + '/' + str(len(events_all))
-				else:
+				if TQ_BHN[i] != {}:
 					TQ_prob_BHN.append(i)
-					print 'TQ -- ' + str(i) + ' -- ' + str(l+1) + '/' + str(len(events_all))
-
+					print 'TQ -- ' + str(i) + ' -- ' + str(l+1) + '/' + str(len(events_all)) + ' -- ' + str(k+1) + '/' + str(len_events)
 
 			
 			TIME_str = []
-			#import ipdb; ipdb.set_trace()
 			
 			if len(TQ_prob_BHN) == 0:
 				TIME_str.append('None')
@@ -355,8 +342,7 @@ def QC_IRIS(input):
 					'/IRIS/QC/' + 'TimingQuality', 'a')
 			timefile.writelines(TIME_str)
 			timefile.writelines('\n')
-			timefile.close()
-			
+			timefile.close()			
 			
 			
 			DATA_str = []
@@ -372,8 +358,9 @@ def QC_IRIS(input):
 			datafile.writelines(DATA_str)
 			datafile.writelines('\n')
 			datafile.close()
-
-
+			
+			
+			
 		#-------------------------------get-GAP--------------------------------
 		
 		#-------------------------------BHZ
@@ -390,12 +377,9 @@ def QC_IRIS(input):
 			gap_prob_BHZ = []
 
 			for i in range(0, len(gap_BHZ)):
-				if gap_BHZ[i] == []:
-					print 'GAP -- Done' + ' -- ' + str(l+1) + '/' + str(len(events_all))
-				
-				else:
+				if gap_BHZ[i] != []:
 					gap_prob_BHZ.append(i)
-					print 'GAP -- ' + str(i) + ' -- ' + str(l+1) + '/' + str(len(events_all))
+					print 'GAP -- ' + str(i) + ' -- ' + str(l+1) + '/' + str(len(events_all)) + ' -- ' + str(k+1) + '/' + str(len_events)
 			
 			GAP_str = []
 			
@@ -426,10 +410,10 @@ def QC_IRIS(input):
 			for i in range(0, len(List_IRIS_BHZ[k])):
 				
 				try:
-						
+					
 					TQ_BHZ.append(mseed.getTimingQuality(List_IRIS_BHZ[k][i]))
-					DQ_BHZ.append(mseed.getDataQualityFlagsCount(List_IRIS_BHZ[k][i]))
-				
+					DQ_BHZ.append(mseed.getDataQualityFlagsCount(List_IRIS_BHZ[k][i]))				
+			
 				except Exception, e:	
 						
 					print 'TQ-DQ' + '---' + Sta_BHZ[i][0] +	'.' + Sta_BHZ[i][1] + \
@@ -438,28 +422,24 @@ def QC_IRIS(input):
 					Exception_file = open(pre_ls_event[l] + '/' + \
 						events[k]['event_id'] + '/IRIS/EXCEP/' + 'Exception_file_IRIS', 'a')
 
-					ee = 'TQ-DQ' + '---' + str(k) + '-' + str(i) + '---' + Sta_BHZ[i][0] + \
+					ee = 'TQ-DQ' + '---' + str(l) + '-' + str(k) + '-' + str(i) + '---' + Sta_BHZ[i][0] + \
 						'.' + Sta_BHZ[i][1] + '.' + Sta_BHZ[i][2] + '.' + 'BHZ' + \
 						'---' + str(e) + '\n'
 						
 					Exception_file.writelines(ee)
 					Exception_file.close()
 					print e
-				
+
 				
 			TQ_prob_BHZ = []
 			
 			for i in range(0, len(TQ_BHZ)):
-				if TQ_BHZ[i] == {}:
-					print 'TQ -- Done' + ' -- ' + str(l+1) + '/' + str(len(events_all))
-				else:
+				if TQ_BHZ[i] != {}:
 					TQ_prob_BHZ.append(i)
-					print 'TQ -- ' + str(i) + ' -- ' + str(l+1) + '/' + str(len(events_all))
-
+					print 'TQ -- ' + str(i) + ' -- ' + str(l+1) + '/' + str(len(events_all)) + ' -- ' + str(k+1) + '/' + str(len_events)
 
 			
 			TIME_str = []
-			#import ipdb; ipdb.set_trace()
 			
 			if len(TQ_prob_BHZ) == 0:
 				TIME_str.append('None')
@@ -475,8 +455,7 @@ def QC_IRIS(input):
 					'/IRIS/QC/' + 'TimingQuality', 'a')
 			timefile.writelines(TIME_str)
 			timefile.writelines('\n')
-			timefile.close()
-			
+			timefile.close()			
 			
 			
 			DATA_str = []

@@ -1,6 +1,6 @@
-'''
-Getting Waveform from IRIS web-service based on the desired events...
-'''
+"""
+Gets Waveforms, Response files and other information from IRIS web-service based on the requested events...
+"""
 
 from datetime import datetime
 import time
@@ -48,16 +48,22 @@ def IRIS_get_Waveform(input, Address_events, len_events, events, Networks_iris_B
 		
 		t_wave_1 = datetime.now()
 		
-		len_req_iris_BHE = len(Networks_iris_BHE[i]) 
-		len_req_iris_BHN = len(Networks_iris_BHN[i])
-		len_req_iris_BHZ = len(Networks_iris_BHZ[i])
+		if input['TEST'] == 'Y':
+			len_req_iris_BHE = input['TEST_no']
+			len_req_iris_BHN = input['TEST_no']
+			len_req_iris_BHZ = input['TEST_no']
+
+		else:	
+			len_req_iris_BHE = len(Networks_iris_BHE[i]) 
+			len_req_iris_BHN = len(Networks_iris_BHN[i])
+			len_req_iris_BHZ = len(Networks_iris_BHZ[i])
 		
 		dic_BHE = {}		
 				
 		if input['BHE'] == 'Y':
 			
 			for j in range(0, len_req_iris_BHE):
-			#for j in range(0,10):
+			
 				print '------------------'
 				print 'IRIS-Event and Station Numbers are:'
 				print str(i+1) + '-' + str(j) + '-BHE'
@@ -121,7 +127,7 @@ def IRIS_get_Waveform(input, Address_events, len_events, events, Networks_iris_B
 					#'Start_time': Sta_Start_time, 'End_time': Sta_End_time, \
 					#'Latitude': Sta_Lat, 'Longitude': Sta_Lon, 'Elevation': Sta_Elevation, \
 					#'Location_code': Sta_loc_code, 'Channel_code': Sta_chan_code}
-					dic_BHE[j] ={'Info': Sta_net_code + '.' + Sta_sta_code + '.' + Sta_loc_code + '.' + Sta_chan_code, 'Network': Sta_net_code, \
+					dic_BHE[j] = {'Info': Sta_net_code + '.' + Sta_sta_code + '.' + Sta_loc_code + '.' + Sta_chan_code, 'Network': Sta_net_code, \
 						'Station': Sta_sta_code, 'Latitude': Sta_Lat, 'Longitude': Sta_Lon, \
 						'Location': Sta_loc_code, 'Channel': Sta_chan_code, 'Elevation': Sta_Elevation}
 					
@@ -155,7 +161,6 @@ def IRIS_get_Waveform(input, Address_events, len_events, events, Networks_iris_B
 		Report.writelines(rep1)
 		Report.close()	
 		
-		#import ipdb; ipdb.set_trace()
 		
 		for k in dic_BHE.keys():
 			Syn_file = open(Address_events + '/' + events[i]['event_id'] + \
@@ -173,7 +178,7 @@ def IRIS_get_Waveform(input, Address_events, len_events, events, Networks_iris_B
 		if input['BHN'] == 'Y':
 			
 			for j in range(0, len_req_iris_BHN):
-			#for j in range(0,10):
+			
 				print '------------------'
 				print 'IRIS-Event and Station Numbers are:'
 				print str(i+1) + '-' + str(j) + '-BHN'
@@ -260,7 +265,7 @@ def IRIS_get_Waveform(input, Address_events, len_events, events, Networks_iris_B
 					Exception_file.writelines(ee)
 					Exception_file.close()
 					print e
-		
+				
 		Station_file = open(Address_events + '/' + events[i]['event_id'] + '/IRIS/STATION/' + 'Avail_IRIS_Stations_BHN', 'a')
 		pickle.dump(dic_BHN, Station_file)
 		Station_file.close()
@@ -271,7 +276,6 @@ def IRIS_get_Waveform(input, Address_events, len_events, events, Networks_iris_B
 		Report.writelines(rep1)
 		Report.close()	
 		
-		#import ipdb; ipdb.set_trace()
 		
 		for k in dic_BHN.keys():
 			Syn_file = open(Address_events + '/' + events[i]['event_id'] + \
@@ -289,7 +293,7 @@ def IRIS_get_Waveform(input, Address_events, len_events, events, Networks_iris_B
 		if input['BHZ'] == 'Y':
 			
 			for j in range(0, len_req_iris_BHZ):
-			#for j in range(0,10):
+			
 				print '------------------'
 				print 'IRIS-Event and Station Numbers are:'
 				print str(i+1) + '-' + str(j) + '-BHZ'
@@ -387,7 +391,6 @@ def IRIS_get_Waveform(input, Address_events, len_events, events, Networks_iris_B
 		Report.writelines(rep1)
 		Report.close()	
 		
-		#import ipdb; ipdb.set_trace()
 		
 		for k in dic_BHZ.keys():
 			Syn_file = open(Address_events + '/' + events[i]['event_id'] + \
@@ -415,20 +418,3 @@ def IRIS_get_Waveform(input, Address_events, len_events, events, Networks_iris_B
 		print 'IRIS is DONE'
 		print "Time for getting and saving Waveforms from IRIS:"
 		print t_wave
-	
-	
-	
-'''
-Lat_temp.append([i, Networks_iris[i][str(j)]['Latitude']])
-Lon_temp.append([i, Networks_iris[i][str(j)]['Longitude']])
-name_temp.append([i, Networks_iris[i][str(j)]['Network'] + '.' + \
-					Networks_iris[i][str(j)]['Station']])
-Lat.append([i, Networks_iris[i][str(j)]['Latitude']])
-Lon.append([i, Networks_iris[i][str(j)]['Longitude']])
-name.append([i, Networks_iris[i][str(j)]['Network'] + '.' +Networks_iris[i][str(j)]['Station']])
-
-				
-Len_Lat_Lon.append(len(Lat_temp)) 
-return Lat, Lon, name, Len_Lat_Lon
-'''
-	

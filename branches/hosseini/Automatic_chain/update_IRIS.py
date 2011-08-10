@@ -1,6 +1,10 @@
-'''
-maybe it is better to add the available networks before this module. because probably it would be changed!!!
-'''
+"""
+Updating the station folders from IRIS web-service
+Attention: This module update all station folders for all events in one directory.
+-----------------
+Problems:
+- Exception_file_IRIS_update OR Exception_file_IRIS?
+"""
 
 
 from obspy.core import read
@@ -9,25 +13,29 @@ import matplotlib.pyplot as plt
 import os
 import glob
 import pickle
-import shutil
 from obspy.iris import Client as Client_iris
 from datetime import datetime
 from lxml import etree
+from nodes_update import *
 
 
 def update_IRIS(input):
-	
-	
+		
 	t_update_1 = datetime.now()
 	
-	Address_data = input['Address'] + '/Data_TEST4'
-	#Address_data = '/import/neptun-radler/hosseini-downloads' + '/Data_TEST3'
+	Address_data = input['Address'] + '/Data'
+	
 	ls_period = os.listdir(Address_data)
 	
 	pre_ls_event = []
 	for i in range(0, len(ls_period)):
-		pre_ls_event.append(Address_data + '/' + ls_period[i])
+		pre_ls_event.append(Address_data + '/' + ls_period[i])	
 	
+	pre_ls_event = nodes_update(input, pre_ls_event)
+	
+	for i in range(0, len(pre_ls_event)):
+		print 'Updating for: ' + '\n' + str(pre_ls_event[i])
+	print '*********************'
 	
 	ls_event_file = []
 	for i in pre_ls_event:
@@ -37,11 +45,10 @@ def update_IRIS(input):
 	
 	for i in range(0, len(ls_event_file)):
 		for j in range(0, len(ls_event_file[i])):
-			if ls_event_file[i][j] == 'list_event':
-				print ' '
-			else:
-				ls_event.append(Address_data + '/' + ls_period[i] + '/' + ls_event_file[i][j])
-				print ls_event_file[i][j]
+			if ls_event_file[i][j] != 'list_event':
+				if ls_event_file[i][j] != 'EVENT':
+					ls_event.append(pre_ls_event[0] + '/' + ls_event_file[i][j])
+					print ls_event_file[i][j]
 	
 	add_IRIS_events = []
 	for i in pre_ls_event:
@@ -62,6 +69,7 @@ def update_IRIS(input):
 			events_all_file.append(j)
 	
 	for l in range(0, len(ls_event)):
+
 		ls_stas_open = open(ls_event[l] + '/IRIS/STATION/All_IRIS_Stations_BHE', 'r')
 		All_IRIS_Stations_BHE = pickle.load(ls_stas_open)
 		ls_stas_open.close()
@@ -85,16 +93,14 @@ def update_IRIS(input):
 		for i in range(0, len(All_IRIS_Stations_BHZ)):
 			All_IRIS_Stations_BHZ[i] = [All_IRIS_Stations_BHZ[i][0], All_IRIS_Stations_BHZ[i][1], \
 				All_IRIS_Stations_BHZ[i][2], All_IRIS_Stations_BHZ[i][3]]
-		
-		#import ipdb; ipdb.set_trace()
 			
-		
+		'''
 		upfile = open(ls_event[l] + '/IRIS/STATION/' + 'UPDATE', 'w')
 		upfile.writelines('\n' + ls_event[l].split('/')[-1] + '\n')
 		upfile.writelines('----------------------------IRIS----------------------------'+ '\n')
 		upfile.writelines('----------------------------UPDATED----------------------------'+ '\n')
 		upfile.close()
-			
+		'''	
 		List_IRIS_BHE = []
 		List_IRIS_BHN = []
 		List_IRIS_BHZ = []
@@ -107,10 +113,6 @@ def update_IRIS(input):
 		List_IRIS_BHE = sorted(List_IRIS_BHE)
 		List_IRIS_BHN = sorted(List_IRIS_BHN)
 		List_IRIS_BHZ = sorted(List_IRIS_BHZ)
-
-	
-		
-		#-------------------------------BHE
 		
 		pre_Sta_BHE = []
 		pre_Sta_BHN = []
@@ -139,16 +141,25 @@ def update_IRIS(input):
 				'''
 				print e
 				
-			
 		for i in range(0, len(List_IRIS_BHN[0])):
-			st = read(List_IRIS_BHN[0][i])
-			sta_BHN = [st[0].stats['network'], st[0].stats['station'], st[0].stats['location'], st[0].stats['channel']]
-			pre_Sta_BHN.append(sta_BHN)
+			try:
+				st = read(List_IRIS_BHN[0][i])
+				sta_BHN = [st[0].stats['network'], st[0].stats['station'], st[0].stats['location'], st[0].stats['channel']]
+				pre_Sta_BHN.append(sta_BHN)
+			
+			except Exception, e:					
+				print 'STREAM' + '---'
+				print e
 		
 		for i in range(0, len(List_IRIS_BHZ[0])):
-			st = read(List_IRIS_BHZ[0][i])
-			sta_BHZ = [st[0].stats['network'], st[0].stats['station'], st[0].stats['location'], st[0].stats['channel']]
-			pre_Sta_BHZ.append(sta_BHZ)
+			try:
+				st = read(List_IRIS_BHZ[0][i])
+				sta_BHZ = [st[0].stats['network'], st[0].stats['station'], st[0].stats['location'], st[0].stats['channel']]
+				pre_Sta_BHZ.append(sta_BHZ)
+			
+			except Exception, e:					
+				print 'STREAM' + '---'
+				print e
 			
 		Sta_BHE.append(pre_Sta_BHE)
 		Sta_BHN.append(pre_Sta_BHN)
@@ -167,15 +178,7 @@ def update_IRIS(input):
 		for i in range(0, len(All_IRIS_Stations_BHZ)):
 			if All_IRIS_Stations_BHZ[i] != []:
 				if All_IRIS_Stations_BHZ[i][2] == '--':
-					All_IRIS_Stations_BHZ[i][2] = ''	
-
-
-
-
-
-		for i in range(0, len(All_IRIS_Stations_BHE)):
- 			zipped = zip(All_IRIS_Stations_BHE, Sta_BHE[0])
- 		
+					All_IRIS_Stations_BHZ[i][2] = ''	 		
  		
  		common_BHE = []
  		
@@ -203,15 +206,6 @@ def update_IRIS(input):
  				Stas_req_BHE.append(i)
  				
  		
- 		
- 		
- 		
- 		
- 		
- 		for i in range(0, len(All_IRIS_Stations_BHN)):
- 			zipped = zip(All_IRIS_Stations_BHN, Sta_BHN[0])
- 		
- 		
  		common_BHN = []
  		
  		for i in range(0, len(All_IRIS_Stations_BHN)):
@@ -237,16 +231,7 @@ def update_IRIS(input):
  			if i != []:
  				Stas_req_BHN.append(i)
  				
- 		
- 		
- 		
- 		#import ipdb; ipdb.set_trace()
- 		
- 		
- 		for i in range(0, len(All_IRIS_Stations_BHZ)):
- 			zipped = zip(All_IRIS_Stations_BHZ, Sta_BHZ[0])
- 		
- 		
+ 				
  		common_BHZ = []
  		
  		for i in range(0, len(All_IRIS_Stations_BHZ)):
@@ -276,9 +261,14 @@ def update_IRIS(input):
  		for i in range(0, len(Stas_req_BHE)):
  			if Stas_req_BHE[i][2] == '':
  				Stas_req_BHE[i][2] = '--'
- 				
- 			
  		
+ 		for i in range(0, len(Stas_req_BHN)):
+ 			if Stas_req_BHN[i][2] == '':
+ 				Stas_req_BHN[i][2] = '--'
+ 		
+ 		for i in range(0, len(Stas_req_BHZ)):
+ 			if Stas_req_BHZ[i][2] == '':
+ 				Stas_req_BHZ[i][2] = '--'		
  		
  		
  		for i in events_all_file:
@@ -288,8 +278,7 @@ def update_IRIS(input):
 				t1 = i['datetime']-input['t_before']
 				t2 = i['datetime']+input['t_after']
 				
-				
-		#import ipdb; ipdb.set_trace()
+		
 		
 		Exception_file = open(Address + '/' + '/IRIS/EXCEP/' + 'Exception_file_IRIS_update', 'w')
 		Exception_file.writelines('\n' + event_id + '\n')
@@ -300,10 +289,10 @@ def update_IRIS(input):
 		dic_BHE = {}		
 				
 		if input['BHE'] == 'Y':
-			
-			
+					
 			for i in range(0, len(Stas_req_BHE)):			
 				
+				print '------------------'
 				
 				try:					
 			
@@ -384,40 +373,33 @@ def update_IRIS(input):
 					Exception_file.close()
 					print e
 				
-				Station_file = open(Address + '/IRIS/STATION/' + 'Avail_IRIS_Stations_BHE', 'a')
-				pickle.dump(dic_BHE, Station_file)
-				Station_file.close()
+		Station_file = open(Address + '/IRIS/STATION/' + 'Avail_IRIS_Stations_BHE', 'a')
+		pickle.dump(dic_BHE, Station_file)
+		Station_file.close()
 				
 				
-				Report = open(Address + '/IRIS/STATION/' + 'Report_station', 'a')
-				rep1 = 'UPDATE - IRIS-Saved stations (BHE) for event' + '-' + str(l) + ': ' + str(len(dic_BHE)) + '\n'
-				Report.writelines(rep1)
-				Report.close()	
+		Report = open(Address + '/IRIS/STATION/' + 'Report_station', 'a')
+		rep1 = 'UPDATE - IRIS-Saved stations (BHE) for event' + '-' + str(l) + ': ' + str(len(dic_BHE)) + '\n'
+		Report.writelines(rep1)
+		Report.close()	
 				
-				#import ipdb; ipdb.set_trace()
-				
-				for k in dic_BHE.keys():
-					Syn_file = open(Address + '/IRIS/STATION/' + 'Input_Syn_BHE', 'a')
-					syn = dic_BHE[k]['Network'] + ' , ' + dic_BHE[k]['Station'] + ' , ' + \
-						dic_BHE[k]['Location'] + ' , ' + dic_BHE[k]['Channel'] + ' , ' + dic_BHE[k]['Latitude'] + \
-						' , ' + dic_BHE[k]['Longitude'] + ' , ' + dic_BHE[k]['Elevation'] + '\n'
-					Syn_file.writelines(syn)
-					Syn_file.close()
+		for k in dic_BHE.keys():
+			Syn_file = open(Address + '/IRIS/STATION/' + 'Input_Syn_BHE', 'a')
+			syn = dic_BHE[k]['Network'] + ' , ' + dic_BHE[k]['Station'] + ' , ' + \
+				dic_BHE[k]['Location'] + ' , ' + dic_BHE[k]['Channel'] + ' , ' + dic_BHE[k]['Latitude'] + \
+				' , ' + dic_BHE[k]['Longitude'] + ' , ' + dic_BHE[k]['Elevation'] + '\n'
+			Syn_file.writelines(syn)
+			Syn_file.close()
 						
 				
-		
-		
-		
-		
-		
 		dic_BHN = {}		
 				
 		if input['BHN'] == 'Y':
-			
-			
+					
 			for i in range(0, len(Stas_req_BHN)):			
-				
-				
+					
+				print '------------------'
+					
 				try:					
 			
 					client_iris = Client_iris()
@@ -497,37 +479,33 @@ def update_IRIS(input):
 					Exception_file.close()
 					print e
 				
-				Station_file = open(Address + '/IRIS/STATION/' + 'Avail_IRIS_Stations_BHN', 'a')
-				pickle.dump(dic_BHN, Station_file)
-				Station_file.close()
+		Station_file = open(Address + '/IRIS/STATION/' + 'Avail_IRIS_Stations_BHN', 'a')
+		pickle.dump(dic_BHN, Station_file)
+		Station_file.close()
 				
 				
-				Report = open(Address + '/IRIS/STATION/' + 'Report_station', 'a')
-				rep1 = 'UPDATE - IRIS-Saved stations (BHN) for event' + '-' + str(l) + ': ' + str(len(dic_BHN)) + '\n'
-				Report.writelines(rep1)
-				Report.close()	
+		Report = open(Address + '/IRIS/STATION/' + 'Report_station', 'a')
+		rep1 = 'UPDATE - IRIS-Saved stations (BHN) for event' + '-' + str(l) + ': ' + str(len(dic_BHN)) + '\n'
+		Report.writelines(rep1)
+		Report.close()	
 				
-				#import ipdb; ipdb.set_trace()
-				
-				for k in dic_BHN.keys():
-					Syn_file = open(Address + '/IRIS/STATION/' + 'Input_Syn_BHN', 'a')
-					syn = dic_BHN[k]['Network'] + ' , ' + dic_BHN[k]['Station'] + ' , ' + \
-						dic_BHN[k]['Location'] + ' , ' + dic_BHN[k]['Channel'] + ' , ' + dic_BHN[k]['Latitude'] + \
-						' , ' + dic_BHN[k]['Longitude'] + ' , ' + dic_BHN[k]['Elevation'] + '\n'
-					Syn_file.writelines(syn)
-					Syn_file.close()	
+		for k in dic_BHN.keys():
+			Syn_file = open(Address + '/IRIS/STATION/' + 'Input_Syn_BHN', 'a')
+			syn = dic_BHN[k]['Network'] + ' , ' + dic_BHN[k]['Station'] + ' , ' + \
+				dic_BHN[k]['Location'] + ' , ' + dic_BHN[k]['Channel'] + ' , ' + dic_BHN[k]['Latitude'] + \
+				' , ' + dic_BHN[k]['Longitude'] + ' , ' + dic_BHN[k]['Elevation'] + '\n'
+			Syn_file.writelines(syn)
+			Syn_file.close()
 					
-			
-		
-		
+					
 		dic_BHZ = {}		
 				
 		if input['BHZ'] == 'Y':
-			
-			
+					
 			for i in range(0, len(Stas_req_BHZ)):			
-				
-				
+					
+				print '------------------'
+					
 				try:					
 			
 					client_iris = Client_iris()
@@ -607,150 +585,29 @@ def update_IRIS(input):
 					Exception_file.close()
 					print e
 				
-				Station_file = open(Address + '/IRIS/STATION/' + 'Avail_IRIS_Stations_BHZ', 'a')
-				pickle.dump(dic_BHZ, Station_file)
-				Station_file.close()
+		Station_file = open(Address + '/IRIS/STATION/' + 'Avail_IRIS_Stations_BHZ', 'a')
+		pickle.dump(dic_BHZ, Station_file)
+		Station_file.close()
 				
 				
-				Report = open(Address + '/IRIS/STATION/' + 'Report_station', 'a')
-				rep1 = 'UPDATE - IRIS-Saved stations (BHZ) for event' + '-' + str(l) + ': ' + str(len(dic_BHZ)) + '\n'
-				Report.writelines(rep1)
-				Report.close()	
+		Report = open(Address + '/IRIS/STATION/' + 'Report_station', 'a')
+		rep1 = 'UPDATE - IRIS-Saved stations (BHZ) for event' + '-' + str(l) + ': ' + str(len(dic_BHZ)) + '\n'
+		Report.writelines(rep1)
+		Report.close()	
 				
-				#import ipdb; ipdb.set_trace()
-				
-				for k in dic_BHZ.keys():
-					Syn_file = open(Address + '/IRIS/STATION/' + 'Input_Syn_BHZ', 'a')
-					syn = dic_BHZ[k]['Network'] + ' , ' + dic_BHZ[k]['Station'] + ' , ' + \
-						dic_BHZ[k]['Location'] + ' , ' + dic_BHZ[k]['Channel'] + ' , ' + dic_BHZ[k]['Latitude'] + \
-						' , ' + dic_BHZ[k]['Longitude'] + ' , ' + dic_BHZ[k]['Elevation'] + '\n'
-					Syn_file.writelines(syn)
-					Syn_file.close()
+		for k in dic_BHZ.keys():
+			Syn_file = open(Address + '/IRIS/STATION/' + 'Input_Syn_BHZ', 'a')
+			syn = dic_BHZ[k]['Network'] + ' , ' + dic_BHZ[k]['Station'] + ' , ' + \
+				dic_BHZ[k]['Location'] + ' , ' + dic_BHZ[k]['Channel'] + ' , ' + dic_BHZ[k]['Latitude'] + \
+				' , ' + dic_BHZ[k]['Longitude'] + ' , ' + dic_BHZ[k]['Elevation'] + '\n'
+			Syn_file.writelines(syn)
+			Syn_file.close()
 		
 		
 			
-		t_update_2 = datetime.now()
+	t_update_2 = datetime.now()
 		
-		t_update = t_update_2 - t_update_1
+	t_update = t_update_2 - t_update_1
 		
-		print 'Time for Updating: (IRIS)'
-		print t_update
-			
-			
-			
-			
-		
-	#import ipdb; ipdb.set_trace()
-			
-			
-			
-			
-	'''
-			gap_prob_BHE = []
-
-			for i in range(0, len(gap_BHE)):
-				if gap_BHE[i] == []:
-					print 'GAP -- Done' + ' -- ' + str(l+1) + '/' + str(len(events_all))
-				
-				else:
-					gap_prob_BHE.append(i)
-					print 'GAP -- ' + str(i) + ' -- ' + str(l+1) + '/' + str(len(events_all))
-			
-			GAP_str = []
-			
-			if len(gap_prob_BHE) == 0:
-				GAP_str.append('None')
-			
-			else:
-				for i in gap_prob_BHE:
-					gap_str = str(i) + '  ' + gap_BHE[i][0][0] + '  ' + gap_BHE[i][0][1] + '  ' + \
-						gap_BHE[i][0][2] + '  ' + gap_BHE[i][0][3] + '  ' + str(len(gap_BHE[i])) + '\n'
-					GAP_str.append(gap_str)
-				
-			
-			gapfile = open(pre_ls_event[l] + '/' + events[k]['event_id'] + \
-					'/IRIS/QC/' + 'GAP', 'a')
-			gapfile.writelines(GAP_str)
-			gapfile.writelines('\n')
-			gapfile.close()
-	
-	
-	
-	---------------------------------
-	Address_data = input['Address'] + '/Data_TEST3'
-	ls_period = os.listdir(Address_data)
-	
-	pre_ls_event = []
-	for i in range(0, len(ls_period)):
-		pre_ls_event.append(Address_data + '/' + ls_period[i])
-	
-	
-	ls_event_file = []
-	for i in pre_ls_event:
-		ls_event_file.append(os.listdir(i))
-	
-	ls_event = []
-	
-	for i in range(0, len(ls_event_file)):
-		for j in range(0, len(ls_event_file[i])):
-			if ls_event_file[i][j] == 'list_event':
-				print ' '
-			else:
-				ls_event.append(Address_data + '/' + ls_period[i] + '/' + ls_event_file[i][j])
-				print ls_event_file[i][j]
-	
-	add_IRIS_sta = []
-	
-	for i in ls_event:
-		add_IRIS_sta.append(i + '/IRIS/STATION')
-	#import ipdb; ipdb.set_trace()
-	
-	add_IRIS_all_stas_BHE = []
-	add_IRIS_all_stas_BHN = []
-	add_IRIS_all_stas_BHZ = []
-	
-	for i in pre_ls_event:
-		add_IRIS_all_stas_BHE.append(i + '/All_IRIS_Stations_BHE')
-		add_IRIS_all_stas_BHN.append(i + '/All_IRIS_Stations_BHN')
-		add_IRIS_all_stas_BHZ.append(i + '/All_IRIS_Stations_BHZ')
-	import ipdb; ipdb.set_trace()
-	
-	
-	events_all = []
-	
-	for i in add_IRIS_events:
-		Event_file = open(i, 'r')
-		events_all.append(Event_file)
-			
-	for l in range(0, len(events_all)):
-	
-	
-	
-	IRIS_All_Stations = open('/media/KINGSTON/TEST_NODES/TEST2_NODES/Data/2011-01-08_2011-01-10_6.5_6.8/20110109_0000017/ARC/STATION/All_ARC_Stations_BHE', 'r')
-	a = pickle.load(arc)
-
-	for k in range(0, len_events):
-			List_IRIS_BHE.append(glob.glob(Address_events + '/' + events[k]['event_id'] + '/IRIS/' + '*.BHE'))
-			List_IRIS_BHN.append(glob.glob(Address_events + '/' + events[k]['event_id'] + '/IRIS/' + '*.BHN'))
-			List_IRIS_BHZ.append(glob.glob(Address_events + '/' + events[k]['event_id'] + '/IRIS/' + '*.BHZ'))
-
-			List_IRIS_BHE[k] = sorted(List_IRIS_BHE[k])
-			List_IRIS_BHN[k] = sorted(List_IRIS_BHN[k])
-			List_IRIS_BHZ[k] = sorted(List_IRIS_BHZ[k])
-
-
-
-			for i in range(0, len(List_IRIS_BHE[k])):
-				st = read(List_IRIS_BHE[k][i])
-				sta_BHE = [st[0].stats['network'], st[0].stats['station'], st[0].stats['location'], st[0].stats['channel']]
-				Sta_BHE.append(sta_BHE)
-
-	for k in range(0, len_events):
-		for i in range(0, len(a)):
-			for j in range(0, len(List_IRIS_BHE[k]))
-			if a[i][0] == 'WM':
-				if a[i][1] == 'MAHO':
-					if a[i][2] == '':
-						if a[i][3] == 'BHE':
-							a.remove(a[i])
-	'''
+	print 'Time for Updating: (IRIS)'
+	print t_update

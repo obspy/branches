@@ -1,6 +1,9 @@
 """
-?????????? ['BW', 'WETR', '', 'BHE']
-Arclink: Gets the information about the available stations in a specific period of time (Events)
+Arclink: Returns available stations for all requested events
+-----------------
+Problems:
+- ['BW', 'WETR', '', 'BH*']
+- Client_arclink(command_delay=0.1)
 """
 
 from obspy.arclink import Client as Client_arclink
@@ -10,8 +13,7 @@ import pickle
 import time
 import os
 
-# client_arclink = Client_arclink(timeout = 30, command_delay=0.1)
-client_arclink = Client_arclink()
+client_arclink = Client_arclink(command_delay=0.1)
 
 def Arclink_get_Network(len_events, events, Address_events):
 	
@@ -49,7 +51,6 @@ def Arclink_get_Network(len_events, events, Address_events):
 		try:
 			
 			Networks_Arclink.append(client_arclink.getNetworks(t[i]-10, t[i]+10))
-			
 			print 'ArcLink-Availability for event: ' + str(i) + '  --->' + 'DONE'
 
 		except Exception, e:
@@ -87,8 +88,6 @@ def Arclink_get_Network(len_events, events, Address_events):
 		len_req_Arc_BHZ = len(Nets_Arc_req_BHZ[i])
 		for j in range(0, len_req_Arc_BHZ):
 			Nets_Arc_req_BHZ[i][j] = Nets_Arc_req_BHZ[i][j].split('.')
-	
-	#import ipdb; ipdb.set_trace()
 	
 	for j in range(0, len_events):
 		for i in range(0, len(Nets_Arc_req_BHE[j])):
@@ -148,19 +147,4 @@ def Arclink_get_Network(len_events, events, Address_events):
 	print 'ARC-Time: (Availability)'
 	print t_arc_21
 	
-	return Nets_Arc_req_BHE, Nets_Arc_req_BHN, Nets_Arc_req_BHZ, t          
-     
-                
-"""
-events = pickle.load(Event_file)
-
-for i in range(0, len_events):
-		#import os
-		#folder = os.path.join(Address, 'Data', Period, events[i]['event_id'])
-		#os.makedirs(Address + '/Data/' + Period + '/' + events[i]['event_id'])
-		# for resp file
-		os.makedirs(Address + '/Data/' + Period + '/' + events[i]['event_id'] + '/Arc_BH' + '/RESP')
-		#os.makedirs(Address + '/Data/' + Period + '/' + events[i]['event_id'] + '/Arc_BH')
-
-print 'Folders are Created!'
-"""
+	return Nets_Arc_req_BHE, Nets_Arc_req_BHN, Nets_Arc_req_BHZ, t

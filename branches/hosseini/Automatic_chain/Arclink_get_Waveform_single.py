@@ -1,6 +1,9 @@
 """
-Getting Waveform from Arclink
-Getting Lons and Lats of each station from Inventory
+Gets one Waveform, Response file and other information from ArcLink based on the requested network, station, location, channel and events...
+ATTENTION: In this case, you should exactly know the net, sta, loc, cha of your request. Wild-cards are not allowed!
+-----------------
+Problems:
+- Client_arclink(command_delay=0.1)
 """
 
 from obspy.arclink import Client as Client_arclink
@@ -10,7 +13,6 @@ from obspy.arclink.client import ArcLinkException as ArcLinkException
 import pickle
 import os
 
-# client_arclink = Client_arclink(timeout = 30, command_delay=0.1)
 
 def Arclink_get_Waveform_single(input, Address_events, len_events, events, Networks_ARC, t):
 	
@@ -36,9 +38,8 @@ def Arclink_get_Waveform_single(input, Address_events, len_events, events, Netwo
 			'/ARC/STATION/' + 'Input_Syn', 'w')
 		Syn_file.close()
 	
-
-	# client_arclink = Client_arclink(debug=True, timeout=10, command_delay=0.1)
-	client_arclink = Client_arclink()
+	
+	client_arclink = Client_arclink(command_delay=0.1)
 	
 	for i in range(0, len_events):
 		
@@ -49,11 +50,10 @@ def Arclink_get_Waveform_single(input, Address_events, len_events, events, Netwo
 		print str(i+1)
 		
 		inv = {}
-		
-		
+				
 		try:
 				
-			client_arclink = Client_arclink()
+			client_arclink = Client_arclink(command_delay=0.1)
 					
 			dummy = 'Waveform'
 				

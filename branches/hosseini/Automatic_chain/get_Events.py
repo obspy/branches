@@ -72,7 +72,7 @@ def get_Events(input):
 	Event_cat.writelines(str(Period) + '\n')
 	Event_cat.writelines('------------------------------------------------------' + '\n')
 	Event_cat.writelines('Information about the requested Events:' + '\n\n')
-	Event_cat.writelines('Number of Events: ' + str(i+1) + '\n')
+	#Event_cat.writelines('Number of Events: ' + str(i+1) + '\n')
 	Event_cat.writelines('min datetime: ' + str(input['min_date']) + '\n')
 	Event_cat.writelines('max datetime: ' + str(input['max_date']) + '\n')
 	Event_cat.writelines('min magnitude: ' + str(input['min_mag']) + '\n')

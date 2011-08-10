@@ -5,7 +5,7 @@ Suggestion: Do not request more than 10 in parallel...
 
 import commands
 
-def nodes(input):
+def nodes_II(input):
 	'''
 	if commands.getoutput('hostname') == 'kasra-laptop':
 		input['min_date'] = '2011-01-01'
@@ -21,62 +21,62 @@ def nodes(input):
 		if commands.getoutput('tty') == '/dev/pts/0':
 			input['min_date'] = '2011-01-08'
 			input['max_date'] = '2011-01-10'
-			input['IRIS'] = 'Y'
-			input['ArcLink'] = 'N'
+			input['IRIS'] = 'N'
+			input['ArcLink'] = 'Y'
 		
 		if commands.getoutput('tty') == '/dev/pts/1':
 			input['min_date'] = '2011-01-11'
 			input['max_date'] = '2011-01-13'
-			input['IRIS'] = 'Y'
-			input['ArcLink'] = 'N'
+			input['IRIS'] = 'N'
+			input['ArcLink'] = 'Y'
 		
 		if commands.getoutput('tty') == '/dev/pts/2':
 			input['min_date'] = '2011-02-09'
 			input['max_date'] = '2011-02-11'
-			input['IRIS'] = 'Y'
-			input['ArcLink'] = 'N'
+			input['IRIS'] = 'N'
+			input['ArcLink'] = 'Y'
 		
 		if commands.getoutput('tty') == '/dev/pts/3':
 			input['min_date'] = '2011-02-13'
 			input['max_date'] = '2011-02-15'
-			input['IRIS'] = 'Y'
-			input['ArcLink'] = 'N'
+			input['IRIS'] = 'N'
+			input['ArcLink'] = 'Y'
 
 		if commands.getoutput('tty') == '/dev/pts/4':
 			input['min_date'] = '2011-02-20'
 			input['max_date'] = '2011-02-22'
-			input['IRIS'] = 'Y'
-			input['ArcLink'] = 'N'
+			input['IRIS'] = 'N'
+			input['ArcLink'] = 'Y'
 		
 		if commands.getoutput('tty') == '/dev/pts/5':
 			input['min_date'] = '2011-03-05'
 			input['max_date'] = '2011-03-07'
-			input['IRIS'] = 'N'
-			input['ArcLink'] = 'Y'
+			input['IRIS'] = 'Y'
+			input['ArcLink'] = 'N'
 		
 		if commands.getoutput('tty') == '/dev/pts/6':
 			input['min_date'] = '2011-03-08'
 			input['max_date'] = '2011-03-10'
-			input['IRIS'] = 'N'
-			input['ArcLink'] = 'Y'
+			input['IRIS'] = 'Y'
+			input['ArcLink'] = 'N'
 		
 		if commands.getoutput('tty') == '/dev/pts/7':
 			input['min_date'] = '2011-03-09'
 			input['max_date'] = '2011-03-11'
-			input['IRIS'] = 'N'
-			input['ArcLink'] = 'Y'
+			input['IRIS'] = 'Y'
+			input['ArcLink'] = 'N'
 		
 		if commands.getoutput('tty') == '/dev/pts/8':
 			input['min_date'] = '2011-06-19'
 			input['max_date'] = '2011-06-21'
-			input['IRIS'] = 'N'
-			input['ArcLink'] = 'Y'
+			input['IRIS'] = 'Y'
+			input['ArcLink'] = 'N'
 		
 		if commands.getoutput('tty') == '/dev/pts/9':
 			input['min_date'] = '2011-03-23'
 			input['max_date'] = '2011-03-26'
-			input['IRIS'] = 'N'
-			input['ArcLink'] = 'Y'
+			input['IRIS'] = 'Y'
+			input['ArcLink'] = 'N'
 		
 		if commands.getoutput('tty') == '/dev/pts/10':
 			input['min_date'] = '2011-03-26'

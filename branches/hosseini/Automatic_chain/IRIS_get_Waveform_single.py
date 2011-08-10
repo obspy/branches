@@ -1,6 +1,7 @@
-'''
-Getting Waveform from IRIS web-service based on the desired events...
-'''
+"""
+Gets one Waveform, Response file and other information from IRIS web-service based on the requested network, station, location, channel and events...
+ATTENTION: In this case, you should exactly know the net, sta, loc, cha of your request. Wild-cards are not allowed!
+"""
 
 from datetime import datetime
 import time
@@ -143,10 +144,7 @@ def IRIS_get_Waveform_single(input, Address_events, len_events, events, Networks
 			Report = open(Address_events + '/' + events[i]['event_id'] + '/IRIS/STATION/' + 'Report_station', 'a')
 			rep1 = 'IRIS-Saved stations for event' + '-' + str(i) + ': ' + str(len(dic)) + '\n'
 			Report.writelines(rep1)
-			Report.close()	
-			
-			#import ipdb; ipdb.set_trace()
-			
+			Report.close()				
 		
 			Syn_file = open(Address_events + '/' + events[i]['event_id'] + \
 				'/IRIS/STATION/' + 'Input_Syn', 'a')
@@ -173,20 +171,3 @@ def IRIS_get_Waveform_single(input, Address_events, len_events, events, Networks
 	print 'IRIS is DONE'
 	print "Time for getting and saving Waveforms from IRIS:"
 	print t_wave
-	
-	
-	
-'''
-Lat_temp.append([i, Networks_iris[i][str(j)]['Latitude']])
-Lon_temp.append([i, Networks_iris[i][str(j)]['Longitude']])
-name_temp.append([i, Networks_iris[i][str(j)]['Network'] + '.' + \
-					Networks_iris[i][str(j)]['Station']])
-Lat.append([i, Networks_iris[i][str(j)]['Latitude']])
-Lon.append([i, Networks_iris[i][str(j)]['Longitude']])
-name.append([i, Networks_iris[i][str(j)]['Network'] + '.' +Networks_iris[i][str(j)]['Station']])
-
-				
-Len_Lat_Lon.append(len(Lat_temp)) 
-return Lat, Lon, name, Len_Lat_Lon
-'''
-	

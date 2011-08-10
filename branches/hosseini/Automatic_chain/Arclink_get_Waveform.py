@@ -1,6 +1,8 @@
 """
-Getting Waveform from Arclink
-Getting Lons and Lats of each station from Inventory
+Gets Waveforms, Response files and other information from ArcLink based on the requested events...
+-----------------
+Problems:
+- Client_arclink(command_delay=0.1)
 """
 
 from obspy.arclink import Client as Client_arclink
@@ -8,9 +10,7 @@ from datetime import datetime
 import time
 from obspy.arclink.client import ArcLinkException as ArcLinkException
 import pickle
-#from obspy.xseed import Parser
 
-# client_arclink = Client_arclink(timeout = 30, command_delay=0.1)
 
 def Arclink_get_Waveform(input, Address_events, len_events, events, Nets_Arc_req_BHE, \
 	Nets_Arc_req_BHN, Nets_Arc_req_BHZ, t):
@@ -45,30 +45,35 @@ def Arclink_get_Waveform(input, Address_events, len_events, events, Nets_Arc_req
 		Syn_file.close()
 	
 	t_wave_1 = datetime.now()
-
-	# client_arclink = Client_arclink(debug=True, timeout=10, command_delay=0.1)
 	
 	for i in range(0, len_events):
 		
 		t_wave_1 = datetime.now()
 		
-		len_req_Arc_BHE = len(Nets_Arc_req_BHE[i]) 
-		len_req_Arc_BHN = len(Nets_Arc_req_BHN[i]) 
-		len_req_Arc_BHZ = len(Nets_Arc_req_BHZ[i]) 
+		if input['TEST'] == 'Y':
+			len_req_Arc_BHE = input['TEST_no']
+			len_req_Arc_BHN = input['TEST_no']
+			len_req_Arc_BHZ = input['TEST_no']
+
+		else:	
+			len_req_Arc_BHE = len(Nets_Arc_req_BHE[i]) 
+			len_req_Arc_BHN = len(Nets_Arc_req_BHN[i]) 
+			len_req_Arc_BHZ = len(Nets_Arc_req_BHZ[i]) 		
+		
 		
 		inv_BHE = {}
 		
 		if input['BHE'] == 'Y':
 			
 			for j in range(0, len_req_Arc_BHE):
-			#for j in range(0,10):
+			
 				print '------------------'
 				print 'ArcLink-Event and Station Numbers are:'
 				print str(i+1) + '-' + str(j) + '-BHE'
 				
 				try:
 					
-					client_arclink = Client_arclink()
+					client_arclink = Client_arclink(command_delay=0.1)
 					
 					# BHE
 					dummy = 'Waveform'
@@ -154,7 +159,6 @@ def Arclink_get_Waveform(input, Address_events, len_events, events, Nets_Arc_req
 					Nets_Arc_req_BHE[i][int(k)][2] + ' , ' + Nets_Arc_req_BHE[i][int(k)][3] + ' , ' + str(inv_BHE[int(k)][dum]['latitude']) + \
 					' , ' + str(inv_BHE[int(k)][dum]['longitude']) + ' , ' + str(inv_BHE[int(k)][dum]['elevation']) + ' , ' + \
 					str(inv_BHE[int(k)][dum]['depth']) + '\n'
-				Nets_Arc_req_BHE[i][int(k)][0] + '.' + Nets_Arc_req_BHE[i][int(k)][1]
 				Syn_file.writelines(syn)
 				Syn_file.close()
 			
@@ -183,14 +187,14 @@ def Arclink_get_Waveform(input, Address_events, len_events, events, Nets_Arc_req
 		if input['BHN'] == 'Y':
 			
 			for j in range(0, len_req_Arc_BHN):
-			#for j in range(0,10):
+			
 				print '------------------'
 				print 'ArcLink-Event and Station Numbers are:'
 				print str(i+1) + '-' + str(j) + '-BHN'
 				
 				try:
 					
-					client_arclink = Client_arclink()
+					client_arclink = Client_arclink(command_delay=0.1)
 					
 					# BHN
 					dummy = 'Waveform'
@@ -305,14 +309,14 @@ def Arclink_get_Waveform(input, Address_events, len_events, events, Nets_Arc_req
 		if input['BHZ'] == 'Y':
 			
 			for j in range(0, len_req_Arc_BHZ):
-			#for j in range(0,10):
+			
 				print '------------------'
 				print 'ArcLink-Event and Station Numbers are:'
 				print str(i+1) + '-' + str(j) + '-BHZ'
 				
 				try:
 					
-					client_arclink = Client_arclink()
+					client_arclink = Client_arclink(command_delay=0.1)
 					
 					# BHZ
 					dummy = 'Waveform'

@@ -27,7 +27,14 @@ def read_input():
 	input['plt_event'] = S[15].split()[2]
 	input['net'] = S[17].split()[2]
 	input['sta'] = S[18].split()[2]
-	input['loc'] = S[19].split()[2]
+	
+	if S[19].split()[2] == "''":
+		input['loc'] = ''
+	elif S[19].split()[2] == '""':
+		input['loc'] = ''
+	else:
+		input['loc'] = S[19].split()[2]
+	
 	input['cha'] = S[20].split()[2]
 	input['BHE'] = S[21].split()[2]
 	input['BHN'] = S[22].split()[2]
@@ -71,5 +78,9 @@ def read_input():
 	input['nodes'] = S[51].split()[2]
 	input['update_iris'] = S[52].split()[2]
 	input['update_arc'] = S[53].split()[2]
-
+	input['No_updating_IRIS'] = int(S[54].split()[2])
+	input['No_updating_ARC'] = int(S[55].split()[2])
+	input['TEST'] = S[56].split()[2]
+	input['TEST_no'] = int(S[57].split()[2])
+	
 	return input
