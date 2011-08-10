@@ -39,29 +39,39 @@ class DataHandler(FortranHandler):
     
     def __init__(self, bindir):
         FortranHandler.__init__(self, bindir=bindir)
-    
+        self.specs = {0:None,1:None,2:None}
+
+    def ftransform(self,tr1,tr2,tr3):
+        fspec1 = np.fft.fft(tr1.data)
+        fspec2 = np.fft.fft(tr2.data)
+        fspec3 = np.fft.fft(tr3.data)
+        freqs = np.fft.fftfreq(tr1.stats.npts, tr1.stats.delta)
+        return fspec1,fspec2,fspec3,freqs
+        
     def getspectra(self, choices, spec_old):
         """
         Compute the fft and return the spectra and their corresponding frequencies.
         """
         idx = choices.index(spec_old)
         if idx == 0:
-            tr1 = self.v2.stream[2]
-            tr2 = self.v2.stream[5]
-            tr3 = self.v2.stream[8]
+            if self.specs[idx] is None:
+                tr1 = self.v2.stream[2]
+                tr2 = self.v2.stream[5]
+                tr3 = self.v2.stream[8]
+                self.specs[idx] = self.ftransform(tr1,tr2,tr3) 
         if idx == 1:
-            tr1 = self.v2.stream[0]
-            tr2 = self.v2.stream[3]
-            tr3 = self.v2.stream[6]
+            if self.specs[idx] is None:
+                tr1 = self.v2.stream[0]
+                tr2 = self.v2.stream[3]
+                tr3 = self.v2.stream[6]
+                self.specs[idx] = self.ftransform(tr1,tr2,tr3) 
         if idx == 2:
-            tr1 = self.v1.stream[0]
-            tr2 = self.v1.stream[1]
-            tr3 = self.v1.stream[2]
-        fspec1 = np.fft.fft(tr1.data)
-        fspec2 = np.fft.fft(tr2.data)
-        fspec3 = np.fft.fft(tr3.data)
-        freqs = np.fft.fftfreq(tr1.stats.npts, tr1.stats.delta)
-        return fspec1, fspec2, fspec3, freqs
+            if self.specs[idx] is None:
+                tr1 = self.v1.stream[0]
+                tr2 = self.v1.stream[1]
+                tr3 = self.v1.stream[2]
+                self.specs[idx] = self.ftransform(tr1,tr2,tr3) 
+        return self.specs[idx]
         
     def gettimeseries(self, choices, hist_old):
         """
@@ -121,11 +131,11 @@ class SmGui(DataHandler, PlotIterator):
         self.choices_ts = ['Displacement (filtered)', 'Acceleration (filtered)',
                         'Acceleration (unfiltered)']
         self.hist_old = self.choices_ts[0]
-        self.spec_old = self.choices_ts[2]
+        self.spec_old = self.choices_ts[1]
         self.p = {} # dictionary to hold all Tk variables
         self.p['pmax'] = Tk.IntVar(); self.p['pmax'].set(0)
         self.p['fltrng'] = Tk.IntVar(); self.p['fltrng'].set(1)
-        self.p['pltlog2'] = Tk.IntVar(); self.p['pltlog2'].set(1)
+        self.p['pltlog2'] = Tk.IntVar(); self.p['pltlog2'].set(0)
         self.p['pltgrid'] = Tk.IntVar(); self.p['pltgrid'].set(1)
         ### Window setup
         self.root = parent
@@ -137,6 +147,8 @@ class SmGui(DataHandler, PlotIterator):
         self.left_frame.pack(side='left', anchor='n', expand=1, fill=Tk.BOTH)
         self.right_frame = Tk.Frame(self.figure_frame)
         self.right_frame.pack(side='left', anchor='n', expand=1, fill=Tk.BOTH)
+        self.nav_frame = Tk.Frame(self.figure_frame)
+        self.nav_frame.pack(side='right', anchor='center', expand=0, fill='none')
         self.root.wm_title("Strong motion analyser")
         if self.bindir is None:
             self.choose_bin_directory()
@@ -226,7 +238,7 @@ class SmGui(DataHandler, PlotIterator):
         
         # setting up combo box for spectra
         spec_box = Tk.ComboBox(self.entry_frame, label='Spectra', editable=False, dropdown=True,
-                               command=self.choose_spec, value=self.choices_ts[2])
+                               command=self.choose_spec, value=self.choices_ts[1])
         spec_box.insert('end', self.choices_ts[0])
         spec_box.insert('end', self.choices_ts[1])
         spec_box.insert('end', self.choices_ts[2])
@@ -246,12 +258,12 @@ class SmGui(DataHandler, PlotIterator):
         hist_box.pack(side='left', padx=10)
 
         # setting up navigation and save button
-        p_button = Tk.Button(self.entry_frame, text='Previous', width=8, command=self.prev,font=10)
-        p_button.pack(side='left', padx=10)
-        n_button = Tk.Button(self.entry_frame, text='Next', width=8, command=self.next,font=10)
-        n_button.pack(side='left', padx=10)
-        n_button = Tk.Button(self.entry_frame, text='Save', width=8, command=self.savefile,font=10)
-        n_button.pack(side='left', padx=10)
+        p_button = Tk.Button(self.nav_frame, text='Previous', width=8, command=self.prev,font=10)
+        p_button.pack(side='top',fill='x',anchor='center')
+        n_button = Tk.Button(self.nav_frame, text='Next', width=8, command=self.next,font=10)
+        n_button.pack(side='top',fill='x',anchor='center')
+        n_button = Tk.Button(self.nav_frame, text='Save', width=8, command=self.savefile,font=10)
+        n_button.pack(side='top',fill='x',anchor='center')
         
     def plotmax(self):
         """
@@ -347,17 +359,14 @@ class SmGui(DataHandler, PlotIterator):
         # get maxima within the plotting range of interest
         max1 = abs(fspec1[idx]).max()
         min1 = abs(fspec1[idx]).min()
-        fmax1 = freqs[abs(fspec1[idx]).argmax()]
         ymin1 = min1 - yrngfact * min1
         ymax1 = max1 + yrngfact * max1
         max2 = abs(fspec2[idx]).max()
         min2 = abs(fspec2[idx]).min()
-        fmax2 = freqs[abs(fspec2[idx]).argmax()]
         ymin2 = min2 - yrngfact * min2
         ymax2 = max2 + yrngfact * max2
         max3 = abs(fspec3[idx]).max()
         min3 = abs(fspec3[idx]).min()
-        fmax3 = freqs[abs(fspec3[idx]).argmax()]
         ymin3 = min3 - yrngfact * min3
         ymax3 = max3 + yrngfact * max3
 
@@ -376,28 +385,41 @@ class SmGui(DataHandler, PlotIterator):
             ax3.vlines(self.highp[0], ymin3, ymax3)
             ax3.vlines(self.highp[1], ymin3, ymax3)
             
-        if self.p['pltlog2'].get():
+        if self.p['pltlog2'].get()==1 and self.spec_old == self.choices_ts[1]:
+            fdisp1, fdisp2, fdisp3, frdisp = self.getspectra(self.choices_ts, self.choices_ts[0])
+            idx1 = np.where((frdisp >= xrange[0]) & (frdisp <= xrange[1]))
+            ifmax1 = abs(fdisp1[idx1]).argmax()
+            saccmax1 = abs(fspec1[idx1])[ifmax1]
+            fmax1 = (freqs[idx1])[ifmax1]
             try:
-                ax1.plot(fmax1, max1, 'k+')
-                ax1.plot([fmax1, xrange[1]], [max1, max1 * 10 ** (2. * m.log10(xrange[1] / fmax1))], 'k--')
-                ax1.plot([fmax1, xrange[0]], [max1, max1 * 10 ** (-2. * m.log10(fmax1 / xrange[0]))], 'k--')
+                ax1.plot(fmax1, saccmax1, 'ro')
+                ax1.plot([fmax1, xrange[1]], [saccmax1, saccmax1 * 10 ** (2. * m.log10(xrange[1] / fmax1))], 'k--')
+                ax1.plot([fmax1, xrange[0]], [saccmax1, saccmax1 * 10 ** (-2. * m.log10(fmax1 / xrange[0]))], 'k--')
             except Exception, e:
                 print e
-                print fmax1, max1
+                print fmax1, saccmax1
+            ifmax2 = abs(fdisp2[idx1]).argmax()
+            saccmax2 = abs(fspec2[idx1])[ifmax2]
+            fmax2 = (freqs[idx1])[ifmax2]
             try: 
-                ax2.plot(fmax2, max2, 'k+')
-                ax2.plot([fmax2, xrange[1]], [max2, max2 * 10 ** (2. * m.log10(xrange[1] / fmax2))], 'k--')
-                ax2.plot([fmax2, xrange[0]], [max2, max2 * 10 ** (-2. * m.log10(fmax2 / xrange[0]))], 'k--')
+                ax2.plot(fmax2, saccmax2, 'ro')
+                ax2.plot([fmax2, xrange[1]], [saccmax2, saccmax2 * 10 ** (2. * m.log10(xrange[1] / fmax2))], 'k--')
+                ax2.plot([fmax2, xrange[0]], [saccmax2, saccmax2 * 10 ** (-2. * m.log10(fmax2 / xrange[0]))], 'k--')
             except Exception, e:
                 print e
-                print fmax2, max2
+                print fmax2, saccmax2
+            ifmax3 = abs(fdisp3[idx1]).argmax()
+            saccmax3 = abs(fspec3[idx1])[ifmax3]
+            fmax3 = (freqs[idx1])[ifmax3]
             try:
-                ax3.plot(fmax3, max3, 'k+')
-                ax3.plot([fmax3, xrange[1]], [max3, max3 * 10 ** (2. * m.log10(xrange[1] / fmax3))], 'k--')
-                ax3.plot([fmax3, xrange[0]], [max3, max3 * 10 ** (-2. * m.log10(fmax3 / xrange[0]))], 'k--')
+                ax3.plot(fmax3, saccmax3, 'ro')
+                ax3.plot([fmax3, xrange[1]], [saccmax3, saccmax3 * 10 ** (2. * m.log10(xrange[1] / fmax3))], 'k--')
+                ax3.plot([fmax3, xrange[0]], [saccmax3, saccmax3 * 10 ** (-2. * m.log10(fmax3 / xrange[0]))], 'k--')
             except Exception, e:
                 print e
-                print fmax3, max3
+                print fmax3, saccmax3
+        else:
+             self.p['pltlog2'].set(0)
 
         if self.p['pltgrid'].get():
             ax1.grid()
@@ -458,6 +480,7 @@ class SmGui(DataHandler, PlotIterator):
         time series changes.
         """
         self.f1.clf();self.f2.clf()
+        self.specs = {0:None,1:None,2:None}
         self.plotcanvas()
         self.canvas1.draw()
         self.canvas2.draw()
