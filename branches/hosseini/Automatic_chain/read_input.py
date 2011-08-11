@@ -82,5 +82,8 @@ def read_input():
 	input['No_updating_ARC'] = int(S[55].split()[2])
 	input['TEST'] = S[56].split()[2]
 	input['TEST_no'] = int(S[57].split()[2])
+	input['plot_IRIS'] = S[58].split()[2]
+	input['plot_ARC'] = S[59].split()[2]
+	input['plot_all_Events'] = S[60].split()[2]
 	
 	return input

@@ -30,6 +30,7 @@ Goal: Management of Large Seismic Datasets
 
 - Quality Control
 - Updating
+- Plotting
 
 - Load events (Lat, Lon and Name of each)
 - Load Stations (Lat, Lon and Name of each)
@@ -52,7 +53,7 @@ from nodes import *
 from nodes_II import *
 from get_Events import *
 from load_event import *
-#from plot_all_events import *
+#from plot_events import *
 from IRIS_get_Network import *
 from IRIS_get_Waveform import *
 from IRIS_get_Waveform_single import *
@@ -63,6 +64,9 @@ from QC_IRIS import *
 from QC_ARC import *
 from update_IRIS import *
 from update_ARC import *
+from plot_IRIS import *
+#from plot_ARC import *
+#from plot_all_events import *
 
 
 def Main():
@@ -91,11 +95,11 @@ def Main():
 	# ------------------------Getting List of Events---------------------------------
 	if input['get_events'] == 'Y':
 		(events, len_events, Period, Address_events) = get_Events(input)
-	# ????? CHECK!!!!!!!!!!!
+	#  CHECK!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	if input['plt_event'] == 'on':
 		(lat_event, lon_event, name_event) = load_event(len_events, Address_events)	
 		
-		plot_all_events(input, Address_events, events = events, lon_event = lon_event, \
+		plot_events(input, Address_events, events = events, lon_event = lon_event, \
 		lat_event = lat_event, name_event = name_event, len_events = len_events)
 
 	# ------------------------IRIS------------------------------------------------
@@ -275,7 +279,33 @@ def Main():
 		
 		for i in range(0, input['No_updating_ARC']):
 			update_ARC(input)
-
+	
+	# ------------------------Plotting--------------------------------
+	#CHECK!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	if input['plot_all_Events'] == 'Y':
+		
+		print '*********************'
+		print 'Plot all Events'
+		print '*********************'
+		
+		plot_all_events(input)
+	#CHECK!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	if input['plot_IRIS'] == 'Y':
+		
+		print '*********************'
+		print 'IRIS -- Plotting'
+		print '*********************'
+		
+		plot_IRIS(input)
+	'''
+	if input['plot_ARC'] == 'Y':
+		
+		print '*********************'
+		print 'ArcLink -- Plotting'
+		print '*********************'
+		
+		plot_ARC(input)
+	'''	
 	# ---------------------------------------------------------------
 	t2_pro = datetime.now()
 	t_pro = t2_pro - t1_pro

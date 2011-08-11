@@ -35,7 +35,7 @@ def nodes_update (input, pre_ls_event):
 			pre.append(pre_ls_event[4])
 		
 		if commands.getoutput('tty') == '/dev/pts/5':
-			pre.append(pre_ls_event[5])
+			pre.append(pre_ls_event[4])
 		
 		if commands.getoutput('tty') == '/dev/pts/6':
 			pre.append(pre_ls_event[6])

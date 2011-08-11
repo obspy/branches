@@ -30,7 +30,7 @@ def update_IRIS(input):
 	pre_ls_event = []
 	for i in range(0, len(ls_period)):
 		pre_ls_event.append(Address_data + '/' + ls_period[i])	
-	
+	#import ipdb; ipdb.set_trace()
 	pre_ls_event = nodes_update(input, pre_ls_event)
 	
 	for i in range(0, len(pre_ls_event)):
@@ -293,6 +293,7 @@ def update_IRIS(input):
 			for i in range(0, len(Stas_req_BHE)):			
 				
 				print '------------------'
+				print 'Updating - IRIS-BHE - ' + str(l) + ' -- ' + str(i) + ':'
 				
 				try:					
 			
@@ -352,7 +353,7 @@ def update_IRIS(input):
 					#'Start_time': Sta_Start_time, 'End_time': Sta_End_time, \
 					#'Latitude': Sta_Lat, 'Longitude': Sta_Lon, 'Elevation': Sta_Elevation, \
 					#'Location_code': Sta_loc_code, 'Channel_code': Sta_chan_code}
-					dic_BHE[j] ={'Info': Sta_net_code + '.' + Sta_sta_code + '.' + Sta_loc_code + '.' + Sta_chan_code, 'Network': Sta_net_code, \
+					dic_BHE[i] ={'Info': Sta_net_code + '.' + Sta_sta_code + '.' + Sta_loc_code + '.' + Sta_chan_code, 'Network': Sta_net_code, \
 						'Station': Sta_sta_code, 'Latitude': Sta_Lat, 'Longitude': Sta_Lon, \
 						'Location': Sta_loc_code, 'Channel': Sta_chan_code, 'Elevation': Sta_Elevation}
 					
@@ -399,6 +400,7 @@ def update_IRIS(input):
 			for i in range(0, len(Stas_req_BHN)):			
 					
 				print '------------------'
+				print 'Updating - IRIS-BHN - ' + str(l) + ' -- ' + str(i) + ':'
 					
 				try:					
 			
@@ -458,7 +460,7 @@ def update_IRIS(input):
 					#'Start_time': Sta_Start_time, 'End_time': Sta_End_time, \
 					#'Latitude': Sta_Lat, 'Longitude': Sta_Lon, 'Elevation': Sta_Elevation, \
 					#'Location_code': Sta_loc_code, 'Channel_code': Sta_chan_code}
-					dic_BHN[j] ={'Info': Sta_net_code + '.' + Sta_sta_code + '.' + Sta_loc_code + '.' + Sta_chan_code, 'Network': Sta_net_code, \
+					dic_BHN[i] ={'Info': Sta_net_code + '.' + Sta_sta_code + '.' + Sta_loc_code + '.' + Sta_chan_code, 'Network': Sta_net_code, \
 						'Station': Sta_sta_code, 'Latitude': Sta_Lat, 'Longitude': Sta_Lon, \
 						'Location': Sta_loc_code, 'Channel': Sta_chan_code, 'Elevation': Sta_Elevation}
 					
@@ -505,6 +507,7 @@ def update_IRIS(input):
 			for i in range(0, len(Stas_req_BHZ)):			
 					
 				print '------------------'
+				print 'Updating - IRIS-BHZ - ' + str(l) + ' -- ' + str(i) + ':'
 					
 				try:					
 			
@@ -564,7 +567,7 @@ def update_IRIS(input):
 					#'Start_time': Sta_Start_time, 'End_time': Sta_End_time, \
 					#'Latitude': Sta_Lat, 'Longitude': Sta_Lon, 'Elevation': Sta_Elevation, \
 					#'Location_code': Sta_loc_code, 'Channel_code': Sta_chan_code}
-					dic_BHZ[j] ={'Info': Sta_net_code + '.' + Sta_sta_code + '.' + Sta_loc_code + '.' + Sta_chan_code, 'Network': Sta_net_code, \
+					dic_BHZ[i] ={'Info': Sta_net_code + '.' + Sta_sta_code + '.' + Sta_loc_code + '.' + Sta_chan_code, 'Network': Sta_net_code, \
 						'Station': Sta_sta_code, 'Latitude': Sta_Lat, 'Longitude': Sta_Lon, \
 						'Location': Sta_loc_code, 'Channel': Sta_chan_code, 'Elevation': Sta_Elevation}
 					
@@ -608,6 +611,13 @@ def update_IRIS(input):
 	t_update_2 = datetime.now()
 		
 	t_update = t_update_2 - t_update_1
+	
+	Report = open(Address + '/IRIS/STATION/' + 'Report_station', 'a')
+	Report.writelines('----------------------------------' + '\n')
+	rep1 = 'Time for updating the IRIS folder: ' + str(t_update) + '\n'
+	Report.writelines(rep1)
+	Report.writelines('----------------------------------' + '\n')
+	Report.close()	
 		
 	print 'Time for Updating: (IRIS)'
 	print t_update

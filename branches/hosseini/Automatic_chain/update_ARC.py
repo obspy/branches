@@ -301,6 +301,7 @@ def update_ARC(input):
 			for i in range(0, len(Stas_req_BHE)):
 				
 				print '------------------'
+				print 'Updating - ArcLink-BHE - ' + str(l) + ' -- ' + str(i) + ':'
 				
 				try:
 					
@@ -340,7 +341,7 @@ def update_ARC(input):
 					
 					dummy = 'UPDATE-Inventory'
 					
-					inv_BHE[j] = client_arclink.getInventory(Stas_req_BHE[i][0], Stas_req_BHE[i][1], \
+					inv_BHE[i] = client_arclink.getInventory(Stas_req_BHE[i][0], Stas_req_BHE[i][1], \
 						Stas_req_BHE[i][2], 'BHE')
 										
 					print "UPDATE - Saving Station  for: " + Stas_req_BHE[i][0] +	'.' + Stas_req_BHE[i][1] + '.' + \
@@ -355,7 +356,7 @@ def update_ARC(input):
 					
 					Exception_file = open(Address + '/ARC/EXCEP/' + 'Exception_file_ARC_update', 'a')
 
-					ee = dummy + '---' + str(i) + '-' + str(j) + '---' + Stas_req_BHE[i][0] + \
+					ee = dummy + '---' + str(l) + '-' + str(i) + '---' + Stas_req_BHE[i][0] + \
 						'.' + Stas_req_BHE[i][1] + '.' + \
 						Stas_req_BHE[i][2] + '.' + 'BHE' + \
 						'---' + str(e) + '\n'
@@ -395,7 +396,7 @@ def update_ARC(input):
 					
 				Exception_file = open(Address + '/ARC/EXCEP/' + 'Exception_file_ARC_update', 'a')
 						
-				ee = 'SYNTHETIC' + '---' + str(i) + '-' + str(j) + '---' + Stas_req_BHE[i][0] + \
+				ee = 'SYNTHETIC' + '---' + str(l) + '-' + str(i) + '---' + Stas_req_BHE[i][0] + \
 					'.' + Stas_req_BHE[i][1] + '.' + \
 					Stas_req_BHE[i][2] + '.' + 'BHE' + \
 					'---' + str(e) + '\n'
@@ -413,6 +414,7 @@ def update_ARC(input):
 			for i in range(0, len(Stas_req_BHN)):
 				
 				print '------------------'
+				print 'Updating - ArcLink-BHN - ' + str(l) + ' -- ' + str(i) + ':'
 				
 				try:
 					
@@ -452,7 +454,7 @@ def update_ARC(input):
 					
 					dummy = 'UPDATE-Inventory'
 					
-					inv_BHN[j] = client_arclink.getInventory(Stas_req_BHN[i][0], Stas_req_BHN[i][1], \
+					inv_BHN[i] = client_arclink.getInventory(Stas_req_BHN[i][0], Stas_req_BHN[i][1], \
 						Stas_req_BHN[i][2], 'BHN')
 										
 					print "UPDATE - Saving Station  for: " + Stas_req_BHN[i][0] +	'.' + Stas_req_BHN[i][1] + '.' + \
@@ -467,7 +469,7 @@ def update_ARC(input):
 					
 					Exception_file = open(Address + '/ARC/EXCEP/' + 'Exception_file_ARC_update', 'a')
 
-					ee = dummy + '---' + str(i) + '-' + str(j) + '---' + Stas_req_BHN[i][0] + \
+					ee = dummy + '---' + str(l) + '-' + str(i) + '---' + Stas_req_BHN[i][0] + \
 						'.' + Stas_req_BHN[i][1] + '.' + \
 						Stas_req_BHN[i][2] + '.' + 'BHN' + \
 						'---' + str(e) + '\n'
@@ -507,7 +509,7 @@ def update_ARC(input):
 				
 				Exception_file = open(Address + '/ARC/EXCEP/' + 'Exception_file_ARC_update', 'a')
 						
-				ee = 'SYNTHETIC' + '---' + str(i) + '-' + str(j) + '---' + Stas_req_BHN[i][0] + \
+				ee = 'SYNTHETIC' + '---' + str(l) + '-' + str(i) + '---' + Stas_req_BHN[i][0] + \
 					'.' + Stas_req_BHN[i][1] + '.' + \
 					Stas_req_BHN[i][2] + '.' + 'BHN' + \
 					'---' + str(e) + '\n'
@@ -525,6 +527,7 @@ def update_ARC(input):
 			for i in range(0, len(Stas_req_BHZ)):
 				
 				print '------------------'
+				print 'Updating - ArcLink-BHZ - ' + str(l) + ' -- ' + str(i) + ':'
 				
 				try:
 					
@@ -564,7 +567,7 @@ def update_ARC(input):
 					
 					dummy = 'UPDATE-Inventory'
 					
-					inv_BHZ[j] = client_arclink.getInventory(Stas_req_BHZ[i][0], Stas_req_BHZ[i][1], \
+					inv_BHZ[i] = client_arclink.getInventory(Stas_req_BHZ[i][0], Stas_req_BHZ[i][1], \
 						Stas_req_BHZ[i][2], 'BHZ')
 										
 					print "UPDATE - Saving Station  for: " + Stas_req_BHZ[i][0] +	'.' + Stas_req_BHZ[i][1] + '.' + \
@@ -579,7 +582,7 @@ def update_ARC(input):
 					
 					Exception_file = open(Address + '/ARC/EXCEP/' + 'Exception_file_ARC_update', 'a')
 
-					ee = dummy + '---' + str(i) + '-' + str(j) + '---' + Stas_req_BHZ[i][0] + \
+					ee = dummy + '---' + str(l) + '-' + str(i) + '---' + Stas_req_BHZ[i][0] + \
 						'.' + Stas_req_BHZ[i][1] + '.' + \
 						Stas_req_BHZ[i][2] + '.' + 'BHZ' + \
 						'---' + str(e) + '\n'
@@ -619,7 +622,7 @@ def update_ARC(input):
 					
 				Exception_file = open(Address + '/ARC/EXCEP/' + 'Exception_file_ARC_update', 'a')
 						
-				ee = 'SYNTHETIC' + '---' + str(i) + '-' + str(j) + '---' + Stas_req_BHZ[i][0] + \
+				ee = 'SYNTHETIC' + '---' + str(l) + '-' + str(i) + '---' + Stas_req_BHZ[i][0] + \
 					'.' + Stas_req_BHZ[i][1] + '.' + \
 					Stas_req_BHZ[i][2] + '.' + 'BHZ' + \
 					'---' + str(e) + '\n'
@@ -627,6 +630,21 @@ def update_ARC(input):
 				Exception_file.writelines(ee)
 				Exception_file.close()
 				print e
+				
+	
+	t_update_2 = datetime.now()
+		
+	t_update = t_update_2 - t_update_1
+	
+	Report = open(Address + '/ARC/STATION/' + 'Report_station', 'a')
+	Report.writelines('----------------------------------' + '\n')
+	rep1 = 'Time for updating the ARC folder: ' + str(t_update) + '\n'
+	Report.writelines(rep1)
+	Report.writelines('----------------------------------' + '\n')
+	Report.close()	
+		
+	print 'Time for Updating: (ARC)'
+	print t_update
 				
 				
 				
