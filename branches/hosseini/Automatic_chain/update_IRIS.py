@@ -16,7 +16,7 @@ import pickle
 from obspy.iris import Client as Client_iris
 from datetime import datetime
 from lxml import etree
-from nodes_update import *
+import commands
 
 
 def update_IRIS(input):
@@ -25,13 +25,18 @@ def update_IRIS(input):
 	
 	Address_data = input['Address'] + '/Data'
 	
-	ls_period = os.listdir(Address_data)
-	
 	pre_ls_event = []
-	for i in range(0, len(ls_period)):
-		pre_ls_event.append(Address_data + '/' + ls_period[i])	
-	#import ipdb; ipdb.set_trace()
-	pre_ls_event = nodes_update(input, pre_ls_event)
+	
+	tty = open(input['Address'] + '/Data/' + 'tty-info', 'r')
+	tty_str = tty.readlines()
+	
+	for i in range(0, len(tty_str)):
+		tty_str[i] = tty_str[i].split('  ,  ')
+	
+	for i in range(0, len(tty_str)):
+		if commands.getoutput('hostname') == tty_str[i][0]:
+			if commands.getoutput('tty') == tty_str[i][1]:
+				pre_ls_event.append(Address_data + '/' + tty_str[i][2])
 	
 	for i in range(0, len(pre_ls_event)):
 		print 'Updating for: ' + '\n' + str(pre_ls_event[i])
@@ -100,19 +105,7 @@ def update_IRIS(input):
 		upfile.writelines('----------------------------IRIS----------------------------'+ '\n')
 		upfile.writelines('----------------------------UPDATED----------------------------'+ '\n')
 		upfile.close()
-		'''	
-		List_IRIS_BHE = []
-		List_IRIS_BHN = []
-		List_IRIS_BHZ = []
-		
-					
-		List_IRIS_BHE.append(glob.glob(ls_event[l] + '/IRIS/' + '*.BHE'))
-		List_IRIS_BHN.append(glob.glob(ls_event[l] + '/IRIS/' + '*.BHN'))
-		List_IRIS_BHZ.append(glob.glob(ls_event[l] + '/IRIS/' + '*.BHZ'))
-
-		List_IRIS_BHE = sorted(List_IRIS_BHE)
-		List_IRIS_BHN = sorted(List_IRIS_BHN)
-		List_IRIS_BHZ = sorted(List_IRIS_BHZ)
+		'''		
 		
 		pre_Sta_BHE = []
 		pre_Sta_BHN = []
@@ -121,49 +114,50 @@ def update_IRIS(input):
 		Sta_BHE = []
 		Sta_BHN = []
 		Sta_BHZ = []
-			
-		for i in range(0, len(List_IRIS_BHE[0])):
-			try:
-				st = read(List_IRIS_BHE[0][i])
-				sta_BHE = [st[0].stats['network'], st[0].stats['station'], st[0].stats['location'], st[0].stats['channel']]
-				pre_Sta_BHE.append(sta_BHE)
-			
-			except Exception, e:	
-					
-				print 'STREAM' + '---'
-				'''	
-				Exception_file = open(Address + '/IRIS/EXCEP/' + 'Exception_file_IRIS_update', 'a')
-				ee = dummy + '---' + str(l) + '-' + str(i) + '---' + Stas_req_BHE[i][0] + '.' + Stas_req_BHE[i][1] + '.' + \
-					Stas_req_BHE[i][2] + '.' + 'BHE' +	'---' + str(e) + '\n'
-							
-				Exception_file.writelines(ee)
-				Exception_file.close()
-				'''
-				print e
-				
-		for i in range(0, len(List_IRIS_BHN[0])):
-			try:
-				st = read(List_IRIS_BHN[0][i])
-				sta_BHN = [st[0].stats['network'], st[0].stats['station'], st[0].stats['location'], st[0].stats['channel']]
-				pre_Sta_BHN.append(sta_BHN)
-			
-			except Exception, e:					
-				print 'STREAM' + '---'
-				print e
 		
-		for i in range(0, len(List_IRIS_BHZ[0])):
-			try:
-				st = read(List_IRIS_BHZ[0][i])
-				sta_BHZ = [st[0].stats['network'], st[0].stats['station'], st[0].stats['location'], st[0].stats['channel']]
-				pre_Sta_BHZ.append(sta_BHZ)
-			
-			except Exception, e:					
-				print 'STREAM' + '---'
-				print e
-			
-		Sta_BHE.append(pre_Sta_BHE)
-		Sta_BHN.append(pre_Sta_BHN)
-		Sta_BHZ.append(pre_Sta_BHZ)
+		
+		file_BHE = open(ls_event[l] + '/IRIS/STATION/Input_Syn_BHE', 'r')
+		
+		pre_Sta_BHE = file_BHE.readlines()
+		
+		for i in range(0, len(pre_Sta_BHE)):
+			pre_Sta_BHE[i] = pre_Sta_BHE[i].split(' , ')
+		
+		for i in range(0, len(pre_Sta_BHE)):
+			if pre_Sta_BHE[i][2] == '  ':
+				pre_Sta_BHE[i][2] = ''
+			pre_Sta_BHE[i] = [pre_Sta_BHE[i][0], pre_Sta_BHE[i][1], pre_Sta_BHE[i][2], pre_Sta_BHE[i][3]]
+			Sta_BHE.append(pre_Sta_BHE[i])
+		
+		
+		file_BHN = open(ls_event[l] + '/IRIS/STATION/Input_Syn_BHN', 'r')
+		
+		pre_Sta_BHN = file_BHN.readlines()
+		
+		for i in range(0, len(pre_Sta_BHN)):
+			pre_Sta_BHN[i] = pre_Sta_BHN[i].split(' , ')
+		
+		for i in range(0, len(pre_Sta_BHN)):
+			if pre_Sta_BHN[i][2] == '  ':
+				pre_Sta_BHN[i][2] = ''
+			pre_Sta_BHN[i] = [pre_Sta_BHN[i][0], pre_Sta_BHN[i][1], pre_Sta_BHN[i][2], pre_Sta_BHN[i][3]]
+			Sta_BHN.append(pre_Sta_BHN[i])
+		
+		
+		file_BHZ = open(ls_event[l] + '/IRIS/STATION/Input_Syn_BHZ', 'r')
+		
+		pre_Sta_BHZ = file_BHZ.readlines()
+		
+		for i in range(0, len(pre_Sta_BHZ)):
+			pre_Sta_BHZ[i] = pre_Sta_BHZ[i].split(' , ')
+		
+		for i in range(0, len(pre_Sta_BHZ)):
+			if pre_Sta_BHZ[i][2] == '  ':
+				pre_Sta_BHZ[i][2] = ''
+			pre_Sta_BHZ[i] = [pre_Sta_BHZ[i][0], pre_Sta_BHZ[i][1], pre_Sta_BHZ[i][2], pre_Sta_BHZ[i][3]]
+			Sta_BHZ.append(pre_Sta_BHZ[i])
+	
+		
 		
 		for i in range(0, len(All_IRIS_Stations_BHE)):
 			if All_IRIS_Stations_BHE[i] != []:
@@ -183,10 +177,10 @@ def update_IRIS(input):
  		common_BHE = []
  		
  		for i in range(0, len(All_IRIS_Stations_BHE)):
- 			for j in range(0, len(Sta_BHE[0])):
- 				if All_IRIS_Stations_BHE[i] == Sta_BHE[0][j]:
+ 			for j in range(0, len(Sta_BHE)):
+ 				if All_IRIS_Stations_BHE[i] == Sta_BHE[j]:
  					common_BHE.append(All_IRIS_Stations_BHE[i])
- 		
+ 	
  		num_j = []
  		for i in range(0, len(common_BHE)):
  			for j in range(0, len(All_IRIS_Stations_BHE)):
@@ -209,8 +203,8 @@ def update_IRIS(input):
  		common_BHN = []
  		
  		for i in range(0, len(All_IRIS_Stations_BHN)):
- 			for j in range(0, len(Sta_BHN[0])):
- 				if All_IRIS_Stations_BHN[i] == Sta_BHN[0][j]:
+ 			for j in range(0, len(Sta_BHN)):
+ 				if All_IRIS_Stations_BHN[i] == Sta_BHN[j]:
  					common_BHN.append(All_IRIS_Stations_BHN[i])
  		
  		num_j = []
@@ -235,8 +229,8 @@ def update_IRIS(input):
  		common_BHZ = []
  		
  		for i in range(0, len(All_IRIS_Stations_BHZ)):
- 			for j in range(0, len(Sta_BHZ[0])):
- 				if All_IRIS_Stations_BHZ[i] == Sta_BHZ[0][j]:
+ 			for j in range(0, len(Sta_BHZ)):
+ 				if All_IRIS_Stations_BHZ[i] == Sta_BHZ[j]:
  					common_BHZ.append(All_IRIS_Stations_BHZ[i])
  		
  		num_j = []
@@ -357,6 +351,13 @@ def update_IRIS(input):
 						'Station': Sta_sta_code, 'Latitude': Sta_Lat, 'Longitude': Sta_Lon, \
 						'Location': Sta_loc_code, 'Channel': Sta_chan_code, 'Elevation': Sta_Elevation}
 					
+					Syn_file = open(Address + '/IRIS/STATION/' + 'Input_Syn_BHE', 'a')
+					syn = dic_BHE[i]['Network'] + ' , ' + dic_BHE[i]['Station'] + ' , ' + \
+						dic_BHE[i]['Location'] + ' , ' + dic_BHE[i]['Channel'] + ' , ' + dic_BHE[i]['Latitude'] + \
+						' , ' + dic_BHE[i]['Longitude'] + ' , ' + dic_BHE[i]['Elevation'] + '\n'
+					Syn_file.writelines(syn)
+					Syn_file.close()
+					
 					print "UPDATE - Saving Station  for: " + Stas_req_BHE[i][0] + '.' + Stas_req_BHE[i][1] + '.' + \
 						Stas_req_BHE[i][2] + '.' + 'BHE' + "  ---> DONE"
 					
@@ -383,14 +384,6 @@ def update_IRIS(input):
 		rep1 = 'UPDATE - IRIS-Saved stations (BHE) for event' + '-' + str(l) + ': ' + str(len(dic_BHE)) + '\n'
 		Report.writelines(rep1)
 		Report.close()	
-				
-		for k in dic_BHE.keys():
-			Syn_file = open(Address + '/IRIS/STATION/' + 'Input_Syn_BHE', 'a')
-			syn = dic_BHE[k]['Network'] + ' , ' + dic_BHE[k]['Station'] + ' , ' + \
-				dic_BHE[k]['Location'] + ' , ' + dic_BHE[k]['Channel'] + ' , ' + dic_BHE[k]['Latitude'] + \
-				' , ' + dic_BHE[k]['Longitude'] + ' , ' + dic_BHE[k]['Elevation'] + '\n'
-			Syn_file.writelines(syn)
-			Syn_file.close()
 						
 				
 		dic_BHN = {}		
@@ -464,6 +457,14 @@ def update_IRIS(input):
 						'Station': Sta_sta_code, 'Latitude': Sta_Lat, 'Longitude': Sta_Lon, \
 						'Location': Sta_loc_code, 'Channel': Sta_chan_code, 'Elevation': Sta_Elevation}
 					
+					Syn_file = open(Address + '/IRIS/STATION/' + 'Input_Syn_BHN', 'a')
+					syn = dic_BHN[i]['Network'] + ' , ' + dic_BHN[i]['Station'] + ' , ' + \
+						dic_BHN[i]['Location'] + ' , ' + dic_BHN[i]['Channel'] + ' , ' + dic_BHN[i]['Latitude'] + \
+						' , ' + dic_BHN[i]['Longitude'] + ' , ' + dic_BHN[i]['Elevation'] + '\n'
+					Syn_file.writelines(syn)
+					Syn_file.close()
+					
+					
 					print "UPDATE - Saving Station  for: " + Stas_req_BHN[i][0] + '.' + Stas_req_BHN[i][1] + '.' + \
 						Stas_req_BHN[i][2] + '.' + 'BHN' + "  ---> DONE"
 					
@@ -489,15 +490,7 @@ def update_IRIS(input):
 		Report = open(Address + '/IRIS/STATION/' + 'Report_station', 'a')
 		rep1 = 'UPDATE - IRIS-Saved stations (BHN) for event' + '-' + str(l) + ': ' + str(len(dic_BHN)) + '\n'
 		Report.writelines(rep1)
-		Report.close()	
-				
-		for k in dic_BHN.keys():
-			Syn_file = open(Address + '/IRIS/STATION/' + 'Input_Syn_BHN', 'a')
-			syn = dic_BHN[k]['Network'] + ' , ' + dic_BHN[k]['Station'] + ' , ' + \
-				dic_BHN[k]['Location'] + ' , ' + dic_BHN[k]['Channel'] + ' , ' + dic_BHN[k]['Latitude'] + \
-				' , ' + dic_BHN[k]['Longitude'] + ' , ' + dic_BHN[k]['Elevation'] + '\n'
-			Syn_file.writelines(syn)
-			Syn_file.close()
+		Report.close()				
 					
 					
 		dic_BHZ = {}		
@@ -571,6 +564,13 @@ def update_IRIS(input):
 						'Station': Sta_sta_code, 'Latitude': Sta_Lat, 'Longitude': Sta_Lon, \
 						'Location': Sta_loc_code, 'Channel': Sta_chan_code, 'Elevation': Sta_Elevation}
 					
+					Syn_file = open(Address + '/IRIS/STATION/' + 'Input_Syn_BHZ', 'a')
+					syn = dic_BHZ[i]['Network'] + ' , ' + dic_BHZ[i]['Station'] + ' , ' + \
+						dic_BHZ[i]['Location'] + ' , ' + dic_BHZ[i]['Channel'] + ' , ' + dic_BHZ[i]['Latitude'] + \
+						' , ' + dic_BHZ[i]['Longitude'] + ' , ' + dic_BHZ[i]['Elevation'] + '\n'
+					Syn_file.writelines(syn)
+					Syn_file.close()
+					
 					print "UPDATE - Saving Station  for: " + Stas_req_BHZ[i][0] + '.' + Stas_req_BHZ[i][1] + '.' + \
 						Stas_req_BHZ[i][2] + '.' + 'BHZ' + "  ---> DONE"
 					
@@ -598,13 +598,7 @@ def update_IRIS(input):
 		Report.writelines(rep1)
 		Report.close()	
 				
-		for k in dic_BHZ.keys():
-			Syn_file = open(Address + '/IRIS/STATION/' + 'Input_Syn_BHZ', 'a')
-			syn = dic_BHZ[k]['Network'] + ' , ' + dic_BHZ[k]['Station'] + ' , ' + \
-				dic_BHZ[k]['Location'] + ' , ' + dic_BHZ[k]['Channel'] + ' , ' + dic_BHZ[k]['Latitude'] + \
-				' , ' + dic_BHZ[k]['Longitude'] + ' , ' + dic_BHZ[k]['Elevation'] + '\n'
-			Syn_file.writelines(syn)
-			Syn_file.close()
+			
 		
 		
 			
@@ -621,3 +615,35 @@ def update_IRIS(input):
 		
 	print 'Time for Updating: (IRIS)'
 	print t_update
+
+
+
+'''
+		List_IRIS_BHE = []
+		List_IRIS_BHN = []
+		List_IRIS_BHZ = []
+		
+					
+		List_IRIS_BHE.append(glob.glob(ls_event[l] + '/IRIS/' + '*.BHE'))
+		List_IRIS_BHN.append(glob.glob(ls_event[l] + '/IRIS/' + '*.BHN'))
+		List_IRIS_BHZ.append(glob.glob(ls_event[l] + '/IRIS/' + '*.BHZ'))
+
+		List_IRIS_BHE = sorted(List_IRIS_BHE)
+		List_IRIS_BHN = sorted(List_IRIS_BHN)
+		List_IRIS_BHZ = sorted(List_IRIS_BHZ)
+		
+		
+		pre_Sta_BHE = []
+		pre_Sta_BHN = []
+		pre_Sta_BHZ = []
+		
+		Sta_BHE = []
+		Sta_BHN = []
+		Sta_BHZ = []
+			
+		for i in range(0, len(List_IRIS_BHE[0])):
+
+			st = read(List_IRIS_BHE[0][i])
+			sta_BHE = [st[0].stats['network'], st[0].stats['station'], st[0].stats['location'], st[0].stats['channel']]
+			pre_Sta_BHE.append(sta_BHE)
+'''

@@ -13,7 +13,7 @@ max_results = 2500              					    # max Results
 time_before = 300										# Time before the Event
 time_after = 4800										# Time after the Event
 
-plot_events = off										# whether you want to have a plot of all events or not (on/off)...ATTENTION: you should have "mpl_toolkits.basemap" already installed
+plot_events = on										# whether you want to have a plot of all events or not (on/off)...ATTENTION: you should have "mpl_toolkits.basemap" already installed
 
 network = *												# Network code, e.g. ‘BW’. (for mass = Y [line 46], wildcards allowed.)
 station = *												# Station code, e.g. ‘MANZ’. (for mass = Y [line 46], wildcards allowed.)
@@ -46,16 +46,16 @@ urcrnrlat = 90 											# latitude of upper right hand corner of the desired m
 mass = N												# Download all waveforms, Response file and other information -- if you want to download just one station, change the flag to 'N' [In this case you should know exactly the Net, sta, loc, cha of your request]
 IRIS = N												# IRIS client will be used (Y)
 ArcLink = N												# ArcLink client will be used (Y)
-QC_IRIS = N												# Quality Control for IRIS (Attention: This module check the Quality of whole events in one folder. So you should run it once...)
-QC_ARC = N												# Quality Control for ArcLink (Attention: This module check the Quality of whole events in one folder. So you should run it once...)
+QC_IRIS = Y												# Quality Control for IRIS (Attention: This module check the Quality of whole events in one folder. So you should run it once...)
+QC_ARC = Y												# Quality Control for ArcLink (Attention: This module check the Quality of whole events in one folder. So you should run it once...)
 get_events = N											# To get events (Y)
 nodes = N												# Downloading in Parallel way -- ATTENTION: "nodes" and "nodes_II"
 update_iris = N											# Update the IRIS folder -- based on different nodes defined in the nodes module -- ATTENTION: All requests should be finished first and then update
-update_arc = N											# Update the ArcLink folder -- based on different nodes defined in the nodes module -- ATTENTION: All requests should be finished first and then update
+update_arc = N										# Update the ArcLink folder -- based on different nodes defined in the nodes module -- ATTENTION: All requests should be finished first and then update
 Number_of_Updating_IRIS = 1								# Number of iterations on IRIS folders
 Number_of_Updating_ARC = 1								# Number of iterations on ArcLink folders
 TEST = N												# whether you want to test ObsPyDMT or not
 TEST_no = 10											# How many stations you want to test for!
-plot_IRIS = Y											# Plot all available IRIS stations
-plot_ARC = Y											# Plot all available ARC stations
+plot_IRIS = N											# Plot all available IRIS stations
+plot_ARC = N											# Plot all available ARC stations
 plot_all_Events = N										# Plot all requested events

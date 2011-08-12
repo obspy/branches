@@ -12,8 +12,17 @@ from obspy.arclink.client import ArcLinkException as ArcLinkException
 import pickle
 
 
-def Arclink_get_Waveform(input, Address_events, len_events, events, Nets_Arc_req_BHE, \
+def Arclink_get_Waveform(input, Nets_Arc_req_BHE, \
 	Nets_Arc_req_BHN, Nets_Arc_req_BHZ, t):
+	
+	Period = input['min_date'] + '_' + input['max_date'] + '_' + str(input['min_mag']) + '_' + str(input['max_mag'])
+	Address_events = input['Address'] + '/Data/' + Period
+	
+	Event_file = open(Address_events + '/list_event', 'r')
+	events = pickle.load(Event_file)
+	
+	len_events = len(events)
+	
 	
 	for i in range(0, len_events):
 		Exception_file = open(Address_events + '/' + events[i]['event_id'] + \
@@ -114,7 +123,17 @@ def Arclink_get_Waveform(input, Address_events, len_events, events, Nets_Arc_req
 					
 					inv_BHE[j] = client_arclink.getInventory(Nets_Arc_req_BHE[i][j][0], Nets_Arc_req_BHE[i][j][1], \
 						Nets_Arc_req_BHE[i][j][2], 'BHE')
-										
+					
+					dum = Nets_Arc_req_BHE[i][j][0] + '.' + Nets_Arc_req_BHE[i][j][1]
+					Syn_file = open(Address_events + '/' + events[i]['event_id'] + \
+						'/ARC/STATION/' + 'Input_Syn_BHE', 'a')
+					syn = Nets_Arc_req_BHE[i][j][0] + ' , ' + Nets_Arc_req_BHE[i][j][1] + ' , ' + \
+						Nets_Arc_req_BHE[i][j][2] + ' , ' + Nets_Arc_req_BHE[i][j][3] + ' , ' + str(inv_BHE[j][dum]['latitude']) + \
+						' , ' + str(inv_BHE[j][dum]['longitude']) + ' , ' + str(inv_BHE[j][dum]['elevation']) + ' , ' + \
+						str(inv_BHE[j][dum]['depth']) + '\n'
+					Syn_file.writelines(syn)
+					Syn_file.close()
+					
 					print "Saving Station  for: " + Nets_Arc_req_BHE[i][j][0] +	'.' + Nets_Arc_req_BHE[i][j][1] + '.' + \
 						Nets_Arc_req_BHE[i][j][2] + '.' + 'BHE' + "  ---> DONE"
 					
@@ -147,38 +166,6 @@ def Arclink_get_Waveform(input, Address_events, len_events, events, Nets_Arc_req
 		rep1 = 'ArcLink-Saved stations (BHE) for event' + '-' + str(i) + ': ' + str(len(inv_BHE)) + '\n'
 		Report.writelines(rep1)
 		Report.close()	
-		
-		for k in inv_BHE.keys():
-			
-			try:
-				
-				dum = Nets_Arc_req_BHE[i][int(k)][0] + '.' + Nets_Arc_req_BHE[i][int(k)][1]
-				Syn_file = open(Address_events + '/' + events[i]['event_id'] + \
-					'/ARC/STATION/' + 'Input_Syn_BHE', 'a')
-				syn = Nets_Arc_req_BHE[i][int(k)][0] + ' , ' + Nets_Arc_req_BHE[i][int(k)][1] + ' , ' + \
-					Nets_Arc_req_BHE[i][int(k)][2] + ' , ' + Nets_Arc_req_BHE[i][int(k)][3] + ' , ' + str(inv_BHE[int(k)][dum]['latitude']) + \
-					' , ' + str(inv_BHE[int(k)][dum]['longitude']) + ' , ' + str(inv_BHE[int(k)][dum]['elevation']) + ' , ' + \
-					str(inv_BHE[int(k)][dum]['depth']) + '\n'
-				Syn_file.writelines(syn)
-				Syn_file.close()
-			
-			except Exception, e:	
-					
-				print 'SYNTHETIC' + '---' + Nets_Arc_req_BHE[i][j][0] +	'.' + Nets_Arc_req_BHE[i][j][1] + \
-					'.' +Nets_Arc_req_BHE[i][j][2] + '.' + 'BHE'
-				
-				Exception_file = open(Address_events + '/' + \
-					events[i]['event_id'] + '/ARC/EXCEP/' + 'Exception_file_ARC', 'a')
-					
-				ee = 'SYNTHETIC' + '---' + str(i) + '-' + str(j) + '---' + Nets_Arc_req_BHE[i][j][0] + \
-					'.' + Nets_Arc_req_BHE[i][j][1] + '.' + \
-					Nets_Arc_req_BHE[i][j][2] + '.' + 'BHE' + \
-					'---' + str(e) + '\n'
-				
-				Exception_file.writelines(ee)
-				Exception_file.close()
-				print e
-
 		
 		
 		
@@ -236,7 +223,17 @@ def Arclink_get_Waveform(input, Address_events, len_events, events, Nets_Arc_req
 					
 					inv_BHN[j] = client_arclink.getInventory(Nets_Arc_req_BHN[i][j][0], Nets_Arc_req_BHN[i][j][1], \
 						Nets_Arc_req_BHN[i][j][2], 'BHN')
-										
+					
+					dum = Nets_Arc_req_BHN[i][j][0] + '.' + Nets_Arc_req_BHN[i][j][1]
+					Syn_file = open(Address_events + '/' + events[i]['event_id'] + \
+						'/ARC/STATION/' + 'Input_Syn_BHN', 'a')
+					syn = Nets_Arc_req_BHN[i][j][0] + ' , ' + Nets_Arc_req_BHN[i][j][1] + ' , ' + \
+						Nets_Arc_req_BHN[i][j][2] + ' , ' + Nets_Arc_req_BHN[i][j][3] + ' , ' + str(inv_BHN[j][dum]['latitude']) + \
+						' , ' + str(inv_BHN[j][dum]['longitude']) + ' , ' + str(inv_BHN[j][dum]['elevation']) + ' , ' + \
+						str(inv_BHN[j][dum]['depth']) + '\n'
+					Syn_file.writelines(syn)
+					Syn_file.close()					
+					
 					print "Saving Station  for: " + Nets_Arc_req_BHN[i][j][0] +	'.' + Nets_Arc_req_BHN[i][j][1] + '.' + \
 						Nets_Arc_req_BHN[i][j][2] + '.' + 'BHN' + "  ---> DONE"
 					
@@ -270,39 +267,6 @@ def Arclink_get_Waveform(input, Address_events, len_events, events, Nets_Arc_req
 		Report.writelines(rep1)
 		Report.close()	
 		
-		for k in inv_BHN.keys():
-
-			try:
-			
-				dum = Nets_Arc_req_BHN[i][int(k)][0] + '.' + Nets_Arc_req_BHN[i][int(k)][1]
-				Syn_file = open(Address_events + '/' + events[i]['event_id'] + \
-					'/ARC/STATION/' + 'Input_Syn_BHN', 'a')
-				syn = Nets_Arc_req_BHN[i][int(k)][0] + ' , ' + Nets_Arc_req_BHN[i][int(k)][1] + ' , ' + \
-					Nets_Arc_req_BHN[i][int(k)][2] + ' , ' + Nets_Arc_req_BHN[i][int(k)][3] + ' , ' + str(inv_BHN[int(k)][dum]['latitude']) + \
-					' , ' + str(inv_BHN[int(k)][dum]['longitude']) + ' , ' + str(inv_BHN[int(k)][dum]['elevation']) + ' , ' + \
-					str(inv_BHN[int(k)][dum]['depth']) + '\n'
-				Syn_file.writelines(syn)
-				Syn_file.close()
-			
-			except Exception, e:	
-					
-				print 'SYNTHETIC' + '---' + Nets_Arc_req_BHN[i][j][0] +	'.' + Nets_Arc_req_BHN[i][j][1] + \
-					'.' +Nets_Arc_req_BHN[i][j][2] + '.' + 'BHN'
-					
-				Exception_file = open(Address_events + '/' + \
-					events[i]['event_id'] + '/ARC/EXCEP/' + 'Exception_file_ARC', 'a')
-
-				ee = 'SYNTHETIC' + '---' + str(i) + '-' + str(j) + '---' + Nets_Arc_req_BHN[i][j][0] + \
-					'.' + Nets_Arc_req_BHN[i][j][1] + '.' + \
-					Nets_Arc_req_BHN[i][j][2] + '.' + 'BHN' + \
-					'---' + str(e) + '\n'
-					
-				Exception_file.writelines(ee)
-				Exception_file.close()
-				print e
-
-
-
 
 		inv_BHZ = {}
 		
@@ -358,7 +322,17 @@ def Arclink_get_Waveform(input, Address_events, len_events, events, Nets_Arc_req
 					
 					inv_BHZ[j] = client_arclink.getInventory(Nets_Arc_req_BHZ[i][j][0], Nets_Arc_req_BHZ[i][j][1], \
 						Nets_Arc_req_BHZ[i][j][2], 'BHZ')
-										
+					
+					dum = Nets_Arc_req_BHZ[i][j][0] + '.' + Nets_Arc_req_BHZ[i][j][1]
+					Syn_file = open(Address_events + '/' + events[i]['event_id'] + \
+						'/ARC/STATION/' + 'Input_Syn_BHZ', 'a')
+					syn = Nets_Arc_req_BHZ[i][j][0] + ' , ' + Nets_Arc_req_BHZ[i][j][1] + ' , ' + \
+						Nets_Arc_req_BHZ[i][j][2] + ' , ' + Nets_Arc_req_BHZ[i][j][3] + ' , ' + str(inv_BHZ[j][dum]['latitude']) + \
+						' , ' + str(inv_BHZ[j][dum]['longitude']) + ' , ' + str(inv_BHZ[j][dum]['elevation']) + ' , ' + \
+						str(inv_BHZ[j][dum]['depth']) + '\n'
+					Syn_file.writelines(syn)
+					Syn_file.close()
+						
 					print "Saving Station  for: " + Nets_Arc_req_BHZ[i][j][0] +	'.' + Nets_Arc_req_BHZ[i][j][1] + '.' + \
 						Nets_Arc_req_BHZ[i][j][2] + '.' + 'BHZ' + "  ---> DONE"
 					
@@ -391,38 +365,6 @@ def Arclink_get_Waveform(input, Address_events, len_events, events, Nets_Arc_req
 		rep1 = 'ArcLink-Saved stations (BHZ) for event' + '-' + str(i) + ': ' + str(len(inv_BHZ)) + '\n'
 		Report.writelines(rep1)
 		Report.close()	
-		
-		for k in inv_BHZ.keys():
-				
-			try:
-					
-				dum = Nets_Arc_req_BHZ[i][int(k)][0] + '.' + Nets_Arc_req_BHZ[i][int(k)][1]
-				Syn_file = open(Address_events + '/' + events[i]['event_id'] + \
-					'/ARC/STATION/' + 'Input_Syn_BHZ', 'a')
-				syn = Nets_Arc_req_BHZ[i][int(k)][0] + ' , ' + Nets_Arc_req_BHZ[i][int(k)][1] + ' , ' + \
-					Nets_Arc_req_BHZ[i][int(k)][2] + ' , ' + Nets_Arc_req_BHZ[i][int(k)][3] + ' , ' + str(inv_BHZ[int(k)][dum]['latitude']) + \
-					' , ' + str(inv_BHZ[int(k)][dum]['longitude']) + ' , ' + str(inv_BHZ[int(k)][dum]['elevation']) + ' , ' + \
-					str(inv_BHZ[int(k)][dum]['depth']) + '\n'
-				Nets_Arc_req_BHZ[i][int(k)][0] + '.' + Nets_Arc_req_BHZ[i][int(k)][1]
-				Syn_file.writelines(syn)
-				Syn_file.close()
-			
-			except Exception, e:	
-					
-				print 'SYNTHETIC' + '---' + Nets_Arc_req_BHZ[i][j][0] +	'.' + Nets_Arc_req_BHZ[i][j][1] + \
-					'.' +Nets_Arc_req_BHZ[i][j][2] + '.' + 'BHZ'
-					
-				Exception_file = open(Address_events + '/' + \
-					events[i]['event_id'] + '/ARC/EXCEP/' + 'Exception_file_ARC', 'a')
-
-				ee = 'SYNTHETIC' + '---' + str(i) + '-' + str(j) + '---' + Nets_Arc_req_BHZ[i][j][0] + \
-					'.' + Nets_Arc_req_BHZ[i][j][1] + '.' + \
-					Nets_Arc_req_BHZ[i][j][2] + '.' + 'BHZ' + \
-					'---' + str(e) + '\n'
-					
-				Exception_file.writelines(ee)
-				Exception_file.close()
-				print e
 	
 	
 		t_wave_2 = datetime.now()

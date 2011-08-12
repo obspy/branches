@@ -50,10 +50,9 @@ import sys
 
 from read_input import *
 from nodes import *
-from nodes_II import *
 from get_Events import *
 from load_event import *
-#from plot_events import *
+from plot_events import *
 from IRIS_get_Network import *
 from IRIS_get_Waveform import *
 from IRIS_get_Waveform_single import *
@@ -65,8 +64,8 @@ from QC_ARC import *
 from update_IRIS import *
 from update_ARC import *
 from plot_IRIS import *
-#from plot_ARC import *
-#from plot_all_events import *
+from plot_ARC import *
+from plot_all_events import *
 
 
 def Main():
@@ -96,11 +95,8 @@ def Main():
 	if input['get_events'] == 'Y':
 		(events, len_events, Period, Address_events) = get_Events(input)
 	#  CHECK!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	if input['plt_event'] == 'on':
-		(lat_event, lon_event, name_event) = load_event(len_events, Address_events)	
-		
-		plot_events(input, Address_events, events = events, lon_event = lon_event, \
-		lat_event = lat_event, name_event = name_event, len_events = len_events)
+	if input['plt_event'] == 'on':		
+		plot_events(input)
 
 	# ------------------------IRIS------------------------------------------------
 	if input['IRIS'] == 'Y':
@@ -112,9 +108,9 @@ def Main():
 			print '***********************************************************************************************'
 				
 			(Networks_iris_BHE, Networks_iris_BHN, Networks_iris_BHZ, t_iris) = \
-				IRIS_get_Network(Address_events, len_events, events, input)
+				IRIS_get_Network(input)
 					
-			IRIS_get_Waveform(input, Address_events, len_events, events, Networks_iris_BHE,\
+			IRIS_get_Waveform(input, Networks_iris_BHE,\
 			Networks_iris_BHN, Networks_iris_BHZ, t_iris)
 
 		else:		
@@ -141,9 +137,9 @@ def Main():
 			print '************************************************************************************************'
 					
 			(Nets_Arc_req_BHE, Nets_Arc_req_BHN, Nets_Arc_req_BHZ, t_arclink) = \
-				Arclink_get_Network(len_events, events, Address_events)
+				Arclink_get_Network(input)
 		
-			Arclink_get_Waveform(input, Address_events, len_events, events, Nets_Arc_req_BHE, \
+			Arclink_get_Waveform(input, Nets_Arc_req_BHE, \
 				Nets_Arc_req_BHN, Nets_Arc_req_BHZ, t_arclink)
 
 		else:
@@ -159,68 +155,6 @@ def Main():
 				t_arclink.append(UTCDateTime(events[i]['datetime']))
 			
 			Arclink_get_Waveform_single(input, Address_events, len_events, events, Networks_ARC, t_arclink)
-	
-	# ------------------------Parallel Requests II--------------------
-	if input['nodes'] == 'Y':
-		nodes_II(input)
-	
-		# ------------------------IRIS------------------------------------------------
-		if input['IRIS'] == 'Y':
-			
-			if input['mass'] ==	'Y':
-				
-				print '***********************************************************************************************'
-				print 'IRIS -- Download all waveforms, Response file and other information based on requested events'
-				print '***********************************************************************************************'
-					
-				(Networks_iris_BHE, Networks_iris_BHN, Networks_iris_BHZ, t_iris) = \
-					IRIS_get_Network(Address_events, len_events, events, input)
-						
-				IRIS_get_Waveform(input, Address_events, len_events, events, Networks_iris_BHE,\
-				Networks_iris_BHN, Networks_iris_BHZ, t_iris)
-
-			else:		
-				
-				print '***********************************************************************************************'
-				print 'IRIS -- Download single waveform, Response file and other information based on requested events'
-				print '***********************************************************************************************'
-				
-				t_iris = []
-				Networks_iris = [input['net'], input['sta'], input['loc'], input['cha']]
-				
-				for i in range(0, len_events):
-					t_iris.append(UTCDateTime(events[i]['datetime']))
-						
-				IRIS_get_Waveform_single(input, Address_events, len_events, events, Networks_iris, t_iris)
-
-		# ------------------------Arclink------------------------------------------------
-		if input['ArcLink'] == 'Y':
-			
-			if input['mass'] == 'Y':
-				
-				print '************************************************************************************************'
-				print 'ArcLink -- Download all waveforms, Response file and other information based on requested events'
-				print '************************************************************************************************'
-						
-				(Nets_Arc_req_BHE, Nets_Arc_req_BHN, Nets_Arc_req_BHZ, t_arclink) = \
-					Arclink_get_Network(len_events, events, Address_events)
-			
-				Arclink_get_Waveform(input, Address_events, len_events, events, Nets_Arc_req_BHE, \
-					Nets_Arc_req_BHN, Nets_Arc_req_BHZ, t_arclink)
-
-			else:
-				
-				print '**************************************************************************************************'
-				print 'ArcLink -- Download single waveform, Response file and other information based on requested events'
-				print '**************************************************************************************************'
-				
-				t_arclink = []
-				Networks_ARC = [input['net'], input['sta'], input['loc'], input['cha']]
-				
-				for i in range(0, len_events):
-					t_arclink.append(UTCDateTime(events[i]['datetime']))
-				
-				Arclink_get_Waveform_single(input, Address_events, len_events, events, Networks_ARC, t_arclink)
 				
 	# ------------------------Quality Control------------------------
 	if input['QC_IRIS'] == 'Y':
@@ -228,34 +162,16 @@ def Main():
 		print '*************************************************************'
 		print 'IRIS -- Quality Control (Gap, Timing Quality, Data Quality)'
 		print '*************************************************************'
-		
-		Address_QC = raw_input('Please enter address of the target folder:' + '(e.g.: ' + \
-			str(input['Address']) + '/Data' + ')' + '\n' + \
-			'[if you type eg, the address will be the same as e.g.]' + '\n')
-		
-		print '*************************************************************'
-		
-		if Address_QC == 'eg':
-			Address_QC = str(input['Address']) + '/Data'
-		
-		QC_IRIS(Address_QC)
 
+		QC_IRIS(input)
+		
 	if input['QC_ARC'] == 'Y':
 		
 		print '****************************************************************'
 		print 'ArcLink -- Quality Control (Gap, Timing Quality, Data Quality)'
 		print '****************************************************************'
 		
-		Address_QC = raw_input('Please enter address of the target folder:' + '(e.g.: ' + \
-			str(input['Address']) + '/Data' + ')' + '\n' + \
-			'[if you type eg, the address will be the same as e.g.]' + '\n')
-		
-		print '*************************************************************'
-		
-		if Address_QC == 'eg':
-			Address_QC = str(input['Address']) + '/Data'
-		
-		QC_ARC(Address_QC)
+		QC_ARC(input)
 
 	# ------------------------Updating--------------------------------
 	if input['update_iris'] == 'Y':
@@ -297,7 +213,7 @@ def Main():
 		print '*********************'
 		
 		plot_IRIS(input)
-	'''
+
 	if input['plot_ARC'] == 'Y':
 		
 		print '*********************'
@@ -305,7 +221,7 @@ def Main():
 		print '*********************'
 		
 		plot_ARC(input)
-	'''	
+
 	# ---------------------------------------------------------------
 	t2_pro = datetime.now()
 	t_pro = t2_pro - t1_pro

@@ -10,9 +10,19 @@ import os
 from lxml import etree
 
 
-def IRIS_get_Waveform(input, Address_events, len_events, events, Networks_iris_BHE, \
+def IRIS_get_Waveform(input, Networks_iris_BHE, \
 	Networks_iris_BHN, Networks_iris_BHZ, t):
 	
+	Period = input['min_date'] + '_' + input['max_date'] + '_' + str(input['min_mag']) + '_' + str(input['max_mag'])
+	Address_events = input['Address'] + '/Data/' + Period
+	
+	Event_file = open(Address_events + '/list_event', 'r')
+	events = pickle.load(Event_file)
+	
+	len_events = len(events)
+	
+	#if os.path.exists() == True:
+		
 	for i in range(0, len_events):
 		Exception_file = open(Address_events + '/' + events[i]['event_id'] + \
 			'/IRIS/EXCEP/' + 'Exception_file_IRIS', 'w')
@@ -131,6 +141,14 @@ def IRIS_get_Waveform(input, Address_events, len_events, events, Networks_iris_B
 						'Station': Sta_sta_code, 'Latitude': Sta_Lat, 'Longitude': Sta_Lon, \
 						'Location': Sta_loc_code, 'Channel': Sta_chan_code, 'Elevation': Sta_Elevation}
 					
+					Syn_file = open(Address_events + '/' + events[i]['event_id'] + \
+						'/IRIS/STATION/' + 'Input_Syn_BHE', 'a')
+					syn = dic_BHE[j]['Network'] + ' , ' + dic_BHE[j]['Station'] + ' , ' + \
+						dic_BHE[j]['Location'] + ' , ' + dic_BHE[j]['Channel'] + ' , ' + dic_BHE[j]['Latitude'] + \
+						' , ' + dic_BHE[j]['Longitude'] + ' , ' + dic_BHE[j]['Elevation'] + '\n'
+					Syn_file.writelines(syn)
+					Syn_file.close()
+					
 					print "Saving Station  for: " + Networks_iris_BHE[i][j][0] +	'.' + Networks_iris_BHE[i][j][1] + '.' + \
 						Networks_iris_BHE[i][j][2] + '.' + 'BHE' + "  ---> DONE"
 					
@@ -160,17 +178,7 @@ def IRIS_get_Waveform(input, Address_events, len_events, events, Networks_iris_B
 		rep1 = 'IRIS-Saved stations (BHE) for event' + '-' + str(i) + ': ' + str(len(dic_BHE)) + '\n'
 		Report.writelines(rep1)
 		Report.close()	
-		
-		
-		for k in dic_BHE.keys():
-			Syn_file = open(Address_events + '/' + events[i]['event_id'] + \
-				'/IRIS/STATION/' + 'Input_Syn_BHE', 'a')
-			syn = dic_BHE[k]['Network'] + ' , ' + dic_BHE[k]['Station'] + ' , ' + \
-				dic_BHE[k]['Location'] + ' , ' + dic_BHE[k]['Channel'] + ' , ' + dic_BHE[k]['Latitude'] + \
-				' , ' + dic_BHE[k]['Longitude'] + ' , ' + dic_BHE[k]['Elevation'] + '\n'
-			Syn_file.writelines(syn)
-			Syn_file.close()
-		
+			
 				
 		
 		dic_BHN = {}		
@@ -246,6 +254,14 @@ def IRIS_get_Waveform(input, Address_events, len_events, events, Networks_iris_B
 						'Station': Sta_sta_code, 'Latitude': Sta_Lat, 'Longitude': Sta_Lon, \
 						'Location': Sta_loc_code, 'Channel': Sta_chan_code, 'Elevation': Sta_Elevation}
 					
+					Syn_file = open(Address_events + '/' + events[i]['event_id'] + \
+						'/IRIS/STATION/' + 'Input_Syn_BHN', 'a')
+					syn = dic_BHN[j]['Network'] + ' , ' + dic_BHN[j]['Station'] + ' , ' + \
+						dic_BHN[j]['Location'] + ' , ' + dic_BHN[j]['Channel'] + ' , ' + dic_BHN[j]['Latitude'] + \
+						' , ' + dic_BHN[j]['Longitude'] + ' , ' + dic_BHN[j]['Elevation'] + '\n'
+					Syn_file.writelines(syn)
+					Syn_file.close()
+					
 					print "Saving Station  for: " + Networks_iris_BHN[i][j][0] +	'.' + Networks_iris_BHN[i][j][1] + '.' + \
 						Networks_iris_BHN[i][j][2] + '.' + 'BHN' + "  ---> DONE"
 					
@@ -276,16 +292,6 @@ def IRIS_get_Waveform(input, Address_events, len_events, events, Networks_iris_B
 		Report.writelines(rep1)
 		Report.close()	
 		
-		
-		for k in dic_BHN.keys():
-			Syn_file = open(Address_events + '/' + events[i]['event_id'] + \
-				'/IRIS/STATION/' + 'Input_Syn_BHN', 'a')
-			syn = dic_BHN[k]['Network'] + ' , ' + dic_BHN[k]['Station'] + ' , ' + \
-				dic_BHN[k]['Location'] + ' , ' + dic_BHN[k]['Channel'] + ' , ' + dic_BHN[k]['Latitude'] + \
-				' , ' + dic_BHN[k]['Longitude'] + ' , ' + dic_BHN[k]['Elevation'] + '\n'
-			Syn_file.writelines(syn)
-			Syn_file.close()
-			
 				
 		
 		dic_BHZ = {}		
@@ -361,6 +367,14 @@ def IRIS_get_Waveform(input, Address_events, len_events, events, Networks_iris_B
 						'Station': Sta_sta_code, 'Latitude': Sta_Lat, 'Longitude': Sta_Lon, \
 						'Location': Sta_loc_code, 'Channel': Sta_chan_code, 'Elevation': Sta_Elevation}
 					
+					Syn_file = open(Address_events + '/' + events[i]['event_id'] + \
+						'/IRIS/STATION/' + 'Input_Syn_BHZ', 'a')
+					syn = dic_BHZ[j]['Network'] + ' , ' + dic_BHZ[j]['Station'] + ' , ' + \
+						dic_BHZ[j]['Location'] + ' , ' + dic_BHZ[j]['Channel'] + ' , ' + dic_BHZ[j]['Latitude'] + \
+						' , ' + dic_BHZ[j]['Longitude'] + ' , ' + dic_BHZ[j]['Elevation'] + '\n'
+					Syn_file.writelines(syn)
+					Syn_file.close()
+					
 					print "Saving Station  for: " + Networks_iris_BHZ[i][j][0] +	'.' + Networks_iris_BHZ[i][j][1] + '.' + \
 						Networks_iris_BHZ[i][j][2] + '.' + 'BHZ' + "  ---> DONE"
 					
@@ -391,17 +405,6 @@ def IRIS_get_Waveform(input, Address_events, len_events, events, Networks_iris_B
 		Report.writelines(rep1)
 		Report.close()	
 		
-		
-		for k in dic_BHZ.keys():
-			Syn_file = open(Address_events + '/' + events[i]['event_id'] + \
-				'/IRIS/STATION/' + 'Input_Syn_BHZ', 'a')
-			syn = dic_BHZ[k]['Network'] + ' , ' + dic_BHZ[k]['Station'] + ' , ' + \
-				dic_BHZ[k]['Location'] + ' , ' + dic_BHZ[k]['Channel'] + ' , ' + dic_BHZ[k]['Latitude'] + \
-				' , ' + dic_BHZ[k]['Longitude'] + ' , ' + dic_BHZ[k]['Elevation'] + '\n'
-			Syn_file.writelines(syn)
-			Syn_file.close()
-					
-	
 	
 		t_wave_2 = datetime.now()
 		t_wave = t_wave_2 - t_wave_1

@@ -12,19 +12,30 @@ import os
 import glob
 import pickle
 import shutil
+import commands
 
 
-def QC_ARC(Address_data):
+def QC_ARC(input):
 	
-	print 'Quality Check for all events in: ' + '\n' + str(Address_data)
-	print '*************************************************************'
-	
-	ls_period = os.listdir(Address_data)
+	Address_data = input['Address'] + '/Data'
 	
 	pre_ls_event = []
-	for i in range(0, len(ls_period)):
-		pre_ls_event.append(Address_data + '/' + ls_period[i])
 	
+	tty = open(input['Address'] + '/Data/' + 'tty-info', 'r')
+	tty_str = tty.readlines()
+	
+	for i in range(0, len(tty_str)):
+		tty_str[i] = tty_str[i].split('  ,  ')
+	
+	for i in range(0, len(tty_str)):
+		if commands.getoutput('hostname') == tty_str[i][0]:
+			if commands.getoutput('tty') == tty_str[i][1]:
+				pre_ls_event.append(Address_data + '/' + tty_str[i][2])
+	
+	
+	for i in range(0, len(pre_ls_event)):
+		print 'Quality Check for: ' + '\n' + str(pre_ls_event[i])
+	print '*************************************************************'
 	
 	ls_event_file = []
 	for i in pre_ls_event:
@@ -36,7 +47,7 @@ def QC_ARC(Address_data):
 		for j in range(0, len(ls_event_file[i])):
 			if ls_event_file[i][j] != 'list_event':
 				if ls_event_file[i][j] != 'EVENT':
-					ls_event.append(Address_data + '/' + ls_period[i] + '/' + ls_event_file[i][j])
+					ls_event.append(pre_ls_event[0] + '/' + ls_event_file[i][j])
 					print ls_event_file[i][j]
 	
 	add_ARC_QC = []

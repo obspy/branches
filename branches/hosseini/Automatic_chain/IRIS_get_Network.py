@@ -8,12 +8,37 @@ from datetime import datetime
 import time
 import os
 import pickle
+import shutil
+import sys
 
 client_iris = Client_iris()
 
-def IRIS_get_Network(Address_events, len_events, events, input):
+def IRIS_get_Network(input):
 		
 	t_iris_1 = datetime.now()
+	
+	Period = input['min_date'] + '_' + input['max_date'] + '_' + str(input['min_mag']) + '_' + str(input['max_mag'])
+	Address_events = input['Address'] + '/Data/' + Period
+	
+	Event_file = open(Address_events + '/list_event', 'r')
+	events = pickle.load(Event_file)
+	
+	len_events = len(events)
+	
+	for i in range(0, len_events):
+		if os.path.exists(Address_events + '/' + events[i]['event_id'] + '/IRIS') == True:
+			
+			if raw_input('Folder for IRIS -- requested Period (min/max) and Magnitude (min/max) -- exists in your directory.' + '\n\n' + \
+			'You could either close the program and try updating your folder OR remove the tree, continue the program and download again.' + \
+			'\n' + 'Do you want to continue? (Y/N)' + '\n') == 'Y':
+				print '-------------------------------------------------------------'
+				shutil.rmtree(Address_events + '/' + events[i]['event_id'] + '/IRIS')
+			
+			else:
+				print '-------------------------------------------------------------'
+				print 'So...you decided to update your folder...Ciao'
+				print '-------------------------------------------------------------'
+				sys.exit()
 	
 	for i in range(0, len_events):
 		os.makedirs(Address_events + '/' + events[i]['event_id'] + '/IRIS/RESP/')

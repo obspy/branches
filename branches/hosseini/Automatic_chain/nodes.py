@@ -4,152 +4,58 @@ Suggestion: Do not request more than 10 in parallel...
 """
 
 import commands
+import os
 
 def nodes(input):
-	'''
-	if commands.getoutput('hostname') == 'kasra-laptop':
-		input['min_date'] = '2011-01-01'
-		input['max_date'] = '2011-01-10'
-		input['Address'] = '/media/Elements/TEST2_NODE'
 	
-	if commands.getoutput('hostname') == 'funten':
-		if commands.getoutput('tty') == '/dev/pts/11':
-			input['min_date'] = '2011-07-01'
-			input['max_date'] = '2011-08-25'
-	'''
-	if commands.getoutput('hostname') == 'hopfen':
-		if commands.getoutput('tty') == '/dev/pts/0':
-			input['min_date'] = '2011-01-08'
-			input['max_date'] = '2011-01-10'
-			input['IRIS'] = 'Y'
-			input['ArcLink'] = 'N'
+	add = os.getcwd()
+	add += '/INPUT-Periods'
+	f = open(add)
+	per_tty = f.readlines()
+	
+	for i in range(0, len(per_tty)):
+		per_tty[i] = per_tty[i].split('_')
+	
+	if os.path.exists(input['Address'] + '/Data/' + 'tty-info') != True:
+	
+		if os.path.exists(input['Address'] + '/Data') != True:
+			os.makedirs(input['Address'] + '/Data')
+	
+		tty = open(input['Address'] + '/Data/' + 'tty-info', 'w')
 		
-		if commands.getoutput('tty') == '/dev/pts/1':
-			input['min_date'] = '2011-01-11'
-			input['max_date'] = '2011-01-13'
-			input['IRIS'] = 'Y'
-			input['ArcLink'] = 'N'
+		tty.writelines(commands.getoutput('hostname') + '  ,  ' + commands.getoutput('tty') + '  ,  ' + per_tty[0][0] + \
+				'_' + per_tty[0][1] + '_' + per_tty[0][2] + '_' + per_tty[0][3][:-1] + '  ,  ' +  '\n')
 		
-		if commands.getoutput('tty') == '/dev/pts/2':
-			input['min_date'] = '2011-02-09'
-			input['max_date'] = '2011-02-11'
-			input['IRIS'] = 'Y'
-			input['ArcLink'] = 'N'
+		tty.close()
 		
-		if commands.getoutput('tty') == '/dev/pts/3':
-			input['min_date'] = '2011-02-13'
-			input['max_date'] = '2011-02-15'
-			input['IRIS'] = 'Y'
-			input['ArcLink'] = 'N'
+	else:
+		n = int(raw_input('Please enter a node number:' + '\n' + '(If you enter "-1", it means that the node number already exists in the file.)' + '\n'))
+		print '-------------------------------------------------------------'
+		
+		if n == -1:
+			print 'You entered "-1" -- the node number exists in the tty-info!'
+			print '-------------------------------------------------------------'
+		else: 
+			tty = open(input['Address'] + '/Data/' + 'tty-info', 'a')
+			tty.writelines(commands.getoutput('hostname') + '  ,  ' + commands.getoutput('tty') + '  ,  ' + per_tty[n][0] + \
+					'_' + per_tty[n][1] + '_' + per_tty[n][2] + '_' + per_tty[n][3][:-1] + '  ,  ' +  '\n')
 
-		if commands.getoutput('tty') == '/dev/pts/4':
-			input['min_date'] = '2011-02-20'
-			input['max_date'] = '2011-02-22'
-			input['IRIS'] = 'Y'
-			input['ArcLink'] = 'N'
-		
-		if commands.getoutput('tty') == '/dev/pts/5':
-			input['min_date'] = '2011-03-05'
-			input['max_date'] = '2011-03-07'
-			input['IRIS'] = 'N'
-			input['ArcLink'] = 'Y'
-		
-		if commands.getoutput('tty') == '/dev/pts/6':
-			input['min_date'] = '2011-03-08'
-			input['max_date'] = '2011-03-10'
-			input['IRIS'] = 'N'
-			input['ArcLink'] = 'Y'
-		
-		if commands.getoutput('tty') == '/dev/pts/7':
-			input['min_date'] = '2011-03-09'
-			input['max_date'] = '2011-03-11'
-			input['IRIS'] = 'N'
-			input['ArcLink'] = 'Y'
-		
-		if commands.getoutput('tty') == '/dev/pts/8':
-			input['min_date'] = '2011-06-19'
-			input['max_date'] = '2011-06-21'
-			input['IRIS'] = 'N'
-			input['ArcLink'] = 'Y'
-		
-		if commands.getoutput('tty') == '/dev/pts/9':
-			input['min_date'] = '2011-03-23'
-			input['max_date'] = '2011-03-26'
-			input['IRIS'] = 'N'
-			input['ArcLink'] = 'Y'
-		
-		if commands.getoutput('tty') == '/dev/pts/10':
-			input['min_date'] = '2011-03-26'
-			input['max_date'] = '2011-03-28'
-		
-		if commands.getoutput('tty') == '/dev/pts/11':
-			input['min_date'] = '2011-04-02'
-			input['max_date'] = '2011-04-04'
-		
-		if commands.getoutput('tty') == '/dev/pts/12':
-			input['min_date'] = '2011-04-06'
-			input['max_date'] = '2011-04-08'
-		
-		if commands.getoutput('tty') == '/dev/pts/13':
-			input['min_date'] = '2011-04-10'
-			input['max_date'] = '2011-04-12'
-		
-		if commands.getoutput('tty') == '/dev/pts/14':
-			input['min_date'] = '2011-04-17'
-			input['max_date'] = '2011-04-19'
-		
-		if commands.getoutput('tty') == '/dev/pts/15':
-			input['min_date'] = '2011-04-22'
-			input['max_date'] = '2011-04-24'
-		
-		if commands.getoutput('tty') == '/dev/pts/16':
-			input['min_date'] = '2011-05-14'
-			input['max_date'] = '2011-05-16'
-		
-		if commands.getoutput('tty') == '/dev/pts/17':
-			input['min_date'] = '2011-06-02'
-			input['max_date'] = '2011-06-04'
-			
-		if commands.getoutput('tty') == '/dev/pts/18':
-			input['min_date'] = '2011-06-15'
-			input['max_date'] = '2011-06-17'
-		
-		if commands.getoutput('tty') == '/dev/pts/19':
-			input['min_date'] = '2011-06-19'
-			input['max_date'] = '2011-06-21'
-		
-	if commands.getoutput('hostname') == 'moench':
-		if commands.getoutput('tty') == '/dev/pts/0':
-			input['min_date'] = '2011-04-17'
-			input['max_date'] = '2011-04-19'
-		
-		if commands.getoutput('tty') == '/dev/pts/8':
-			input['min_date'] = '2011-04-22'
-			input['max_date'] = '2011-04-24'
-		
-		if commands.getoutput('tty') == '/dev/pts/10':
-			input['min_date'] = '2011-05-14'
-			input['max_date'] = '2011-05-16'
-		
-		if commands.getoutput('tty') == '/dev/pts/11':
-			input['min_date'] = '2011-06-02'
-			input['max_date'] = '2011-06-04'
+			tty.close()		
 	
-	if commands.getoutput('hostname') == 'kochel':
-		if commands.getoutput('tty') == '/dev/pts/0':
-			input['min_date'] = '2011-06-15'
-			input['max_date'] = '2011-06-17'	
-		
-		if commands.getoutput('tty') == '/dev/pts/2':
-			input['min_date'] = '2011-06-02'
-			input['max_date'] = '2011-06-04'
-		
-		if commands.getoutput('tty') == '/dev/pts/1':
-			input['min_date'] = '2011-06-19'
-			input['max_date'] = '2011-06-21'
-		
-		if commands.getoutput('tty') == '/dev/pts/3':
-			input['min_date'] = '2011-06-21'
-			input['max_date'] = '2011-06-23'
-			
+	
+	Address_data = input['Address'] + '/Data'
+	
+	tty = open(input['Address'] + '/Data/' + 'tty-info', 'r')
+	tty_str = tty.readlines()
+	
+	for i in range(0, len(tty_str)):
+		tty_str[i] = tty_str[i].split('  ,  ')
+	
+	for i in range(0, len(tty_str)):
+		if commands.getoutput('hostname') == tty_str[i][0]:
+			if commands.getoutput('tty') == tty_str[i][1]:
+				
+				input['min_date'] = tty_str[i][2].split('_')[0]
+				input['max_date'] = tty_str[i][2].split('_')[1]
+					
 	return input
