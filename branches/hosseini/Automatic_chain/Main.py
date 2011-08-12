@@ -51,8 +51,7 @@ import sys
 from read_input import *
 from nodes import *
 from get_Events import *
-from load_event import *
-from plot_events import *
+#from plot_events import *
 from IRIS_get_Network import *
 from IRIS_get_Waveform import *
 from IRIS_get_Waveform_single import *
@@ -63,9 +62,9 @@ from QC_IRIS import *
 from QC_ARC import *
 from update_IRIS import *
 from update_ARC import *
-from plot_IRIS import *
-from plot_ARC import *
-from plot_all_events import *
+#from plot_IRIS import *
+#from plot_ARC import *
+#from plot_all_events import *
 
 
 def Main():
@@ -156,23 +155,6 @@ def Main():
 			
 			Arclink_get_Waveform_single(input, Address_events, len_events, events, Networks_ARC, t_arclink)
 				
-	# ------------------------Quality Control------------------------
-	if input['QC_IRIS'] == 'Y':
-		
-		print '*************************************************************'
-		print 'IRIS -- Quality Control (Gap, Timing Quality, Data Quality)'
-		print '*************************************************************'
-
-		QC_IRIS(input)
-		
-	if input['QC_ARC'] == 'Y':
-		
-		print '****************************************************************'
-		print 'ArcLink -- Quality Control (Gap, Timing Quality, Data Quality)'
-		print '****************************************************************'
-		
-		QC_ARC(input)
-
 	# ------------------------Updating--------------------------------
 	if input['update_iris'] == 'Y':
 		
@@ -196,6 +178,23 @@ def Main():
 		for i in range(0, input['No_updating_ARC']):
 			update_ARC(input)
 	
+	# ------------------------Quality Control------------------------
+	if input['QC_IRIS'] == 'Y':
+		
+		print '*************************************************************'
+		print 'IRIS -- Quality Control (Gap, Timing Quality, Data Quality)'
+		print '*************************************************************'
+
+		QC_IRIS(input)
+		
+	if input['QC_ARC'] == 'Y':
+		
+		print '****************************************************************'
+		print 'ArcLink -- Quality Control (Gap, Timing Quality, Data Quality)'
+		print '****************************************************************'
+		
+		QC_ARC(input)
+		
 	# ------------------------Plotting--------------------------------
 	#CHECK!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	if input['plot_all_Events'] == 'Y':
