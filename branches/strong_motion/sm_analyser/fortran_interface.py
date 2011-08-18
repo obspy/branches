@@ -34,7 +34,11 @@ class FortranHandler():
         self.cmd = 'esvol2m_special'
         self.pattern = re.compile(r'\d+\s+(s:\\[\w\\ -_.\d]*)')
         self.fin = open(self.dest,'r')
-        self.data = self.fin.readlines()
+        self.data = []
+        for line in self.fin.readlines():
+            # ignore commented lines
+            if line.startswith('!'): continue
+            self.data.append(line)
         self.counter = 0
 
     
