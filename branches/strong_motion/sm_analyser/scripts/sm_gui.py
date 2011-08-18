@@ -39,14 +39,14 @@ class DataHandler(FortranHandler):
     
     def __init__(self, bindir):
         FortranHandler.__init__(self, bindir=bindir)
-        self.specs = {0:None,1:None,2:None}
+        self.specs = {0:None, 1:None, 2:None}
 
-    def ftransform(self,tr1,tr2,tr3):
+    def ftransform(self, tr1, tr2, tr3):
         fspec1 = np.fft.fft(tr1.data)
         fspec2 = np.fft.fft(tr2.data)
         fspec3 = np.fft.fft(tr3.data)
         freqs = np.fft.fftfreq(tr1.stats.npts, tr1.stats.delta)
-        return fspec1,fspec2,fspec3,freqs
+        return fspec1, fspec2, fspec3, freqs
         
     def getspectra(self, choices, spec_old):
         """
@@ -58,19 +58,19 @@ class DataHandler(FortranHandler):
                 tr1 = self.v2.stream[2]
                 tr2 = self.v2.stream[5]
                 tr3 = self.v2.stream[8]
-                self.specs[idx] = self.ftransform(tr1,tr2,tr3) 
+                self.specs[idx] = self.ftransform(tr1, tr2, tr3) 
         if idx == 1:
             if self.specs[idx] is None:
                 tr1 = self.v2.stream[0]
                 tr2 = self.v2.stream[3]
                 tr3 = self.v2.stream[6]
-                self.specs[idx] = self.ftransform(tr1,tr2,tr3) 
+                self.specs[idx] = self.ftransform(tr1, tr2, tr3) 
         if idx == 2:
             if self.specs[idx] is None:
                 tr1 = self.v1.stream[0]
                 tr2 = self.v1.stream[1]
                 tr3 = self.v1.stream[2]
-                self.specs[idx] = self.ftransform(tr1,tr2,tr3) 
+                self.specs[idx] = self.ftransform(tr1, tr2, tr3) 
         return self.specs[idx]
         
     def gettimeseries(self, choices, hist_old):
@@ -174,6 +174,8 @@ class SmGui(DataHandler, PlotIterator):
         # Make initial plot of first record
         self.plotcanvas()
 
+        # set line length of input file; needed to add comments to line
+        self.linel = len(self.data[0])
         # set number of points variable
         self.p['npts'] = Tk.IntVar(); self.p['npts'].set(self.npts)
 
@@ -181,30 +183,6 @@ class SmGui(DataHandler, PlotIterator):
         self.p['hlow'] = Tk.DoubleVar();self.p['hlow'].set(self.highp[0])
         self.p['hhgh'] = Tk.DoubleVar();self.p['hhgh'].set(self.highp[1])
   
-        # setting up radio buttons
-        maxb = Tk.Checkbutton(self.entry_frame, text='Max', command=self.plotmax,
-                              variable=self.p['pmax'], indicatoron=0, width=4,font=10)
-        maxb.pack(side='left')
-        balmaxb = Tk.Balloon(self.entry_frame)
-        balmaxb.bind_widget(maxb, balloonmsg='Plot maxima of timeseries.') 
-
-        fltrng = Tk.Checkbutton(self.entry_frame, text='Flt', command=self.plotfltrng,
-                                variable=self.p['fltrng'], indicatoron=0, width=4,font=10)
-        fltrng.pack(side='left')
-        balfltrng = Tk.Balloon(self.entry_frame)
-        balfltrng.bind_widget(fltrng, balloonmsg='Plot cutoff and corner frequencies of highpass filter.') 
-
-        pltlog2 = Tk.Checkbutton(self.entry_frame, text='log2', command=self.plotfltrng,
-                                 variable=self.p['pltlog2'], indicatoron=0, width=4,font=10)
-        pltlog2.pack(side='left')
-        balpltlog2 = Tk.Balloon(self.entry_frame)
-        balpltlog2.bind_widget(pltlog2, balloonmsg='Plot line with slope 2.0 through the maximum of the power spectrum.') 
-
-        pltgrid = Tk.Checkbutton(self.entry_frame, text='Grid', command=self.plotfltrng,
-                                 variable=self.p['pltgrid'], indicatoron=0, width=4,font=10)
-        pltgrid.pack(side='left')
-        balpltgrid = Tk.Balloon(self.entry_frame)
-        balpltgrid.bind_widget(pltgrid, balloonmsg='Plot grid lines.') 
 
         
         # setting up spin box for trimming
@@ -215,7 +193,7 @@ class SmGui(DataHandler, PlotIterator):
         trim_cntrl.pack(side='left', padx=5)
 
         # setting up trim button
-        trim_button = Tk.Button(self.entry_frame, text='Trim', width=8, command=self.recalc,font=10)
+        trim_button = Tk.Button(self.entry_frame, text='Trim', width=8, command=self.recalc, font=10)
         trim_button.pack(side='left', padx=10)
         
     
@@ -232,7 +210,7 @@ class SmGui(DataHandler, PlotIterator):
         hp_cntrl_hg.pack(side='left', padx=5)
 
         # setting up filter button
-        flt_button = Tk.Button(self.entry_frame, text='Filter', width=8, command=self.recalc,font=10)
+        flt_button = Tk.Button(self.entry_frame, text='Filter', width=8, command=self.recalc, font=10)
         flt_button.pack(side='left', padx=10)
         
         
@@ -258,12 +236,54 @@ class SmGui(DataHandler, PlotIterator):
         hist_box.pack(side='left', padx=10)
 
         # setting up navigation and save button
-        p_button = Tk.Button(self.nav_frame, text='Previous', width=8, command=self.prev,font=10)
-        p_button.pack(side='top',fill='x',anchor='center')
-        n_button = Tk.Button(self.nav_frame, text='Next', width=8, command=self.next,font=10)
-        n_button.pack(side='top',fill='x',anchor='center')
-        n_button = Tk.Button(self.nav_frame, text='Save', width=8, command=self.savefile,font=10)
-        n_button.pack(side='top',fill='x',anchor='center')
+        p_button = Tk.Button(self.nav_frame, text='Previous', width=8, command=self.prev, font=10)
+        p_button.pack(side='top', fill='x', anchor='center')
+        n_button = Tk.Button(self.nav_frame, text='Next', width=8, command=self.next, font=10)
+        n_button.pack(side='top', fill='x', anchor='center')
+        n_button = Tk.Button(self.nav_frame, text='Save', width=8, command=self.savefile, font=10)
+        n_button.pack(side='top', fill='x', anchor='center')
+
+
+        # setting up radio buttons
+        maxb = Tk.Checkbutton(self.nav_frame, text='Max', command=self.plotmax,
+                              variable=self.p['pmax'], indicatoron=0, width=4, font=10)
+        maxb.pack(side='top', fill='x', anchor='center')
+        balmaxb = Tk.Balloon(self.nav_frame)
+        balmaxb.bind_widget(maxb, balloonmsg='Plot maxima of timeseries.') 
+
+        fltrng = Tk.Checkbutton(self.nav_frame, text='Flt', command=self.plotfltrng,
+                                variable=self.p['fltrng'], indicatoron=0, width=4, font=10)
+        fltrng.pack(side='top', fill='x', anchor='center')
+        balfltrng = Tk.Balloon(self.nav_frame)
+        balfltrng.bind_widget(fltrng, balloonmsg='Plot cutoff and corner frequencies of highpass filter.') 
+
+        pltlog2 = Tk.Checkbutton(self.nav_frame, text='log2', command=self.plotfltrng,
+                                 variable=self.p['pltlog2'], indicatoron=0, width=4, font=10)
+        pltlog2.pack(side='top', fill='x', anchor='center')
+        balpltlog2 = Tk.Balloon(self.nav_frame)
+        balpltlog2.bind_widget(pltlog2, balloonmsg='Plot line with slope 2.0 through the maximum of the power spectrum.') 
+
+        pltgrid = Tk.Checkbutton(self.nav_frame, text='Grid', command=self.plotfltrng,
+                                 variable=self.p['pltgrid'], indicatoron=0, width=4, font=10)
+        pltgrid.pack(side='top', fill='x', anchor='center')
+        balpltgrid = Tk.Balloon(self.nav_frame)
+        balpltgrid.bind_widget(pltgrid, balloonmsg='Plot grid lines.') 
+        
+        # setting up comment button
+        self.p['comment'] = Tk.StringVar()
+        cmnt_button = Tk.Button(self.nav_frame, text='Comment', width=8, command=self.add_comment, font=10)
+        cmnt_button.pack(side='top', fill='x', anchor='center')
+        cmnt_ent = Tk.Entry(self.nav_frame, textvariable=self.p['comment'], width=8)
+        cmnt_ent.pack(side='top', fill='x', anchor='center')
+        balcmnt = Tk.Balloon(self.nav_frame)
+        balcmnt.bind_widget(cmnt_button, balloonmsg='Add a comment to the corresponding line in the input file.') 
+        
+    def add_comment(self):
+        line = self.data[self.counter] 
+        # delete potential old comment
+        line = line[0:self.linel]
+        # add comment
+        self.data[self.counter] = line.rstrip() + "\t%s\n" % self.p['comment'].get() 
         
     def plotmax(self):
         """
@@ -350,129 +370,150 @@ class SmGui(DataHandler, PlotIterator):
         self.plotspectra()
         self.plottimeseries()
         
-    def plotspectra(self, xrange=(0.01, 20.),yrngfact=0.2):
+    def plotspectra(self, xrange=(0.01, 20.), yrngfact=0.2):
         """
         Plot the spectra using Matplotlib.
         """
-        fspec1, fspec2, fspec3, freqs = self.getspectra(self.choices_ts, self.spec_old)
-        idx = np.where((freqs >= xrange[0]) & (freqs <= xrange[1]))
-        # get maxima within the plotting range of interest
-        max1 = abs(fspec1[idx]).max()
-        min1 = abs(fspec1[idx]).min()
-        ymin1 = min1 - yrngfact * min1
-        ymax1 = max1 + yrngfact * max1
-        max2 = abs(fspec2[idx]).max()
-        min2 = abs(fspec2[idx]).min()
-        ymin2 = min2 - yrngfact * min2
-        ymax2 = max2 + yrngfact * max2
-        max3 = abs(fspec3[idx]).max()
-        min3 = abs(fspec3[idx]).min()
-        ymin3 = min3 - yrngfact * min3
-        ymax3 = max3 + yrngfact * max3
-
-        ax1 = self.f1.add_subplot(3, 1, 1)
-        ax2 = self.f1.add_subplot(3, 1, 2, sharex=ax1)
-        ax3 = self.f1.add_subplot(3, 1, 3, sharex=ax1)
-        ax1.loglog(freqs, abs(fspec1))
-        ax2.loglog(freqs, abs(fspec2))
-        ax3.loglog(freqs, abs(fspec3))
-        
-        if self.p['fltrng'].get():
-            ax1.vlines(self.highp[0], ymin1, ymax1)
-            ax1.vlines(self.highp[1], ymin1, ymax1)
-            ax2.vlines(self.highp[0], ymin2, ymax2)
-            ax2.vlines(self.highp[1], ymin2, ymax2)
-            ax3.vlines(self.highp[0], ymin3, ymax3)
-            ax3.vlines(self.highp[1], ymin3, ymax3)
+        try:
+            fspec1, fspec2, fspec3, freqs = self.getspectra(self.choices_ts, self.spec_old)
+            idx = np.where((freqs >= xrange[0]) & (freqs <= xrange[1]))
+            # get maxima within the plotting range of interest
+            max1 = abs(fspec1[idx]).max()
+            min1 = abs(fspec1[idx]).min()
+            ymin1 = min1 - yrngfact * min1
+            ymax1 = max1 + yrngfact * max1
+            max2 = abs(fspec2[idx]).max()
+            min2 = abs(fspec2[idx]).min()
+            ymin2 = min2 - yrngfact * min2
+            ymax2 = max2 + yrngfact * max2
+            max3 = abs(fspec3[idx]).max()
+            min3 = abs(fspec3[idx]).min()
+            ymin3 = min3 - yrngfact * min3
+            ymax3 = max3 + yrngfact * max3
+    
+            ax1 = self.f1.add_subplot(3, 1, 1)
+            ax2 = self.f1.add_subplot(3, 1, 2, sharex=ax1)
+            ax3 = self.f1.add_subplot(3, 1, 3, sharex=ax1)
+            ax1.loglog(freqs, abs(fspec1))
+            ax2.loglog(freqs, abs(fspec2))
+            ax3.loglog(freqs, abs(fspec3))
             
-        if self.p['pltlog2'].get()==1 and self.spec_old == self.choices_ts[1]:
-            fdisp1, fdisp2, fdisp3, frdisp = self.getspectra(self.choices_ts, self.choices_ts[0])
-            idx1 = np.where((frdisp >= xrange[0]) & (frdisp <= xrange[1]))
-            ifmax1 = abs(fdisp1[idx1]).argmax()
-            saccmax1 = abs(fspec1[idx1])[ifmax1]
-            fmax1 = (freqs[idx1])[ifmax1]
-            try:
-                ax1.plot(fmax1, saccmax1, 'ro')
-                ax1.plot([fmax1, xrange[1]], [saccmax1, saccmax1 * 10 ** (2. * m.log10(xrange[1] / fmax1))], 'k--')
-                ax1.plot([fmax1, xrange[0]], [saccmax1, saccmax1 * 10 ** (-2. * m.log10(fmax1 / xrange[0]))], 'k--')
-            except Exception, e:
-                print e
-                print fmax1, saccmax1
-            ifmax2 = abs(fdisp2[idx1]).argmax()
-            saccmax2 = abs(fspec2[idx1])[ifmax2]
-            fmax2 = (freqs[idx1])[ifmax2]
-            try: 
-                ax2.plot(fmax2, saccmax2, 'ro')
-                ax2.plot([fmax2, xrange[1]], [saccmax2, saccmax2 * 10 ** (2. * m.log10(xrange[1] / fmax2))], 'k--')
-                ax2.plot([fmax2, xrange[0]], [saccmax2, saccmax2 * 10 ** (-2. * m.log10(fmax2 / xrange[0]))], 'k--')
-            except Exception, e:
-                print e
-                print fmax2, saccmax2
-            ifmax3 = abs(fdisp3[idx1]).argmax()
-            saccmax3 = abs(fspec3[idx1])[ifmax3]
-            fmax3 = (freqs[idx1])[ifmax3]
-            try:
-                ax3.plot(fmax3, saccmax3, 'ro')
-                ax3.plot([fmax3, xrange[1]], [saccmax3, saccmax3 * 10 ** (2. * m.log10(xrange[1] / fmax3))], 'k--')
-                ax3.plot([fmax3, xrange[0]], [saccmax3, saccmax3 * 10 ** (-2. * m.log10(fmax3 / xrange[0]))], 'k--')
-            except Exception, e:
-                print e
-                print fmax3, saccmax3
-        else:
-             self.p['pltlog2'].set(0)
-
-        if self.p['pltgrid'].get():
-            ax1.grid()
-            ax2.grid()
-            ax3.grid()
-            
-        ax1.set_xlim(xrange)
-        ax2.set_xlim(xrange)
-        ax3.set_xlim(xrange)
-        ax1.set_ylim(ymin1, ymax1)
-        ax2.set_ylim(ymin2, ymax2)
-        ax3.set_ylim(ymin3, ymax3)
-        ax1.set_xticklabels(ax1.get_xticks(), visible=False)
-        ax2.set_xticklabels(ax2.get_xticks(), visible=False)
-        ax3.set_xlabel('Frequency [Hz]')
+            if self.p['fltrng'].get():
+                # plot high pass filter range
+                ax1.vlines(self.highp[0], ymin1, ymax1)
+                ax1.vlines(self.highp[1], ymin1, ymax1)
+                ax2.vlines(self.highp[0], ymin2, ymax2)
+                ax2.vlines(self.highp[1], ymin2, ymax2)
+                ax3.vlines(self.highp[0], ymin3, ymax3)
+                ax3.vlines(self.highp[1], ymin3, ymax3)
+                
+            if self.p['pltlog2'].get() == 1:
+                # plot a line with slope 2.0 through the point in the accelerogram
+                # that corresponds to the maximum displacement
+                fdisp1, fdisp2, fdisp3, frdisp = self.getspectra(self.choices_ts, self.choices_ts[0])
+                facc1, facc2, facc3, fracc = self.getspectra(self.choices_ts, self.spec_old)
+                idx1 = np.where((frdisp >= xrange[0]) & (frdisp <= xrange[1]))
+                ifmax1 = abs(fdisp1[idx1]).argmax()
+                fmax1 = (frdisp[idx1])[ifmax1]
+                ind1 = int(abs(fracc - fmax1).argmin())
+                saccmax1 = abs(facc1[ind1])
+                try:
+                    ax1.plot(fmax1, saccmax1, 'ro')
+                    ax1.plot([fmax1, xrange[1]], [saccmax1, saccmax1 * 10 ** (2. * m.log10(xrange[1] / fmax1))], 'k--')
+                    ax1.plot([fmax1, xrange[0]], [saccmax1, saccmax1 * 10 ** (-2. * m.log10(fmax1 / xrange[0]))], 'k--')
+                except Exception, e:
+                    print e
+                    print fmax1, saccmax1
+                ifmax2 = abs(fdisp2[idx1]).argmax()
+                fmax2 = (frdisp[idx1])[ifmax2]
+                ind2 = int(abs(fracc - fmax2).argmin())
+                saccmax2 = abs(facc2[ind2])
+                #saccmax2 = abs(facc2[idx1])[ifmax2]
+                try: 
+                    ax2.plot(fmax2, saccmax2, 'ro')
+                    ax2.plot([fmax2, xrange[1]], [saccmax2, saccmax2 * 10 ** (2. * m.log10(xrange[1] / fmax2))], 'k--')
+                    ax2.plot([fmax2, xrange[0]], [saccmax2, saccmax2 * 10 ** (-2. * m.log10(fmax2 / xrange[0]))], 'k--')
+                except Exception, e:
+                    print e
+                    print fmax2, saccmax2
+                ifmax3 = abs(fdisp3[idx1]).argmax()
+                fmax3 = (frdisp[idx1])[ifmax3]
+                ind3 = int(abs(fracc - fmax3).argmin())
+                saccmax3 = abs(facc3[ind3])
+                #saccmax3 = abs(facc3[idx1])[ifmax3]
+                try:
+                    ax3.plot(fmax3, saccmax3, 'ro')
+                    ax3.plot([fmax3, xrange[1]], [saccmax3, saccmax3 * 10 ** (2. * m.log10(xrange[1] / fmax3))], 'k--')
+                    ax3.plot([fmax3, xrange[0]], [saccmax3, saccmax3 * 10 ** (-2. * m.log10(fmax3 / xrange[0]))], 'k--')
+                except Exception, e:
+                    print e
+                    print fmax3, saccmax3
+            else:
+                 self.p['pltlog2'].set(0)
+    
+            if self.p['pltgrid'].get():
+                ax1.grid()
+                ax2.grid()
+                ax3.grid()
+                
+            ax1.set_xlim(xrange)
+            ax2.set_xlim(xrange)
+            ax3.set_xlim(xrange)
+            ax1.set_ylim(ymin1, ymax1)
+            ax2.set_ylim(ymin2, ymax2)
+            ax3.set_ylim(ymin3, ymax3)
+            ax1.set_xticklabels(ax1.get_xticks(), visible=False)
+            ax2.set_xticklabels(ax2.get_xticks(), visible=False)
+            ax3.set_xlabel('Frequency [Hz]')
+            tr1 = self.v2.stream[0]
+            ax1.set_title(tr1.stats.station)
+        except Exception, e:
+            print "Problems in plotting the spectra of %s" % (self.data[self.counter].split()[0])
+            print "Please check the Volume 1 and Volume 2 file for possible problems."
+            print "Error: %s" % (e) 
     
     def plottimeseries(self):
         """
         Plot the timeseries using Matplotlib.
         """
-        tr1, tr2, tr3, time = self.gettimeseries(self.choices_ts, self.hist_old)
-        ax1 = self.f2.add_subplot(3, 1, 1)
-        ax2 = self.f2.add_subplot(3, 1, 2, sharex=ax1)
-        ax3 = self.f2.add_subplot(3, 1, 3, sharex=ax1)
-        ax1.plot(time, tr1.data, label=tr1.stats.channel)
-        ax1.legend(loc='upper right')
-        ax2.plot(time, tr2.data, label=tr2.stats.channel)
-        ax2.legend(loc='upper right')
-        ax3.plot(time, tr3.data, label=tr3.stats.channel)
-        ax3.legend(loc='upper right')
-        if self.p['pmax'].get():
-            idmax1 = abs(tr1.data).argmax()
-            max1 = tr1.data[idmax1]
-            ax1.plot(idmax1 * tr1.stats.delta, max1, 'ro')
-            idmax2 = abs(tr2.data).argmax()
-            max2 = tr2.data[idmax2]
-            ax2.plot(idmax2 * tr2.stats.delta, max2, 'ro')
-            idmax3 = abs(tr3.data).argmax()
-            max3 = tr3.data[idmax3]
-            ax3.plot(idmax3 * tr3.stats.delta, max3, 'ro')
-        ax1.set_xticklabels(ax1.get_xticks(), visible=False)
-        ax2.set_xticklabels(ax2.get_xticks(), visible=False)
-        ax3.set_xlabel('Time [s]')
-        ymax = abs(tr1.data).max()
-        ymax += 0.1 * ymax
-        ax1.set_ylim(-ymax, ymax)
-        ymax = abs(tr2.data).max()
-        ymax += 0.1 * ymax
-        ax2.set_ylim(-ymax, ymax)
-        ymax = abs(tr3.data).max()
-        ymax += 0.1 * ymax
-        ax3.set_ylim(-ymax, ymax)
-        ax1.set_title(tr1.stats.station)
+        try:
+            tr1, tr2, tr3, time = self.gettimeseries(self.choices_ts, self.hist_old)
+            ax1 = self.f2.add_subplot(3, 1, 1)
+            ax2 = self.f2.add_subplot(3, 1, 2, sharex=ax1)
+            ax3 = self.f2.add_subplot(3, 1, 3, sharex=ax1)
+            ax1.plot(time, tr1.data, label=tr1.stats.channel)
+            ax1.legend(loc='upper right')
+            ax2.plot(time, tr2.data, label=tr2.stats.channel)
+            ax2.legend(loc='upper right')
+            ax3.plot(time, tr3.data, label=tr3.stats.channel)
+            ax3.legend(loc='upper right')
+            if self.p['pmax'].get():
+                idmax1 = abs(tr1.data).argmax()
+                max1 = tr1.data[idmax1]
+                ax1.plot(idmax1 * tr1.stats.delta, max1, 'ro')
+                idmax2 = abs(tr2.data).argmax()
+                max2 = tr2.data[idmax2]
+                ax2.plot(idmax2 * tr2.stats.delta, max2, 'ro')
+                idmax3 = abs(tr3.data).argmax()
+                max3 = tr3.data[idmax3]
+                ax3.plot(idmax3 * tr3.stats.delta, max3, 'ro')
+            ax1.set_xticklabels(ax1.get_xticks(), visible=False)
+            ax2.set_xticklabels(ax2.get_xticks(), visible=False)
+            ax3.set_xlabel('Time [s]')
+            ymax = abs(tr1.data).max()
+            ymax += 0.1 * ymax
+            ax1.set_ylim(-ymax, ymax)
+            ymax = abs(tr2.data).max()
+            ymax += 0.1 * ymax
+            ax2.set_ylim(-ymax, ymax)
+            ymax = abs(tr3.data).max()
+            ymax += 0.1 * ymax
+            ax3.set_ylim(-ymax, ymax)
+            ax1.set_title(tr1.stats.station)
+        except Exception, e:
+            print "Problems in plotting the timeseries of %s" % (self.data[self.counter].split()[0])
+            print "Please check the Volume 1 and Volume 2 file for possible problems."
+            print "Error: %s" % (e) 
 
     def update(self):
         """
@@ -480,12 +521,19 @@ class SmGui(DataHandler, PlotIterator):
         time series changes.
         """
         self.f1.clf();self.f2.clf()
-        self.specs = {0:None,1:None,2:None}
+        self.specs = {0:None, 1:None, 2:None}
         self.plotcanvas()
         self.canvas1.draw()
         self.canvas2.draw()
         self.p['hlow'].set(self.highp[0])
         self.p['hhgh'].set(self.highp[1])
+        self.p['npts'].set(self.npts)
+        line = self.data[self.counter]
+        if line[self.linel - 1] == '\n':
+            self.p['comment'].set('')
+        else:
+            oldcmnt = line[(self.linel - 1):-1]
+            self.p['comment'].set(oldcmnt.strip())
 
     def check_filterband(self):
         """
@@ -513,15 +561,15 @@ class SmGui(DataHandler, PlotIterator):
         """
         line = self.data[self.counter]
         a = line.split()
-        nline = "%s%6.2f%6.2f" % (a[0], self.p['hlow'].get(), self.p['hhgh'].get())
+        nline = "%-20s%6.2f%6.2f" % (a[0], self.p['hlow'].get(), self.p['hhgh'].get())
         idx1 = line.find(a[2]) + len(a[2])
         idx2 = line.find(a[9]) + len(a[9]) - 12
         idx3 = idx2 + 12
         nline += line[idx1:idx2]
         nline += "%12d" % self.p['npts'].get()
         nline += line[idx3::]
-        print line
-        print nline
+        print "old line: ", line
+        print "new line: ", nline
         self.data[self.counter] = nline
         try:
             self.check_filterband()
