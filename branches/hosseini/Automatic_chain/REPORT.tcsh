@@ -1,6 +1,6 @@
 #!/bin/tcsh
 
-set add = "/import/neptun-radler/hosseini-downloads/Data_TEST3"
+set add = "/import/neptun-radler/hosseini-downloads/Data"
 
 
 set rep_IRIS = "$add/*/*/IRIS/STATION/Report_station"

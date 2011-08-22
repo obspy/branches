@@ -1,61 +1,93 @@
-Address = /import/neptun-radler/hosseini-downloads		# where you want to save the Waveforms, Response file and other information examples: (/media/Elements/TEST_WAVE) (/export/data/BH)
-min_datetime = 2011-01-01								# min datetime
-max_datetime = 2011-03-01								# max datetime
-min_magnitude = 6.4										# min magnitude
-max_magnitude = 6.6										# max magnitude
+INPUT file for ObsPyDMT:
+ 
+--------------------------------------------------------------------------------
+Address = /import/neptun-radler/hosseini-downloads/new-ObsPyDMT					# where you want to save the Waveforms, Response file and other information examples: (/media/Elements/TEST_WAVE) (/export/data/BH) (/import/neptun-radler/hosseini-downloads)
+--------------------------------------------------------------------------------
+Parameters for event request:
+
+min_datetime = 2011-02-01								# min datetime (Please consider "nodes" module and "INPUT-Periods" for parallel requests)
+max_datetime = 2011-02-03								# max datetime (Please consider "nodes" module and "INPUT-Periods" for parallel requests)
+min_magnitude = 5.5										# min magnitude
+max_magnitude = 9.6										# max magnitude
+
 min_latitude = -90										# min latitude (-90) (event)
 max_latitude = 90										# max latitude (90) (event)
 min_longitude = -180									# min longitude (-180) (event)
 max_longitude = 180										# max longitude (180) (event)
+
 min_depth = +10											# min depth
 max_depth = -6000										# max depth
 max_results = 2500              					    # max Results
+
 time_before = 300										# Time before the Event
 time_after = 4800										# Time after the Event
+--------------------------------------------------------------------------------
+Type of request:
 
-plot_events = off										# whether you want to have a plot of all events or not (on/off)...ATTENTION: you should have "mpl_toolkits.basemap" already installed
+get_events = Y											# To get events (Y)
+IRIS = N												# IRIS client will be used (Y)
+ArcLink = N												# ArcLink client will be used (Y)
+--------------------------------------------------------------------------------
+Parallel?
 
-network = *												# Network code, e.g. ‘BW’. (for mass = Y [line 46], wildcards allowed.)
-station = *												# Station code, e.g. ‘MANZ’. (for mass = Y [line 46], wildcards allowed.)
-location = *											# Location code, e.g. ‘00’. (for mass = Y [line 46], wildcards allowed.)
-channel = *												# Channel code, e.g. ‘EHE’. (for mass = Y [line 46], wildcards allowed.)
-BHE = Y													# BHE is needed
-BHN = Y													# BHN is needed
+mass = Y												# Download ALL waveforms, Response file and other information -- if you want to download just one station, change the flag to 'N' [In this case you should know exactly the Net, sta, loc, cha of your request]
+nodes = Y												# Downloading in Parallel way -- ATTENTION: "nodes" and "INPUT-Periods" --> You should enter the required periods in "INPUT-Periods".
+--------------------------------------------------------------------------------
+What do you want to get?
+
+waveform = Y											# get Waveforms
+response = Y											# get Response file
+--------------------------------------------------------------------------------
+Some specifications about your request:
+
+network = *												# Network code, e.g. ‘BW’. (for mass = Y [line 33], wildcards allowed.)
+station = *												# Station code, e.g. ‘MANZ’. (for mass = Y [line 33], wildcards allowed.)
+location = *											# Location code, e.g. ‘00’. (for mass = Y [line 33], wildcards allowed.)
+channel = *												# Channel code, e.g. ‘EHE’. (for mass = Y [line 33], wildcards allowed.)
+BHE = N													# BHE is needed
+BHN = N													# BHN is needed
 BHZ = Y													# BHZ is needed
+other = N												# if you want to download channels other than BHE, BHN, BHZ (or if you want to download BH*) [has not implemented yet]
 
 ATTENTION: Restricting returned data by geographical coordinates either
 all of minlat, maxlat, minlon and maxlon have to be specified (for a rectangular bounding box) OR 
 all of lat, lon, minradius and maxradius have to be specified (for a circular bounding area)
 
-lat = 0													# Latitude of center point for circular bounding area. (get_Networks)
-lon = 0													# Longitude of center point for circular bounding area. (get_Networks)
-minradius = 0											# Minimum radius for circular bounding area. (get_Networks)
-maxradius = 1e100000									# Maximum radius for circular bounding area. (get_Networks)
+lat = None												# Latitude of center point for circular bounding area. (get_Networks)
+lon = None												# Longitude of center point for circular bounding area. (get_Networks)
+minradius = None										# Minimum radius for circular bounding area. (get_Networks)
+maxradius = None										# Maximum radius for circular bounding area. (get_Networks)
 minlat = None											# Minimum latitude for rectangular bounding box. (get_Networks)
 maxlat = None											# Maximum latitude for rectangular bounding box. (get_Networks)
 minlon = None											# Minimum longitude for rectangular bounding box. (get_Networks)
 maxlon = None											# Maximum longitude for rectangular bounding box. (get_Networks)
+--------------------------------------------------------------------------------
+TEST the program?
 
-Plot:
+TEST = Y												# whether you want to test ObsPyDMT or not
+TEST_no = 10											# How many stations you want to test for!
+--------------------------------------------------------------------------------
+Update:
+
+update_iris = N											# Update the IRIS folder
+update_arc = N											# Update the ArcLink folder
+Number_of_Updating_IRIS = 1								# Number of iterations on IRIS folders for updating
+Number_of_Updating_ARC = 1								# Number of iterations on ArcLink folders for updating
+--------------------------------------------------------------------------------
+Quality Control:
+
+QC_IRIS = N												# Quality Control for IRIS
+QC_ARC = N												# Quality Control for ArcLink
+--------------------------------------------------------------------------------
+Plot: (Specifically for ObsPyPT [ObsPy Plotting Tool])
+
+plot_events = off										# whether you want to have a plot of events or not (on/off)...ATTENTION: you should have "mpl_toolkits.basemap" already installed. [refer: http://pypi.python.org/pypi/basemap]
+plot_IRIS = N											# Plot all available IRIS stations...ATTENTION: you should have "mpl_toolkits.basemap" already installed. [refer: http://pypi.python.org/pypi/basemap]
+plot_ARC = N											# Plot all available ARC stations...ATTENTION: you should have "mpl_toolkits.basemap" already installed. [refer: http://pypi.python.org/pypi/basemap]
+plot_all_Events = Y										# Plot all requested events...ATTENTION: you should have "mpl_toolkits.basemap" already installed. [refer: http://pypi.python.org/pypi/basemap]
 
 llcrnrlon = -180 										# longitude of lower left hand corner of the desired map domain (degrees).
 llcrnrlat = -90  										# latitude of lower left hand corner of the desired map domain (degrees).
 urcrnrlon = 180 										# longitude of upper right hand corner of the desired map domain (degrees).
 urcrnrlat = 90 											# latitude of upper right hand corner of the desired map domain (degrees).
-
-mass = Y												# Download all waveforms, Response file and other information -- if you want to download just one station, change the flag to 'N' [In this case you should know exactly the Net, sta, loc, cha of your request]
-IRIS = Y												# IRIS client will be used (Y)
-ArcLink = Y												# ArcLink client will be used (Y)
-QC_IRIS = Y												# Quality Control for IRIS (Attention: This module check the Quality of whole events in one folder. So you should run it once...)
-QC_ARC = Y												# Quality Control for ArcLink (Attention: This module check the Quality of whole events in one folder. So you should run it once...)
-get_events = Y											# To get events (Y)
-nodes = Y												# Downloading in Parallel way -- ATTENTION: "nodes" and "nodes_II"
-update_iris = Y											# Update the IRIS folder -- based on different nodes defined in the nodes module -- ATTENTION: All requests should be finished first and then update
-update_arc = Y										# Update the ArcLink folder -- based on different nodes defined in the nodes module -- ATTENTION: All requests should be finished first and then update
-Number_of_Updating_IRIS = 1								# Number of iterations on IRIS folders
-Number_of_Updating_ARC = 1								# Number of iterations on ArcLink folders
-TEST = N												# whether you want to test ObsPyDMT or not
-TEST_no = 10											# How many stations you want to test for!
-plot_IRIS = N											# Plot all available IRIS stations
-plot_ARC = N											# Plot all available ARC stations
-plot_all_Events = N										# Plot all requested events
+--------------------------------------------------------------------------------
