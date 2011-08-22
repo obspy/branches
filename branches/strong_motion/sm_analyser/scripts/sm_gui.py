@@ -14,6 +14,7 @@ import os
 import numpy as np
 import math as m
 from sm_analyser.fortran_interface import *
+from sm_analyser.read_gns_sm_data import Vol12Reader
 import Tix as Tk
 from Tkconstants import *
 import tkMessageBox
@@ -38,7 +39,13 @@ class DataHandler(FortranHandler):
     """
     
     def __init__(self, bindir):
-        FortranHandler.__init__(self, bindir=bindir)
+        try:
+            FortranHandler.__init__(self, bindir=bindir)
+        except FortranHandlerError, e:
+            if tkMessageBox.showerror(title='Error',message=e):
+                self.root.destroy()
+                sys.exit()
+            
         self.specs = {0:None, 1:None, 2:None}
 
     def ftransform(self, tr1, tr2, tr3):
@@ -52,6 +59,15 @@ class DataHandler(FortranHandler):
         """
         Compute the fft and return the spectra and their corresponding frequencies.
         """
+        if self.v1.stream[0].stats.station == 'No data available':
+            npts = self.v1.stream[0].stats.npts
+            data = np.ones(npts)
+            fspec1 = data[:]
+            fspec2 = data[:]
+            fspec3 = data[:]
+            freqs = np.linspace(0.01,20,npts) 
+            return fspec1,fspec2,fspec3,freqs
+        
         idx = choices.index(spec_old)
         if idx == 0:
             if self.specs[idx] is None:
@@ -127,6 +143,7 @@ class SmGui(DataHandler, PlotIterator):
     This is the main class which constructs the GUI and calls the plotting routines.
     """
     def __init__(self, parent, bindir):
+        self.root = parent
         self.bindir = bindir
         self.choices_ts = ['Displacement (filtered)', 'Acceleration (filtered)',
                         'Acceleration (unfiltered)']
@@ -137,10 +154,17 @@ class SmGui(DataHandler, PlotIterator):
         self.p['fltrng'] = Tk.IntVar(); self.p['fltrng'].set(1)
         self.p['pltlog2'] = Tk.IntVar(); self.p['pltlog2'].set(0)
         self.p['pltgrid'] = Tk.IntVar(); self.p['pltgrid'].set(1)
-        ### Window setup
+        if self.bindir is None:
+            self.choose_bin_directory()
+        if self.bindir == '':
+            sys.exit()
+
+        ### Window layout setup
         self.root = parent
         self.entry_frame = Tk.Frame(root)
         self.entry_frame.pack(side='top', pady=5)
+        self.eq_frame = Tk.Frame(root, borderwidth=2, relief='sunken')
+        self.eq_frame.pack(side='top', fill=Tk.BOTH, expand=0)
         self.figure_frame = Tk.Frame(root)
         self.figure_frame.pack(side='top', anchor='n', expand=1, fill=Tk.BOTH)
         self.left_frame = Tk.Frame(self.figure_frame)
@@ -150,10 +174,6 @@ class SmGui(DataHandler, PlotIterator):
         self.nav_frame = Tk.Frame(self.figure_frame)
         self.nav_frame.pack(side='right', anchor='center', expand=0, fill='none')
         self.root.wm_title("Strong motion analyser")
-        if self.bindir is None:
-            self.choose_bin_directory()
-        if self.bindir == '':
-            sys.exit()
         self.f1 = Figure(figsize=(5., 5.), dpi=100)
         self.f2 = Figure(figsize=(6.4, 5.), dpi=100)
         self.canvas1 = FigureCanvasTkAgg(self.f1, master=self.left_frame)
@@ -234,6 +254,22 @@ class SmGui(DataHandler, PlotIterator):
         hist_box.label.config(font=10)
         hist_box.entry.config(font=10)
         hist_box.pack(side='left', padx=10)
+
+        # setting up earthquake info frame
+        self.evtime = Tk.Label(self.eq_frame,
+                          text='Event time: %s' % self.v2.stream[0].stats.smdict.eventtime.strftime("%d/%m/%Y %H:%M:%S"),
+                          font=10, padx=20)
+        self.evtime.pack(side='left')
+        self.eqdist = Tk.Label(self.eq_frame, text='Epicentral distance: %d km' % self.v2.stream[0].stats.smdict.epicdist,
+                          font=10, padx=20)
+        self.eqdist.pack(side='left')
+        self.hdep = Tk.Label(self.eq_frame, text='Hypocentral depth: %d km' % self.v2.stream[0].stats.smdict.hypodep,
+                        font=10, padx=20)
+        self.hdep.pack(side='left')
+        self.lmag = Tk.Label(self.eq_frame, text='Local magnitude: %.2f' % self.v2.stream[0].stats.smdict.Ml,
+                        font=10, padx=20)
+        self.lmag.pack(side='left')
+
 
         # setting up navigation and save button
         p_button = Tk.Button(self.nav_frame, text='Previous', width=8, command=self.prev, font=10)
@@ -366,7 +402,23 @@ class SmGui(DataHandler, PlotIterator):
         """
         Routine called everytime the fortran program needs to be run.
         """
-        self.run_fortran()
+        try:
+            self.run_fortran()
+        except FortranHandlerError,e:
+            print e
+            self.v1 = Vol12Reader(dummy=True)
+            self.v2 = Vol12Reader(dummy=True)
+            self.highp = [0.,0.]
+            self.lowp = [0.,0.]
+            self.npts = self.v1.stream[0].stats.npts
+        except Vol12Error,e:
+            print e
+            self.v1 = Vol12Reader(dummy=True)
+            self.v2 = Vol12Reader(dummy=True)
+            self.highp = [0.,0.]
+            self.lowp = [0.,0.]
+            self.npts = self.v1.stream[0].stats.npts
+
         self.plotspectra()
         self.plottimeseries()
         
@@ -465,8 +517,7 @@ class SmGui(DataHandler, PlotIterator):
             ax1.set_xticklabels(ax1.get_xticks(), visible=False)
             ax2.set_xticklabels(ax2.get_xticks(), visible=False)
             ax3.set_xlabel('Frequency [Hz]')
-            tr1 = self.v2.stream[0]
-            ax1.set_title(tr1.stats.station)
+            ax1.set_title(self.v2.stream[0].stats.station)
         except Exception, e:
             print "Problems in plotting the spectra of %s" % (self.data[self.counter].split()[0])
             print "Please check the Volume 1 and Volume 2 file for possible problems."
@@ -534,6 +585,10 @@ class SmGui(DataHandler, PlotIterator):
         else:
             oldcmnt = line[(self.linel - 1):-1]
             self.p['comment'].set(oldcmnt.strip())
+        self.eqdist.config(text='Epicentral distance: %d km' % self.v2.stream[0].stats.smdict.epicdist)
+        self.evtime.config(text='Event time: %s' % self.v2.stream[0].stats.smdict.eventtime.strftime("%d/%m/%Y %H:%M:%S"))
+        self.hdep.config(text='Hypocentral depth: %d km' % self.v2.stream[0].stats.smdict.hypodep)
+        self.lmag.config(text='Local magnitude: %.2f' % self.v2.stream[0].stats.smdict.Ml)
 
     def check_filterband(self):
         """
@@ -570,12 +625,12 @@ class SmGui(DataHandler, PlotIterator):
         nline += line[idx3::]
         print "old line: ", line
         print "new line: ", nline
-        self.data[self.counter] = nline
         try:
             self.check_filterband()
         except FilterError, e:
             print e
         else:
+            self.data[self.counter] = nline
             self.update()     
 
 
