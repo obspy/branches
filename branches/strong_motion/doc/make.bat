@@ -62,7 +62,7 @@ if "%1" == "singlehtml" (
 	if errorlevel 1 exit /b 1
 	echo.
 	echo.Build finished. The HTML pages are in %BUILDDIR%/singlehtml.
-	copy /Y %BUILDDIR%\singlehtml\*.* %TARGETDIR%
+	xcopy /Y /E %BUILDDIR%\singlehtml\*.* %TARGETDIR%
 	goto end
 )
 

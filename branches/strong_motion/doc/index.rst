@@ -33,10 +33,17 @@ is ``(a,4f6.0,2i6,2i2,1x,3i2,f5.2,i12,i12,f12.0,f12.0)`` and the entries are:
 ``filename; cutoff frequency high pass filter; corner frequency high pass filter; cutoff frequency low pass filter; 
 corner frequency low pass filter; ?? ; event date; event time; magnitude??; number of points; starting index??; latitude of accelerometer; 
 longitude of accelerometer``
+You can find an example of the input file under ``I:\SEISMO\yannikb\strong_motion_analyser``.
 
 The Fortran program further needs to have the network drive ``nickel.geonet.org.nz\smdata`` mounted as a local drive under ``S:\`` to 
-access the raw data. 
- 
+access the raw data. You can find a copy of the Fortran routines under ``I:\SEISMO\yannikb\strong_motion_analyser\Fortran_programs``. 
+To compile them first copy the directory and then make sure that you have a Fortran compiler installed. If you have gfortran from the MinGW
+project (http://www.mingw.org/) together with GNU's make for windows (http://gnuwin32.sourceforge.net/packages/make.htm) installed you can
+open a command prompt, ``cd`` to the directory where you copied the Fortran routines to and then type ``make``. To check whether your 
+installation is working you can type ``esvol2m_special.exe`` on the command prompt. This will read in the file `filt_special.dat` and 
+process the files listed therein. If the Fortran program worked correctly you will find a couple of ``*.V2A`` files in the directory after
+the Fortran program finished. There is no point trying the ``sm_gui.py`` program until the Fortran program is working correctly. 
+  
 Running the program
 -------------------
 
@@ -61,13 +68,22 @@ and the filename is shown in the title of the time series plot.
 When pressing the ``Save`` button, you can choose a file to save the modified input list to. This file is identical to the original 
 input file apart from the filter range and length of the records that you changed.
 
-With the check buttons on the left you can switch the plotting of extra information on and off, such as the maxima of the time series. 
+With the check buttons on the right you can switch the plotting of extra information on and off, such as the maxima of the time series. 
 If you hover with your mouse over the button you will get a short help message.
 
 The navigation buttons below each canvas can be used for things like zooming into the plots or saving them as pixel images. 
 
 .. _Python: http://www.python.org
 
+
+Troubleshooting
+---------------
+
+In case the installer doesn't find your Python 2.6.x installation you can check in the registry for the correct entry of 
+``SOFTWARE\Python\PythonCore\2.6\InstallPath\`` under the ``HKEY_LOCAL_MACHINE`` category. It should point to the Python 
+installation on your computer.
+
+ 
 
 .. toctree::
    :maxdepth: 2
