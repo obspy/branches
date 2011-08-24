@@ -523,20 +523,36 @@ class SmGui(DataHandler, PlotIterator):
             print "Please check the Volume 1 and Volume 2 file for possible problems."
             print "Error: %s" % (e) 
     
-    def plottimeseries(self):
+    def plottimeseries(self,noticks=6):
         """
         Plot the timeseries using Matplotlib.
         """
         try:
             tr1, tr2, tr3, time = self.gettimeseries(self.choices_ts, self.hist_old)
+            append = tr1.stats.smdict.append
+            prepend = tr1.stats.smdict.prepend
+            npts = tr1.stats.npts
+            delta = tr1.stats.delta
+            npts -= prepend
+            # find indices of prepended and appended samples to color them 
+            # differently
+            time = np.r_[np.arange(-prepend,0,1),np.arange(npts)] * delta
+            idxlower = np.where(time < 0.)
+            idxupper = np.where(time > (npts - append) * delta)
             ax1 = self.f2.add_subplot(3, 1, 1)
             ax2 = self.f2.add_subplot(3, 1, 2, sharex=ax1)
             ax3 = self.f2.add_subplot(3, 1, 3, sharex=ax1)
             ax1.plot(time, tr1.data, label=tr1.stats.channel)
+            ax1.plot(time[idxlower], tr1.data[idxlower], 'r')
+            ax1.plot(time[idxupper], tr1.data[idxupper], 'r')
             ax1.legend(loc='upper right')
             ax2.plot(time, tr2.data, label=tr2.stats.channel)
+            ax2.plot(time[idxlower], tr2.data[idxlower], 'r')
+            ax2.plot(time[idxupper], tr2.data[idxupper], 'r')
             ax2.legend(loc='upper right')
             ax3.plot(time, tr3.data, label=tr3.stats.channel)
+            ax3.plot(time[idxlower], tr3.data[idxlower], 'r')
+            ax3.plot(time[idxupper], tr3.data[idxupper], 'r')
             ax3.legend(loc='upper right')
             if self.p['pmax'].get():
                 idmax1 = abs(tr1.data).argmax()
@@ -560,6 +576,9 @@ class SmGui(DataHandler, PlotIterator):
             ymax = abs(tr3.data).max()
             ymax += 0.1 * ymax
             ax3.set_ylim(-ymax, ymax)
+            xmax = time.max()
+            xmin = time.min()
+            ax1.set_xlim(xmin,xmax)
             ax1.set_title(tr1.stats.station)
         except Exception, e:
             print "Problems in plotting the timeseries of %s" % (self.data[self.counter].split()[0])
