@@ -8,18 +8,13 @@ import pickle
 import os.path
 from scipy.integrate import cumtrapz
 
-def mtinv(input_set, st_g, fmin, fmax, fmax_hardcut_factor=4, S0=1., nsv=1,
+def mtinv(input_set, st_tr, st_g, fmin, fmax, fmax_hardcut_factor=4, S0=1., nsv=1,
           single_force=False, stat_subset=[], weighting_type=2, weights=[],
           cache_path='', force_recalc=False, cache=True):
     '''
     Not intended for direct use, use mtinv_gs instead!
     '''
-    utrw, weights_l2, S0w, df, dt, nstat, ndat, ng, nfft = input_set
-
-    # use freuquncies below corner frequency * fmax_hardcut_factor (tremendous
-    # speed up in inversion)
-    nfinv = int(fmax_hardcut_factor * fmax / (df / 2.) * nfft)
-    nfinv = min(nfft/2+1, nfinv)
+    utrw, weights_l2, S0w, df, dt, nstat, ndat, ng, nfft, nfinv = input_set
 
     # setup greens matrix in fourier space
     if os.path.isfile(cache_path + 'gw.pickle') and not force_recalc:
@@ -41,7 +36,7 @@ def mtinv(input_set, st_g, fmin, fmax, fmax_hardcut_factor=4, S0=1., nsv=1,
                     g[k*3 + i,j,:] = st_g.select(station='%04d' % (k + 1),
                                      channel='%02d%1d' % (i,j))[0].data
                     # fill greens matrix in freq space, deconvolve S0
-                    gw[k*3 + i,j,:] = np.fft.rfft(g[k*3 + i,j,:], n=nfft)[:nfinv] * dt / S0w[:nfinv]
+                    gw[k*3 + i,j,:] = np.fft.rfft(g[k*3 + i,j,:], n=nfft)[:nfinv] * dt / S0w
         # write G-matrix to file
         if cache:
             pickle.dump(gw, open(cache_path + 'gw.pickle', 'w'), protocol=2)
@@ -259,7 +254,6 @@ def mtinv_gs(st_tr, gl, fmin, fmax, fmax_hardcut_factor=4, S0=1., nsv=1,
                   (is only mathematically strict minimized for nsv=6  (9 in
                   case of single force), otherwise approximately)
     '''
-
     st_tr.filter('lowpass', freq=fmax, corners=4)
     st_tr.filter('highpass', freq=fmin, corners=4)
 
@@ -271,13 +265,18 @@ def mtinv_gs(st_tr, gl, fmin, fmax, fmax_hardcut_factor=4, S0=1., nsv=1,
     ng = gl[0][0].data.size
     nfft = util.nextpow2(max(ndat, ng) * 2)
 
+    # use freuquncies below corner frequency * fmax_hardcut_factor (tremendous
+    # speed up in inversion)
+    nfinv = int(fmax_hardcut_factor * fmax / (df / 2.) * nfft)
+    nfinv = min(nfft/2+1, nfinv)
+
     # going to frequency domain
 
     # correction for stf used in green's forward simulation
     if type(S0).__name__=='float':
         S0w = S0
     else:
-        S0w = np.fft.rfft(S0, n=nfft) * dt
+        S0w = np.fft.rfft(S0, n=nfft)[:nfinv] * dt
 
     # setup seismogram matrix in fourier space
     utr = np.zeros((nstat * 3, ndat))
@@ -301,7 +300,7 @@ def mtinv_gs(st_tr, gl, fmin, fmax, fmax_hardcut_factor=4, S0=1., nsv=1,
     for i, st_g in enumerate(gl):
         print i
         M_t, m, x, s, st_syn, misfit = mtinv((utrw, weights_l2.copy(), S0w, df,
-            dt, nstat, ndat, ng, nfft), st_g, fmin, fmax,
+            dt, nstat, ndat, ng, nfft, nfinv), st_tr, st_g, fmin, fmax,
             fmax_hardcut_factor=fmax_hardcut_factor, S0=S0, nsv=nsv,
             single_force=single_force, stat_subset=stat_subset,
             force_recalc=force_recalc, weighting_type=weighting_type,
