@@ -254,6 +254,7 @@ def mtinv_gs(st_tr, gl, fmin, fmax, fmax_hardcut_factor=4, S0=1., nsv=1,
                   (is only mathematically strict minimized for nsv=6  (9 in
                   case of single force), otherwise approximately)
     '''
+    st_tr = st_tr.copy()
     st_tr.filter('lowpass', freq=fmax, corners=4)
     st_tr.filter('highpass', freq=fmin, corners=4)
 
