@@ -130,7 +130,8 @@ def mtinv(input_set, st_tr, st_g, fmin, fmax, fmax_hardcut_factor=4, S0=1., nsv=
         M_t += np.array(m[k] * x[k])
 
     # compute synthetic seismograms (for stations included in the inversion
-    # only!)
+    # only - maybe it makes sense to do it for all so that indizes in the
+    # streams are the same in input and ouput)
 
     channels = ['u', 'v', 'w']
 
@@ -253,6 +254,7 @@ def mtinv_gs(st_tr, gl, fmin, fmax, fmax_hardcut_factor=4, S0=1., nsv=1,
         misfit  - misfit of synthetics, definition depends on weighting
                   (is only mathematically strict minimized for nsv=6  (9 in
                   case of single force), otherwise approximately)
+        argmin  - index of greensfunction in list that minimizes the misfit
     '''
     st_tr = st_tr.copy()
     st_tr.filter('lowpass', freq=fmax, corners=4)
