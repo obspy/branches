@@ -21,7 +21,7 @@ from matplotlib.mlab import detrend_linear as detrend
 
 
 NET = "BW"
-STATIONS = ("DHFO", "UH1", "UH2", "UH3", "UH4")
+STATIONS = ("KW1", "KW2", "KW3")
 CHANNEL = "EHZ"
 # search from 2h before now to 1h before now
 T1 = UTCDateTime() - (60 * 60 * 2)
@@ -36,8 +36,8 @@ PAR = dict(LOW=10.0, # bandpass low corner
            MAXLEN=10, # maximum trigger length in seconds
            MIN_STATIONS=3) # minimum of coinciding stations for alert
 PAR = AttribDict(PAR)
-SUMMARY = "/scratch/uh_trigger/uh_trigger.txt"
-PLOTDIR = "/scratch/uh_trigger/"
+SUMMARY = "/scratch/kw_trigger/kw_trigger.txt"
+PLOTDIR = "/scratch/kw_trigger/"
 MAILTO = ("megies",)
 
 
@@ -105,7 +105,7 @@ if st:
     st.extend(st_trigger)
 
 # coincidence part, work through sorted trigger list...
-mutt_base = ["mutt", "-s", "UH Alert  %s -- %s" % (T1, T2)]
+mutt_base = ["mutt", "-s", "KW Alert  %s -- %s" % (T1, T2)]
 mutt = [] + mutt_base
 last_off_time = 0
 while len(trigger_list) > 1:
