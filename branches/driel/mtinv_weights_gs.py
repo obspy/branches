@@ -8,9 +8,9 @@ import pickle
 import os.path
 from scipy.integrate import cumtrapz
 
-def mtinv(input_set, st_tr, st_g, fmin, fmax, fmax_hardcut_factor=4, S0=1., nsv=1,
-          single_force=False, stat_subset=[], weighting_type=2, weights=[],
-          cache_path='', force_recalc=False, cache=True):
+def mtinv(input_set, st_tr, st_g, fmin, fmax, nsv=1, single_force=False,
+          stat_subset=[], weighting_type=2, weights=[], cache_path='',
+          force_recalc=False, cache=True):
     '''
     Not intended for direct use, use mtinv_gs instead!
     '''
@@ -304,8 +304,7 @@ def mtinv_gs(st_tr, gl, fmin, fmax, fmax_hardcut_factor=4, S0=1., nsv=1,
         print i
         M_t, m, x, s, st_syn, misfit = mtinv((utrw, weights_l2.copy(), S0w, df,
             dt, nstat, ndat, ng, nfft, nfinv), st_tr, st_g, fmin, fmax,
-            fmax_hardcut_factor=fmax_hardcut_factor, S0=S0, nsv=nsv,
-            single_force=single_force, stat_subset=stat_subset,
+            nsv=nsv, single_force=single_force, stat_subset=stat_subset,
             force_recalc=force_recalc, weighting_type=weighting_type,
             weights=weights, cache_path=cache_path + ('%06d_' % i), cache=cache)
 
