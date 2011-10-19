@@ -8,6 +8,7 @@ Module for handling ObsPy Inventory objects.
     GNU Lesser General Public License, Version 3
     (http://www.gnu.org/copyleft/lesser.html)
 """
+from obspy.core import UTCDateTime
 from obspy.core.util import AttribDict
 
 from lxml import etree
@@ -16,7 +17,7 @@ from lxml import etree
 class Inventory(object):
     """
     """
-    def __init__(self, networks=None):
+    def __init__(self, networks=[]):
         """
         XXX: Missing stuff
         :type networks: list
@@ -25,6 +26,10 @@ class Inventory(object):
         self.networks = []
         if networks:
             self.networks.extend(networks)
+
+    def __str__(self):
+        networks = [net.__str__() for net in self.networks]
+        return 'Networks\n\t' + '\n\t'.join(networks)
 
 
 class Network(object):
@@ -48,6 +53,10 @@ class Network(object):
         self.description = kwargs.get('description', None)
         self.starttime = kwargs.get('starttime', None)
         self.endtime = kwargs.get('endtime', None)
+
+    def __str__(self):
+        return '%s, %s - %s' % (self.network_code, self.starttime,
+                                    self.endtime)
 
 
 class Station(object):
@@ -165,5 +174,33 @@ class CoefficientResponse(Response):
 def readStationXML(filename):
     """
     """
+    inventory = Inventory()
+
     doc = etree.parse(filename)
-    from IPython.core.debugger import Tracer; Tracer()()
+    root = doc.getroot()
+    nsmap = root.nsmap
+    nsmap['ns'] = nsmap[None]
+    networks = doc.findall('ns:Network', namespaces=nsmap)
+    for network in networks:
+        n_obj = Network(network_code=network.get('net_code', ''))
+        try:
+            n_obj.starttime = UTCDateTime(network.find('ns:StartDate',
+                                                       namespaces=nsmap).text)
+        except AttributeError:
+            pass
+        try:
+            n_obj.endtime = UTCDateTime(network.find('ns:EndDate',
+                                                       namespaces=nsmap).text)
+        except AttributeError:
+            pass
+        try:
+            n_obj.description = network.find('ns:Description', namespaces=nsmap).text
+        except AttributeError:
+            pass
+        try:
+            n_obj.total_number_of_stations = \
+                network.find('ns:TotalNumberStations', namespaces=nsmap).text
+        except AttributeError:
+            pass
+        inventory.networks.append(n_obj)
+    print inventory
