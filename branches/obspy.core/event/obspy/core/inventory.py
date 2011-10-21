@@ -12,6 +12,7 @@ from obspy.core import UTCDateTime
 from obspy.core.util import AttribDict
 
 from lxml import etree
+import warnings
 
 
 class Inventory(object):
@@ -110,6 +111,32 @@ class Station(object):
         self.description = kwargs.get('description', None)
 
         self.creation_date = kwargs.get('creation_date', None)
+
+        # Stations also have a stats object
+        self.stats = AttribDict()
+
+    def __len__(self):
+        return len(self.channels)
+
+    def __str__(self):
+        ret = 'Station %s, %s - %s\n' % (self.station_code,
+            self.starttime.strftime('%Y-%m-%d'), self.endtime.strftime('%Y-%m-%d'))
+        ret += '\tCoods: %.5fN, %.5fE | Altitude: %im ' % (self.longitude, self.latitude,
+                                              self.elevation)
+        if hasattr(self, 'site'):
+            if hasattr(self.site, 'country'):
+                ret += '| %s' % self.site.country
+        if not hasattr(self, 'total_number_of_channels'):
+            ret += '\n\t%i channels in station' % len(self)
+        else:
+            ret += '\n\t%i channels in station (%i actually in object)' % \
+                (self.total_number_of_channels, len(self))
+        if self.description:
+            ret += '\n\tDescription: %s' % self.description
+        if self.common_name:
+            ret += '\n\tCommon Name: %s' % self.common_name
+        return ret
+
 
 
 class Channel(object):
@@ -234,6 +261,12 @@ def readStationXML(filename):
 
     networks = doc.findall('ns:Network', namespaces=nsmap)
     for network in networks:
+        n_obj = __readStationXMLNetwork(network, nsmap)
+        inventory.networks.append(n_obj)
+    return inventory
+
+
+def __readStationXMLNetwork(network, nsmap):
         n_obj = Network(network_code=network.get('net_code', ''))
         try:
             n_obj.starttime = UTCDateTime(network.find('ns:StartDate',
@@ -256,8 +289,72 @@ def readStationXML(filename):
                                  namespaces=nsmap).text)
         except AttributeError:
             pass
-        inventory.networks.append(n_obj)
-    return inventory
+
+        # Read stations.
+        stations = network.findall('ns:Station', namespaces=nsmap)
+        for station in stations:
+            n_obj.stations.extend(__readStationXMLStation(station, nsmap,
+                                  network_code = n_obj.network_code))
+
+        return n_obj
+
+def __addAttributeIfExisting(xml_element, xml_name, obj, obj_name, nsmap, conversion=None):
+    try:
+        item = xml_element.find('ns:%s' % xml_name, namespaces=nsmap).text
+    except AttributeError:
+        return
+    if conversion is not None:
+        item = conversion(item)
+    setattr(obj, obj_name, item)
+
+
+def __readStationXMLStation(station, nsmap, network_code=None):
+    station_code = station.get('sta_code')
+    # Make a quick sanity check if network_code is given.
+    if network_code is not None:
+        if station.get('net_code') != network_code:
+            msg = (""" Invalid StationXML file. The network code (%s) of
+           station %s does not fit the network code of its parent node in the
+            XML structure (%s).  """ % (station.get('net_code'), station_code,
+                                        network_code)).strip().split()
+            warnings.warn(" ".join(msg))
+    # One station might contain several "epochs" which will need to be seperate
+    # stations objects in the ObsPy internal structure.
+    stations = []
+    epochs = station.findall('ns:StationEpoch', namespaces=nsmap)
+    for sta in epochs:
+        s_obj = Station(station_code=station_code)
+        stations.append(s_obj)
+        # Add StationXML specific stats attribute dictionary.
+        s_obj.stats.station_xml = AttribDict()
+        stats = s_obj.stats.station_xml
+        stats.swap_order_16 = sta.get('swap_order_16')
+        stats.swap_order_32 = sta.get('swap_order_32')
+        __addAttributeIfExisting(sta, 'StartDate', s_obj, 'starttime', nsmap,
+                                 conversion=UTCDateTime)
+        __addAttributeIfExisting(sta, 'EndDate', s_obj, 'endtime', nsmap,
+                                 conversion=UTCDateTime)
+        __addAttributeIfExisting(sta, 'Lat', s_obj, 'latitude', nsmap,
+                                 conversion=float)
+        __addAttributeIfExisting(sta, 'Lon', s_obj, 'longitude', nsmap,
+                                 conversion=float)
+        __addAttributeIfExisting(sta, 'Elevation', s_obj, 'elevation', nsmap,
+                                 conversion=float)
+        __addAttributeIfExisting(sta, 'Name', s_obj, 'common_name', nsmap)
+        __addAttributeIfExisting(sta, 'Description', s_obj, 'description', nsmap)
+        __addAttributeIfExisting(sta, 'CreationDate', s_obj, 'creation_date',
+                                 nsmap, conversion=UTCDateTime)
+        __addAttributeIfExisting(sta, 'TotalNumberChannels', s_obj,
+                                 'total_number_of_channels', nsmap,
+                                 conversion=int)
+        site = sta.findall('ns:Site', namespaces=nsmap)
+        if len(site) == 1:
+            __addAttributeIfExisting(site[0], 'Country', s_obj.site,
+                                 'country', nsmap)
+    stations.append(stations)
+    return stations
+
+
 
 
 def __convertUTCDateTimeToStationXMLString(dt):

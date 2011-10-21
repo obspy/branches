@@ -18,6 +18,8 @@ class InventoryTestCase(unittest.TestCase):
     def test_readAndWriteStationXMLNetwork(self):
         """
         Reading and writing a file should not change it.
+
+        Testing at the network level.
         """
         filename = os.path.join(self.path, 'iris_net.xml')
         # Read to inventory object.
@@ -37,6 +39,32 @@ class InventoryTestCase(unittest.TestCase):
         # Sanity check to ensure everything has been read.
         self.assertEqual(new_xml.tell(), new_xml.len)
         self.assertEqual(old_xml.tell(), old_xml.len)
+
+    def test_readAndWriteStationXMLStation(self):
+        """
+        Reading and writing a file should not change it.
+
+        Testing at the station level.
+        """
+        filename = os.path.join(self.path, 'iris_sta.xml')
+        # Read to inventory object.
+        inventory = readStationXML(filename)
+
+        ## Write to empty StringIO.
+        #new_xml = StringIO()
+        #writeStationXML(inventory, new_xml)
+        #new_xml.seek(0,0)
+
+        ## Test line by line for easier debugging and not having to worry about
+        ## formatting issues.
+        #with open(filename, 'r') as f:
+        #    old_xml = StringIO(f.read())
+        #self.assertEqual(old_xml.tell(), new_xml.tell())
+        #for old_line, new_line in izip(old_xml, new_xml):
+        #    self.assertEqual(old_line.strip(), new_line.strip())
+        ## Sanity check to ensure everything has been read.
+        #self.assertEqual(new_xml.tell(), new_xml.len)
+        #self.assertEqual(old_xml.tell(), old_xml.len)
 
 
 
