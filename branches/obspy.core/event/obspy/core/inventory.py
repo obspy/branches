@@ -26,10 +26,21 @@ class Inventory(object):
         self.networks = []
         if networks:
             self.networks.extend(networks)
+        # Set a stats attribute for format specific informations.
+        self.stats = AttribDict()
+
+    def __len__(self):
+        """
+        Returns the available number of stations in the inventory file.
+        """
+        return len(self.networks)
 
     def __str__(self):
-        networks = [net.__str__() for net in self.networks]
-        return 'Networks\n\t' + '\n\t'.join(networks)
+        networks = []
+        for net in self.networks:
+            networks.extend(net.__str__().split('\n'))
+        return ('%i networks in the inventory:\n\t' % len(self)) + \
+                '\n\t'.join(networks)
 
 
 class Network(object):
@@ -54,9 +65,21 @@ class Network(object):
         self.starttime = kwargs.get('starttime', None)
         self.endtime = kwargs.get('endtime', None)
 
+    def __len__(self):
+        return len(self.stations)
+
     def __str__(self):
-        return '%s, %s - %s' % (self.network_code, self.starttime,
-                                    self.endtime)
+        ret = 'Network %s, %s - %s' % (self.network_code,
+                                       self.starttime.strftime('%Y-%m-%d'),
+                                    self.endtime.strftime('%Y-%m-%d'))
+        if not hasattr(self, 'total_number_of_stations'):
+            ret += '\n\t%i stations in network' % len(self)
+        else:
+            ret += '\n\t%i stations in network (%i actually in object)' % \
+                (self.total_number_of_stations, len(self))
+        if self.description:
+            ret += '\n\tDescription: %s' % self.description
+        return ret
 
 
 class Station(object):
@@ -171,15 +194,44 @@ class CoefficientResponse(Response):
         self.denominator = kwargs.get('denominator', [])
 
 
+def __addFormatSpecificData(doc, nsmap, stats_object, xml_node,
+                            conversion=None):
+    """
+    Adds the text of and xml_node in doc with the ns namespace in nsmap to
+    stats_object as attribute stats_name.
+
+    :param conversion: Function/Constructor that will take the xml text as
+        input and return an object that will be attached to stats_object.
+    """
+    item = doc.findall('ns:%s' % xml_node, namespaces=nsmap)
+    if len(item) == 1:
+        if conversion is None:
+            setattr(stats_object, xml_node, item[0].text)
+        else:
+            setattr(stats_object, xml_node, conversion(item[0].text))
+
+
 def readStationXML(filename):
     """
     """
     inventory = Inventory()
 
     doc = etree.parse(filename)
+    # Get the default namespace.
     root = doc.getroot()
     nsmap = root.nsmap
     nsmap['ns'] = nsmap[None]
+
+    # Read some format specific data.
+    inventory.stats.station_xml = AttribDict()
+    s_xml_stats = inventory.stats.station_xml
+    __addFormatSpecificData(doc, nsmap, s_xml_stats, 'Source')
+    __addFormatSpecificData(doc, nsmap, s_xml_stats, 'Sender')
+    __addFormatSpecificData(doc, nsmap, s_xml_stats, 'Module')
+    __addFormatSpecificData(doc, nsmap, s_xml_stats, 'ModuleURI')
+    __addFormatSpecificData(doc, nsmap, s_xml_stats, 'SentDate',
+                            conversion=UTCDateTime)
+
     networks = doc.findall('ns:Network', namespaces=nsmap)
     for network in networks:
         n_obj = Network(network_code=network.get('net_code', ''))
@@ -194,13 +246,72 @@ def readStationXML(filename):
         except AttributeError:
             pass
         try:
-            n_obj.description = network.find('ns:Description', namespaces=nsmap).text
+            n_obj.description = network.find('ns:Description',
+                                             namespaces=nsmap).text
         except AttributeError:
             pass
         try:
             n_obj.total_number_of_stations = \
-                network.find('ns:TotalNumberStations', namespaces=nsmap).text
+                int(network.find('ns:TotalNumberStations',
+                                 namespaces=nsmap).text)
         except AttributeError:
             pass
         inventory.networks.append(n_obj)
-    print inventory
+    return inventory
+
+
+def __convertUTCDateTimeToStationXMLString(dt):
+    """
+    Converts a UTCDateTime to a string in the StationXML representation.
+    """
+    return dt.strftime('%Y-%m-%dT%H:%M:%S')
+
+
+def __addSubelement(root, element_name, stats):
+    if not hasattr(stats, element_name):
+        return
+    element = etree.SubElement(root, element_name)
+    text = getattr(stats, element_name)
+    if isinstance(text, UTCDateTime):
+        text = __convertUTCDateTimeToStationXMLString(text)
+    element.text = text
+
+
+def __addNetworkToElement(doc, network):
+    net = etree.SubElement(doc, 'Network')
+    net.set('net_code', network.network_code)
+    sub = etree.SubElement(net, 'StartDate')
+    sub.text = __convertUTCDateTimeToStationXMLString(network.starttime)
+    sub = etree.SubElement(net, 'EndDate')
+    sub.text = __convertUTCDateTimeToStationXMLString(network.endtime)
+    if hasattr(network, 'description'):
+        sub = etree.SubElement(net, 'Description')
+        sub.text = network.description
+    if hasattr(network, 'total_number_of_stations'):
+        sub = etree.SubElement(net, 'TotalNumberStations')
+        sub.text = str(network.total_number_of_stations)
+
+
+def writeStationXML(inventory, file_object):
+    """
+    Writes the data in inventory as StationXML to file_object.
+    """
+    # Define namespace.
+    nsmap = {None: 'http://www.data.scec.org/xml/station/',
+             'xsi': 'http://www.w3.org/2001/XMLSchema-instance'}
+    # Create the root element with namespaces and other things.
+    doc = etree.Element('StaMessage', nsmap=nsmap)
+    doc.set('{%s}schemaLocation' % nsmap['xsi'],
+            'http://www.data.scec.org/xml/station/ ' +\
+            'http://www.data.scec.org/xml/station/station.xsd')
+    # Add the station xml specific subelements.
+    __addSubelement(doc, 'Source', inventory.stats.station_xml)
+    __addSubelement(doc, 'Sender', inventory.stats.station_xml)
+    __addSubelement(doc, 'Module', inventory.stats.station_xml)
+    __addSubelement(doc, 'ModuleURI', inventory.stats.station_xml)
+    __addSubelement(doc, 'SentDate', inventory.stats.station_xml)
+
+    for network in inventory.networks:
+        __addNetworkToElement(doc, network)
+
+    file_object.write(etree.tostring(doc, pretty_print=True))
