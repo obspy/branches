@@ -104,7 +104,8 @@ def mtinv(input_set, st_tr, st_g, fmin, fmax, nsv=1, single_force=False,
     
     # TESTING !!
     # bandpass, seems to be more robust in inversion for mechanism
-    M_t = highpass(lowpass(M_t, fmax, df, corners=4), fmin, df, corners=4)
+    #M_t = lowpass(M_t, fmax, df, corners=4)
+    #M_t = highpass(M_t, fmin, df, corners=4)
 
     # use principal component analysis for constrained inversion
     U, s, V = np.linalg.svd(M_t, full_matrices=False)
@@ -312,7 +313,7 @@ def mtinv_gs(st_tr, gl, fmin, fmax, fmax_hardcut_factor=4, S0=1., nsv=1,
     argmin = misfit.argmin()
     
     # TESTING !!! necessary to compensate for filtering of inverted stf
-    st_tr.filter('lowpass', freq=fmax, corners=4)
-    st_tr.filter('highpass', freq=fmin, corners=4)
+    #st_tr.filter('lowpass', freq=fmax, corners=4)
+    #st_tr.filter('highpass', freq=fmin, corners=4)
     return M_tl[argmin], ml[argmin], xl[argmin], sl[argmin], st_synl[argmin], st_tr, misfit, argmin
     
