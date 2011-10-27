@@ -101,18 +101,11 @@ def mtinv(input_set, st_tr, st_g, fmin, fmax, nsv=1, single_force=False,
 
     for j in np.arange(6 + single_force * 3):
         M_t[j,:] = np.fft.irfft(M[j,:])[:nfft] * df
+    
+    # TESTING !!
+    # bandpass, seems to be more robust in inversion for mechanism
+    M_t = highpass(lowpass(M_t, fmax, df, corners=4), fmin, df, corners=4)
 
-        # detrending + tapering seems to cause problems whith wrong greens
-        # functions, but works without as well, thus can be removed after some
-        # more testing
-
-        # detrend
-        # x1, x2 = M_t[j,0], M_t[j,-1]
-        # nMt = M_t[j,:].size
-        # M_t[j,:] -= (x1 + np.arange(nMt) * (x2 - x1) / float(nMt - 1))
-        # # taper
-        # M_t[j,:] *= cosTaper(nMt, 0.01)
-        
     # use principal component analysis for constrained inversion
     U, s, V = np.linalg.svd(M_t, full_matrices=False)
     m = []
@@ -176,7 +169,7 @@ def mtinv(input_set, st_tr, st_g, fmin, fmax, nsv=1, single_force=False,
     elif weighting_type == 2:
         misfit /= weights[stat_subset].sum()
 
-    return M_t, m, x, s, st_syn, misfit
+    return M_t, np.array(m), np.array(x), s, st_syn, misfit
 
 
 
@@ -246,7 +239,7 @@ def mtinv_gs(st_tr, gl, fmin, fmax, fmax_hardcut_factor=4, S0=1., nsv=1,
     returns a tuple containing:
         M_t     - time dependent Momenttensor solution (if nsv > 1 than summed
                   up mechanisms)
-        m       - time independent Momenttensor (nsv matrices)
+        m       - time independent Momenttensor (nsv arrays)
         x       - time dependence of principal component solutions in m
         s       - singular values of principal components
         st_syn  - synthetic seismograms generated with the inverted source
@@ -317,6 +310,9 @@ def mtinv_gs(st_tr, gl, fmin, fmax, fmax_hardcut_factor=4, S0=1., nsv=1,
 
     misfit = np.array(misfitl)
     argmin = misfit.argmin()
-
+    
+    # TESTING !!! necessary to compensate for filtering of inverted stf
+    st_tr.filter('lowpass', freq=fmax, corners=4)
+    st_tr.filter('highpass', freq=fmin, corners=4)
     return M_tl[argmin], ml[argmin], xl[argmin], sl[argmin], st_synl[argmin], st_tr, misfit, argmin
     
