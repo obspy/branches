@@ -1,0 +1,60 @@
+Give number of additional powers of s in nominator: Give number of 1st order subsystems: Give number of 2nd order subsystems: Give type of 2nd order system nr. 1: Give start value for corner period of subsystem nr. 1: and now its estimated uncertainty: Give start value for damping constant of subsystem nr. 1: and now its estimated uncertainty: 
+System start parameters:
+------------------------
+amp:  0.02  +/- 0.01
+del:  0.0  +/- 0.0001
+sub:  0.0  +/- 0.0
+til:  0.0  +/- 0.0
+
+2nd order subsystem nr. 1: bp2
+per:  1.0  +/- 0.2
+dmp:  0.6  +/- 0.2
+------------------------
+
+Anti alias-filter of order  5  and corner frequency  10.0 Hz applied to data!
+... writing files "M1GE.EHZ.f.msd" and "M1SI.EHZ.f.msd"
+
+Output simulated with system start parameters from sample 0 to 50000!
+... writing file "M1SI.EHZ.sim.msd"
+----------------------------------------------
+
+Iteration stops when in 4 successive steps
+RMS did not improve more than 1e-05 and
+step is lower than 0.001!
+   i    step         RMS                  amp           delay          Fc2[1]          dmp[1] 
+   0 1.412598e-02 9.164807e-02     2.102674e-02     -1.215250e-09     1.006251e+00     5.944357e-01     
+   1 1.569123e-03 9.156092e-02     2.110170e-02     -2.429183e-09     1.007362e+00     5.952364e-01     
+   2 1.361446e-03 9.151797e-02     2.106591e-02     -2.630389e-09     1.007427e+00     5.964891e-01     
+   3 2.232741e-03 9.149324e-02     2.111278e-02     -2.170500e-09     1.007742e+00     5.970060e-01     
+
+   4 1.268949e-03 9.147694e-02     2.109384e-02     -1.233487e-09     1.007537e+00     5.978167e-01     
+   5 3.894498e-03 9.146516e-02     2.112909e-02     1.256668e-12     1.007583e+00     5.981556e-01     
+   6 1.463020e-03 9.145627e-02     2.111605e-02     1.455261e-09     1.007321e+00     5.987302e-01     
+   7 9.032306e-04 9.144942e-02     2.114360e-02     3.043668e-09     1.007295e+00     5.989679e-01     
+
+   8 2.653412e-03 9.144410e-02     2.113370e-02     4.747514e-09     1.007058e+00     5.993990e-01     
+   9 2.334679e-03 9.143995e-02     2.115526e-02     6.514442e-09     1.007020e+00     5.995742e-01     
+  10 2.077478e-03 9.143671e-02     2.114760e-02     8.371390e-09     1.006823e+00     5.999069e-01     
+  11 1.818379e-03 9.143419e-02     2.116445e-02     1.024455e-08     1.006789e+00     6.000394e-01     
+
+  12 1.630270e-03 9.143221e-02     2.115850e-02     1.221382e-08     1.006632e+00     6.002992e-01     
+  13 1.415679e-03 9.143067e-02     2.117165e-02     1.415489e-08     1.006605e+00     6.004005e-01     
+  14 1.281564e-03 9.142947e-02     2.116703e-02     1.621714e-08     1.006480e+00     6.006046e-01     
+  15 1.101238e-03 9.142853e-02     2.117729e-02     1.820001e-08     1.006459e+00     6.006820e-01     
+
+  16 1.009427e-03 9.142779e-02     2.117370e-02     2.034593e-08     1.006361e+00     6.008430e-01     
+  17 8.557820e-04 9.142722e-02     2.118170e-02     2.234990e-08     1.006345e+00     6.009020e-01     
+  18 7.969714e-04 9.142677e-02     2.117892e-02     2.457665e-08     1.006267e+00     6.010294e-01     
+  19 6.643053e-04 9.142642e-02     2.118515e-02     2.658399e-08     1.006256e+00     6.010740e-01     
+
+  20 6.310666e-04 9.142614e-02     2.118300e-02     2.889418e-08     1.006194e+00     6.011753e-01     
+CONVERGED
+-----------------------------------------------
+final system parameters:
+  20 6.310666e-04 9.142614e-02     2.118300e-02     2.889418e-08     1.006194e+00     6.011753e-01     
+-----------------------------------------------
+
+... writing file "M1SI.EHZ.finfit.msd"
+... writing file "M1SI.EHZ.findiff.msd"
+... writing file M1SI.EHZ.paz
+finished!
