@@ -103,9 +103,8 @@ def mtinv(input_set, st_tr, st_g, fmin, fmax, nsv=1, single_force=False,
         M_t[j,:] = np.fft.irfft(M[j,:])[:nfft] * df
     
     # TESTING !!
-    # bandpass, seems to be more robust in inversion for mechanism
-    #M_t = lowpass(M_t, fmax, df, corners=4)
-    #M_t = highpass(M_t, fmin, df, corners=4)
+    # Lowpass stabilizes inversion in case the greensfcts do not have enough HF content
+    M_t = lowpass(M_t, fmax, df, corners=4)
 
     # use principal component analysis for constrained inversion
     U, s, V = np.linalg.svd(M_t, full_matrices=False)
@@ -176,7 +175,7 @@ def mtinv(input_set, st_tr, st_g, fmin, fmax, nsv=1, single_force=False,
 
 
 
-def mtinv_gs(st_tr, gl, fmin, fmax, fmax_hardcut_factor=4, S0=1., nsv=1,
+def mtinv_gs(st_tr, gl, fmin, fmax, fmax_hardcut_factor=2, S0=1., nsv=1,
           single_force=False, stat_subset=[], weighting_type=2, weights=[],
           cache_path='', force_recalc=False, cache=True):
     '''
@@ -312,8 +311,7 @@ def mtinv_gs(st_tr, gl, fmin, fmax, fmax_hardcut_factor=4, S0=1., nsv=1,
     misfit = np.array(misfitl)
     argmin = misfit.argmin()
     
-    # TESTING !!! necessary to compensate for filtering of inverted stf
-    #st_tr.filter('lowpass', freq=fmax, corners=4)
-    #st_tr.filter('highpass', freq=fmin, corners=4)
+    # TESTING !!! necessary to compensate for filtering (after inversion befor SVD) of inverted stf 
+    st_tr.filter('lowpass', freq=fmax, corners=4)
     return M_tl[argmin], ml[argmin], xl[argmin], sl[argmin], st_synl[argmin], st_tr, misfit, argmin
     
