@@ -25,7 +25,7 @@ class FortranHandler():
                 raise FortranHandlerError("File %s already exists.\n \
                 This could be the result of a previous run that crashed.\n \
                 Please check the file %s and %s before you run this program again." % (self.dest, self.inputfn, self.dest))
-            print "move %s --> %s" % (self.inputfn, self.dest)
+            print "mv %s --> %s" % (self.inputfn, self.dest)
             os.rename(self.inputfn, self.dest)
         else:
             raise FortranHandlerError("Can't find %s.\n \
@@ -34,6 +34,7 @@ class FortranHandler():
         self.cmd = 'esvol2m_special'
         self.pattern = re.compile(r'\d+\s+(s:\\[\w\\ -_.\d]*)')
         self.fin = open(self.dest, 'r')
+        self.firstline = self.fin.readline()
         self.data = []
         for line in self.fin.readlines():
             # ignore commented lines
@@ -89,7 +90,10 @@ class FortranHandler():
         a = line.split()
         self.highp = [float(a[1]), float(a[2])]
         self.lowp = [float(a[3]), float(a[4])]
-        self.npts = a[9]
+        self.startt = int(a[9])
+        self.endt = int(a[10])
+        self.dmn = int(a[11])
+        self.dtrnd = int(a[12])
         p = sp.Popen([self.cmd], stdout=sp.PIPE).communicate()[0]
         for line in p.split('\n'):
             match = self.pattern.match(line.strip())
