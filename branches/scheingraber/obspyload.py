@@ -16,6 +16,8 @@ This has been part of a Bachelor's Thesis at the University of Munich.
 # IMPORT SECTION as described in the thesis #
 #############################################
 # (\\label{lst:importbegin})
+# added this line for python 2.5 compatibility
+from __future__ import with_statement
 import sys
 import os
 import operator
@@ -29,7 +31,8 @@ import pickle
 #import signal
 # using threads to be able to capture keypress event without a GUI like
 # tkinter or pyqt and run the main loop at the same time.
-# this only works on posix style unix
+# this only works on posix style unix, and needs at least version 2.6 of the
+# python interpreter
 windows = sys.platform.startswith('win')
 if not windows:
     import threading
@@ -83,7 +86,7 @@ except Exception, error:
 # KEYPRESS-THREAD SECTION as described in the thesis #
 ######################################################
 # (\\label{lst:keypresswin})
-# this is to support windows without changing the rest of the code
+# this is to support windows without changing the rest
 if windows:
     class keypress_thread():
         """
@@ -118,8 +121,11 @@ else:
                 c = getkey()  # (\\label{lst:getkeycall})
                 print c
                 if c == 'q' and not done:
-                    with lock:  # (\\label{lst:lock})
-                        quit = True
+                    try:
+                        with lock:
+                            quit = True
+                    except:
+                        pass
                     print "You pressed q."
                     msg = "ObsPyLoad will finish downloading and saving the " \
                     + "last file and quit gracefully."
