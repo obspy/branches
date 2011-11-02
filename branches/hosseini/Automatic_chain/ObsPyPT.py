@@ -1,7 +1,3 @@
-#CHECK!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-
-
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #import ipdb; ipdb.set_trace()
@@ -64,7 +60,7 @@ def ObsPyPT():
 	
 	# ------------------------Read INPUT file (Parameters)--------------------
 	(input) = read_input()
-	
+	import ipdb; ipdb.set_trace()
 	# ------------------------Parallel Requests--------------------
 	if input['nodes'] == 'Y':
 		nodes(input)
@@ -181,12 +177,28 @@ def read_input():
 	input['BHN'] = S[47].split()[2]
 	input['BHZ'] = S[48].split()[2]	
 	input['other'] = S[49].split()[2]
+		
+	if S[55].split()[2] == 'None':
+		input['lat_cba'] = None
+	else:
+		input['lat_cba'] = S[55].split()[2]
+		
+	if S[56].split()[2] == 'None':
+		input['lon_cba'] = None
+	else:
+		input['lon_cba'] = S[56].split()[2]
 	
-	input['lat_cba'] = S[55].split()[2]
-	input['lon_cba'] = S[56].split()[2]
-	input['mr_cba'] = S[57].split()[2]
-	input['Mr_cba'] = S[58].split()[2]
+	if S[57].split()[2] == 'None':
+		input['mr_cba'] = None
+	else:
+		input['mr_cba'] = S[57].split()[2]
 	
+	if S[58].split()[2] == 'None':
+		input['Mr_cba'] = None
+	else:
+		input['Mr_cba'] = S[58].split()[2]
+	
+		
 	if S[59].split()[2] == 'None':
 		input['mlat_rbb'] = None
 	else:
@@ -218,19 +230,24 @@ def read_input():
 
 	input['QC_IRIS'] = S[78].split()[2]
 	input['QC_ARC'] = S[79].split()[2]
+	
+	input['email'] = S[83].split()[2]
+	input['email_address'] = S[84].split()[2]
+	
+	input['report'] = S[88].split()[2]
+	
+	input['plt_event'] = S[92].split()[2]
+	input['plot_IRIS'] = S[93].split()[2]
+	input['plot_ARC'] = S[94].split()[2]
+	input['plot_all_Events'] = S[95].split()[2]
 
-	input['plt_event'] = S[83].split()[2]
-	input['plot_IRIS'] = S[84].split()[2]
-	input['plot_ARC'] = S[85].split()[2]
-	input['plot_all_Events'] = S[86].split()[2]
-
-	input['llcrnrlon'] = float(S[88].split()[2])
-	input['llcrnrlat'] = float(S[89].split()[2])
-	input['urcrnrlon'] = float(S[90].split()[2])
-	input['urcrnrlat'] = float(S[91].split()[2])
+	input['llcrnrlon'] = float(S[97].split()[2])
+	input['llcrnrlat'] = float(S[98].split()[2])
+	input['urcrnrlon'] = float(S[99].split()[2])
+	input['urcrnrlat'] = float(S[100].split()[2])
 	
 	return input
-
+	
 ###################################################### nodes ######################################################
 
 def nodes(input):
@@ -367,8 +384,7 @@ def plot_all_events(input):
 		lat_event.append(dic_event[i]['event_lat'])
 		depth_event.append(dic_event[i]['event_depth'])
 	
-	
-	
+		
 	plt.clf()
 	
 	# lon_0 is central longitude of projection.
@@ -384,23 +400,21 @@ def plot_all_events(input):
 	#m.bluemarble()
 	#m.drawcountries(linewidth=2)
 	
-	#m.drawcoastlines()
-	#m.drawmapboundary() 
+	m.drawcoastlines()
+	m.drawmapboundary() 
 	#m.fillcontinents(color='coral',lake_color='aqua')
-	#m.fillcontinents()
+	m.fillcontinents()
 	
 	# draw parallels and meridians.
 	m.drawparallels(np.arange(-90.,120.,30.))
 	m.drawmeridians(np.arange(0.,420.,60.))
-	
-	m.drawlsmask()
 	
 	#plt.title("Mollweide Projection, Events");
 	plt.title("All Events");
 	
 	x, y = m(lon_event, lat_event)
 	m.scatter(x, y, 40, color="red", marker="o", edgecolor="k", zorder=3)
-	import ipdb; ipdb.set_trace()
+	
 	for i in range(0, len(depth_event)):
 		plt.text(x[i], y[i], ' ' + str(depth_event[i]), va="top", family="monospace", \
 		color = 'black', size = 'x-small', weight="bold")
@@ -417,16 +431,21 @@ def plot_IRIS(input):
 	
 	Address_data = input['Address'] + '/Data'
 	
-	ls_period = os.listdir(Address_data)
-	
 	pre_ls_event = []
-	for i in range(0, len(ls_period)):
-		pre_ls_event.append(Address_data + '/' + ls_period[i])	
-
-	pre_ls_event = nodes_update(input, pre_ls_event)
+	
+	tty = open(input['Address'] + '/Data/' + 'tty-info', 'r')
+	tty_str = tty.readlines()
+	
+	for i in range(0, len(tty_str)):
+		tty_str[i] = tty_str[i].split('  ,  ')
+	
+	for i in range(0, len(tty_str)):
+		if commands.getoutput('hostname') == tty_str[i][0]:
+			if commands.getoutput('tty') == tty_str[i][1]:
+				pre_ls_event.append(Address_data + '/' + tty_str[i][2])
 	
 	for i in range(0, len(pre_ls_event)):
-		print 'Plotting: ' + '\n' + str(pre_ls_event[i])
+		print 'Updating for: ' + '\n' + str(pre_ls_event[i])
 	print '*********************'
 	
 	ls_event_file = []
@@ -509,12 +528,10 @@ def plot_IRIS(input):
 					lat_IRIS_BHZ.append(float(IRIS_BHZ[j].split(',')[4]))
 					lon_IRIS_BHZ.append(float(IRIS_BHZ[j].split(',')[5]))
 			
-			import ipdb; ipdb.set_trace()
-			
 			if input['BHE'] == 'Y':			
 				
-				fig = open(ls_event[l] + '/IRIS/STATION/FIGS', 'w')
-				fig.close()
+				if os.path.exists(ls_event[l] + '/IRIS/STATION/FIGS') != True:
+					os.makedirs(ls_event[l] + '/IRIS/STATION/FIGS')
 				
 				plt.clf()
 		
@@ -543,18 +560,18 @@ def plot_IRIS(input):
 				plt.title("IRIS-Stations-BHE");
 				
 				x, y = m(lon_event, lat_event)
-				m.scatter(x, y, 40, color="red", marker="o", edgecolor="k", zorder=3)
+				m.scatter(x, y, 30, color="yellow", marker="o", edgecolor="k", zorder=3)
 				
 				x, y = m(lon_IRIS_BHE, lat_IRIS_BHE)
 				m.scatter(x, y, 20, color='red', marker="v", edgecolor="k", zorder=10)
 								
-				plt.savefig(ls_event[l] + '/IRIS/STATION/FIGS' + '/IRIS_BHE' + '.pdf')
+				plt.savefig(ls_event[l] + '/IRIS/STATION/FIGS' + '/IRIS_BHE.pdf')
 			
 			
 			if input['BHN'] == 'Y':			
 				
-				fig = open(ls_event[l] + '/IRIS/STATION/FIGS', 'w')
-				fig.close()
+				if os.path.exists(ls_event[l] + '/IRIS/STATION/FIGS') != True:
+					os.makedirs(ls_event[l] + '/IRIS/STATION/FIGS')
 				
 				plt.clf()
 		
@@ -583,18 +600,18 @@ def plot_IRIS(input):
 				plt.title("IRIS-Stations-BHN");
 				
 				x, y = m(lon_event, lat_event)
-				m.scatter(x, y, 40, color="red", marker="o", edgecolor="k", zorder=3)
+				m.scatter(x, y, 30, color="yellow", marker="o", edgecolor="k", zorder=3)
 				
 				x, y = m(lon_IRIS_BHN, lat_IRIS_BHN)
 				m.scatter(x, y, 20, color='red', marker="v", edgecolor="k", zorder=10)
 								
-				plt.savefig(ls_event[l] + '/IRIS/STATION/FIGS' + '/IRIS_BHN' + '.pdf')
+				plt.savefig(ls_event[l] + '/IRIS/STATION/FIGS' + '/IRIS_BHN.pdf')
 			
 			
 			if input['BHZ'] == 'Y':			
 				
-				fig = open(ls_event[l] + '/IRIS/STATION/FIGS', 'w')
-				fig.close()
+				if os.path.exists(ls_event[l] + '/IRIS/STATION/FIGS') != True:
+					os.makedirs(ls_event[l] + '/IRIS/STATION/FIGS')
 				
 				plt.clf()
 		
@@ -623,12 +640,12 @@ def plot_IRIS(input):
 				plt.title("IRIS-Stations-BHZ");
 				
 				x, y = m(lon_event, lat_event)
-				m.scatter(x, y, 40, color="red", marker="o", edgecolor="k", zorder=3)
+				m.scatter(x, y, 30, color="yellow", marker="o", edgecolor="k", zorder=3)
 				
 				x, y = m(lon_IRIS_BHZ, lat_IRIS_BHZ)
 				m.scatter(x, y, 20, color='red', marker="v", edgecolor="k", zorder=10)
 								
-				plt.savefig(ls_event[l] + '/IRIS/STATION/FIGS' + '/IRIS_BHZ' + '.pdf')
+				plt.savefig(ls_event[l] + '/IRIS/STATION/FIGS' + '/IRIS_BHZ.pdf')
 
 ###################################################### plot_ARC ######################################################
 

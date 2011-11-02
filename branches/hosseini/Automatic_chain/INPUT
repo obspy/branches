@@ -1,14 +1,14 @@
 INPUT file for ObsPyDMT:
  
 --------------------------------------------------------------------------------
-Address = /import/neptun-radler/hosseini-downloads/new-ObsPyDMT					# where you want to save the Waveforms, Response file and other information examples: (/media/Elements/TEST_WAVE) (/export/data/BH) (/import/neptun-radler/hosseini-downloads)
+Address = /home/hosseini/Desktop/test					# where you want to save the Waveforms, Response files and other information. examples: (/media/Elements/TEST_WAVE) (/export/data/BH) (/import/neptun-radler/hosseini-downloads) (/home/hosseini/Desktop/Mafe)
 --------------------------------------------------------------------------------
 Parameters for event request:
 
 min_datetime = 2011-02-01								# min datetime (Please consider "nodes" module and "INPUT-Periods" for parallel requests)
 max_datetime = 2011-02-03								# max datetime (Please consider "nodes" module and "INPUT-Periods" for parallel requests)
-min_magnitude = 5.5										# min magnitude
-max_magnitude = 9.6										# max magnitude
+min_magnitude = 5.5										# min magnitude (Please consider "nodes" module and "INPUT-Periods" for parallel requests)
+max_magnitude = 9.6										# max magnitude (Please consider "nodes" module and "INPUT-Periods" for parallel requests)
 
 min_latitude = -90										# min latitude (-90) (event)
 max_latitude = 90										# max latitude (90) (event)
@@ -25,18 +25,19 @@ time_after = 4800										# Time after the Event
 Type of request:
 
 get_events = Y											# To get events (Y)
-IRIS = N												# IRIS client will be used (Y)
-ArcLink = N												# ArcLink client will be used (Y)
+IRIS = Y												# IRIS client will be used (Y)
+ArcLink = Y												# ArcLink client will be used (Y)
 --------------------------------------------------------------------------------
 Parallel?
 
-mass = Y												# Download ALL waveforms, Response file and other information -- if you want to download just one station, change the flag to 'N' [In this case you should know exactly the Net, sta, loc, cha of your request]
+mass = Y												# Download ALL waveforms, Response files and other information -- if you want to download just one station, change the flag to 'N' [In this case you should know exactly the Net, sta, loc, cha of your request]
 nodes = Y												# Downloading in Parallel way -- ATTENTION: "nodes" and "INPUT-Periods" --> You should enter the required periods in "INPUT-Periods".
 --------------------------------------------------------------------------------
 What do you want to get?
 
 waveform = Y											# get Waveforms
 response = Y											# get Response file
+SAC = Y													# save waveforms in SAC format
 --------------------------------------------------------------------------------
 Some specifications about your request:
 
@@ -69,22 +70,31 @@ TEST_no = 10											# How many stations you want to test for!
 --------------------------------------------------------------------------------
 Update:
 
-update_iris = N											# Update the IRIS folder
+update_iris = N										# Update the IRIS folder
 update_arc = N											# Update the ArcLink folder
 Number_of_Updating_IRIS = 1								# Number of iterations on IRIS folders for updating
 Number_of_Updating_ARC = 1								# Number of iterations on ArcLink folders for updating
 --------------------------------------------------------------------------------
 Quality Control:
 
-QC_IRIS = N												# Quality Control for IRIS
-QC_ARC = N												# Quality Control for ArcLink
+QC_IRIS = Y												# Quality Control for IRIS
+QC_ARC = Y												# Quality Control for ArcLink
 --------------------------------------------------------------------------------
-Plot: (Specifically for ObsPyPT [ObsPy Plotting Tool])
+Email:
+
+email = Y												# After completing your job, an email will be sent to your mailbox (for each node)
+email_address = NDLB.partI@gmail.com					# Address of your email
+--------------------------------------------------------------------------------
+Report:
+
+report = Y												# After completing your job, a report will be generated in 'Address/Data' (Address is defined in line 4)
+--------------------------------------------------------------------------------
+Plot: (For ObsPyPT [ObsPy Plotting Tool])
 
 plot_events = off										# whether you want to have a plot of events or not (on/off)...ATTENTION: you should have "mpl_toolkits.basemap" already installed. [refer: http://pypi.python.org/pypi/basemap]
 plot_IRIS = N											# Plot all available IRIS stations...ATTENTION: you should have "mpl_toolkits.basemap" already installed. [refer: http://pypi.python.org/pypi/basemap]
 plot_ARC = N											# Plot all available ARC stations...ATTENTION: you should have "mpl_toolkits.basemap" already installed. [refer: http://pypi.python.org/pypi/basemap]
-plot_all_Events = Y										# Plot all requested events...ATTENTION: you should have "mpl_toolkits.basemap" already installed. [refer: http://pypi.python.org/pypi/basemap]
+plot_all_Events = Y										# Plot all requested events in one plot...ATTENTION: you should have "mpl_toolkits.basemap" already installed. [refer: http://pypi.python.org/pypi/basemap]
 
 llcrnrlon = -180 										# longitude of lower left hand corner of the desired map domain (degrees).
 llcrnrlat = -90  										# latitude of lower left hand corner of the desired map domain (degrees).

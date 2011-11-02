@@ -1,6 +1,14 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-#import ipdb; ipdb.set_trace()
+
+#-------------------------------------------------------------------
+#   Filename:  NDLB_part_I.py
+#   Author:    S. Kasra Hosseini zad
+#   Email:     hosseini@geophysik.uni-muenchen.de
+#
+#   Copyright (C) 2011 Seyed Kasra Hosseini zad
+#-------------------------------------------------------------------
+
 
 """
 NDLB-Part_I (No Data Left Behind-Part_I)
@@ -14,9 +22,12 @@ Goal: Management, Instrument Correction and Plotting of Large Seismic Datasets b
  (http://www.gnu.org/copyleft/lesser.html)
 """
 
+#for debugging: import ipdb; ipdb.set_trace()
+
 """
 - Import required Modules (Python and Obspy)
 - ObsPyDMT and ObsPyLoad
+- Update Response Folder
 - Instrument Correction
 - ObsPyPT
 """
@@ -50,9 +61,10 @@ def NDLB_part_I():
 	print '--------------------------------------------------------------------------------' + '\n'
 	
 	user_input = raw_input('NDLB_part_I could do the following taske for you:' + '\n\n' + \
-			'1. Save raw counts, response file, quality control (Gap, Timing Quality, Data Quality) and update the folder.' + '\n' +
-			'2. Instrument Correction (Acceleration, Velocity or Displacement)' + '\n'
-			'3. Plotting events, available stations and ray path.' + '\n\n' + 
+			'1. Save raw counts, response files, quality control (Gap, Timing Quality, Data Quality) and update the folder.' + '\n' +
+			'2. Update Response Folder. (This module will remove the Response folder and generate that one more time.)' + '\n'
+			'3. Instrument Correction (Acceleration, Velocity or Displacement)' + '\n'
+			'4. Plotting events, available stations and ray path.' + '\n\n' + 
 			'Please choose what you want to do:')
 	print '--------------------------------------------------------------------------------' + '\n'
 	
@@ -60,7 +72,7 @@ def NDLB_part_I():
 	# ------------------------ ObsPyDMT and ObsPyLoad ------------------------
 	if user_input == '1':
 		print '<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>'
-		print '1. Save raw counts, response file, quality control (Gap, Timing Quality, Data Quality) and update the folder.'
+		print '1. Save raw counts, response files, quality control (Gap, Timing Quality, Data Quality) and update the folder.'
 		print '<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>' + '\n'
 		
 		user_input_1 = raw_input('a. ObsPyDMT (ObsPy Data Management Tool) --> Download raw counts, response files and other information by reading the "INPUT" file.' + '\n' +
@@ -74,24 +86,33 @@ def NDLB_part_I():
 		if user_input_1 == 'b':
 			obspyload()
 	
-	# ------------------------ Instrument Correction ------------------------
+	# ------------------------ Update Response Folder ------------------------
 	if user_input == '2':
+		print '<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>'
+		print '2. Update Response Folder. (This module will remove the Response folder and generate that one more time.)'
+		print '<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>' + '\n'
+		
+		print 'Under Construction!!!'
+		print '<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>' + '\n'
+	
+	# ------------------------ Instrument Correction ------------------------
+	if user_input == '3':
 		print '<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>'
-		print '2. Instrument Correction (Acceleration, Velocity or Displacement)'
+		print '3. Instrument Correction (Acceleration, Velocity or Displacement)'
 		print '<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>' + '\n'
 		
-		user_input_2 = raw_input('You could correct the seismogram/s to:' + '\n\n' + \
+		user_input_3 = raw_input('You could correct the seismogram/s to:' + '\n\n' + \
 			'a. Acceleration' + '\n' +
 			'b. Velocity' + '\n' +
 			'c. Displacement' + '\n\n' +
-			'Please choose one of them:')
+			'Please choose one:')
 		print 'Under Construction!!!'
 		print '<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>' + '\n'
 	
 	# ------------------------ ObsPyPT ------------------------
-	if user_input == '3':
+	if user_input == '4':
 		print '<><><><><><><><><><><><><><><><><><><><><><><><><><><>'
-		print '3. Plotting events, available stations and ray path.'
+		print '4. Plotting events, available stations and ray path.'
 		print '<><><><><><><><><><><><><><><><><><><><><><><><><><><>' + '\n'
 		ObsPyPT()
 

@@ -1,34 +1,37 @@
 #!/bin/tcsh
 
-set add = "/import/neptun-radler/hosseini-downloads/Data"
+set add = $1
 
 
-set rep_IRIS = "$add/*/*/IRIS/STATION/Report_station"
-set rep_ARC = "$add/*/*/ARC/STATION/Report_station"
+set rep_IRIS = "$add/*/*/IRIS/STATION/report_st"
+set rep_ARC = "$add/*/*/ARC/STATION/report_st"
 
-set exc_IRIS = "$add/*/*/IRIS/EXCEP/Exception_file_IRIS"
-set exc_ARC = "$add/*/*/ARC/EXCEP/Exception_file_ARC"
+set exc_IRIS = "$add/*/*/IRIS/EXCEP/excep_iris"
+set exc_ARC = "$add/*/*/ARC/EXCEP/excep_arc"
 
-set DQ_IRIS = "$add/*/*/IRIS/QC/DataQuality"
-set DQ_ARC = "$add/*/*/ARC/QC/DataQuality"
+set DQ_IRIS = "$add/*/*/IRIS/QC/DQ"
+set DQ_ARC = "$add/*/*/ARC/QC/DQ"
 
-set TQ_IRIS = "$add/*/*/IRIS/QC/TimingQuality"
-set TQ_ARC = "$add/*/*/ARC/QC/TimingQuality"
+set TQ_IRIS = "$add/*/*/IRIS/QC/TQ"
+set TQ_ARC = "$add/*/*/ARC/QC/TQ"
 
-set GAP_IRIS = "$add/*/*/IRIS/QC/GAP"
-set GAP_ARC = "$add/*/*/ARC/QC/GAP"
+set GAP_IRIS = "$add/*/*/IRIS/QC/gap"
+set GAP_ARC = "$add/*/*/ARC/QC/gap"
 
-cat $rep_IRIS >> ~/Desktop/report/report_IRIS.txt
-cat $rep_ARC >> ~/Desktop/report/report_ARC.txt
 
-cat $exc_IRIS >> ~/Desktop/report/excep_IRIS.txt
-cat $exc_ARC >> ~/Desktop/report/excep_ARC.txt
+set add2 = $2
 
-cat $DQ_IRIS >> ~/Desktop/report/DQ_IRIS.txt
-cat $DQ_ARC >> ~/Desktop/report/DQ_ARC.txt
+cat $rep_IRIS >> $add2/report_iris.txt
+cat $rep_ARC >> $add2/report_arc.txt
 
-cat $TQ_IRIS >> ~/Desktop/report/TQ_IRIS.txt
-cat $TQ_ARC >> ~/Desktop/report/TQ_ARC.txt
+cat $exc_IRIS >> $add2/excep_iris.txt
+cat $exc_ARC >> $add2/excep_arc.txt
 
-cat $GAP_IRIS >> ~/Desktop/report/GAP_IRIS.txt
-cat $GAP_ARC >> ~/Desktop/report/GAP_ARC.txt
+cat $DQ_IRIS >> $add2/DQ_iris.txt
+cat $DQ_ARC >> $add2/DQ_arc.txt
+
+cat $TQ_IRIS >> $add2/TQ_iris.txt
+cat $TQ_ARC >> $add2/TQ_arc.txt
+
+cat $GAP_IRIS >> $add2/gap_iris.txt
+cat $GAP_ARC >> $add2/gap_arc.txt
