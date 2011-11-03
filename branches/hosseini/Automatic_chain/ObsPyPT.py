@@ -1,6 +1,14 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-#import ipdb; ipdb.set_trace()
+
+#-------------------------------------------------------------------
+#   Filename:  ObsPyPT.py
+#   Author:    S. Kasra Hosseini zad
+#   Email:     hosseini@geophysik.uni-muenchen.de
+#
+#   Copyright (C) 2011 Seyed Kasra Hosseini zad
+#-------------------------------------------------------------------
+
 
 """
 ObsPyPT (ObsPy Plotting Tool)
@@ -14,6 +22,7 @@ Goal: Plotting tools for Large Seismic Datasets
  (http://www.gnu.org/copyleft/lesser.html)
 """
 
+#for debugging: import ipdb; ipdb.set_trace()
 
 """
 - Import required Modules (Python and Obspy)
@@ -30,13 +39,23 @@ Goal: Plotting tools for Large Seismic Datasets
 
 
 # ------------------------Import required Modules (Python and Obspy)-------------
-from mpl_toolkits.basemap import Basemap
+from obspy.core import read
+
 from datetime import datetime
 import matplotlib.pyplot as plt
 import numpy as np
 import commands
+import glob
+import shutil
 import pickle
 import os
+
+try:
+	from mpl_toolkits.basemap import Basemap
+except Exception, error:
+    print error
+    print "Missing dependencies, no plotting available."
+
 
 ####################################################################################################################################
 ########################################################### Main Program ###########################################################
@@ -60,11 +79,40 @@ def ObsPyPT():
 	
 	# ------------------------Read INPUT file (Parameters)--------------------
 	(input) = read_input()
-	import ipdb; ipdb.set_trace()
-	# ------------------------Parallel Requests--------------------
-	if input['nodes'] == 'Y':
-		nodes(input)
 	
+	add_ress = get_address(input, interactive = input['inter_address'])
+	(net, sta, loc, cha) = get_info(input, interactive = input['inter_address'])
+	add_save = address_save(input, interactive = input['inter_address'])
+	
+	plt_file = plot_file(add_ress, add_save, net, sta, loc, cha)
+			
+	# ------------------------plot events--------------------------------
+	if input['plt_event'] == 'Y':
+		
+		print '*********************'
+		print 'event -- Plotting'
+		print '*********************'
+					
+		plot_event(input, add_ress, add_save)
+				
+	# ------------------------plot IRIS stations--------------------------------
+	if input['plt_sta'] == 'Y':
+			
+		print '*********************'
+		print 'Stations -- Plotting'
+		print '*********************'
+			
+		plot_sta(input, add_ress, add_save)
+		
+	# ------------------------plot ray path--------------------------------
+	if input['plt_ray'] == 'Y':
+			
+		print '*********************'
+		print 'Plot ray path'
+		print '*********************'
+			
+		plot_ray(input, add_ress, add_save)
+			
 	# ------------------------plot all events--------------------------------
 	
 	if input['plot_all_Events'] == 'Y':
@@ -74,33 +122,6 @@ def ObsPyPT():
 		print '*********************'
 		
 		plot_all_events(input)
-	
-	# ------------------------plot IRIS stations--------------------------------
-	if input['plot_IRIS'] == 'Y':
-		
-		print '*********************'
-		print 'IRIS -- Plotting'
-		print '*********************'
-		
-		plot_IRIS(input)
-	
-	# ------------------------plot ArcLink stations--------------------------------
-	if input['plot_ARC'] == 'Y':
-		
-		print '*********************'
-		print 'ArcLink -- Plotting'
-		print '*********************'
-		
-		plot_ARC(input)
-	
-	# ------------------------plot events--------------------------------
-	if input['plt_event'] == 'on':		
-		plot_events(input)
-	
-	# ------------------------plot ray path--------------------------------
-	
-	
-	
 		
 	# ---------------------------------------------------------------
 	t2_pro = datetime.now()
@@ -138,177 +159,393 @@ def read_input():
 	S = f.readlines()
 	input = {}
 	input['Address'] = S[3].split()[2]
-	input['min_date'] = S[7].split()[2]
-	input['max_date'] = S[8].split()[2]
-	input['min_mag'] = float(S[9].split()[2])
-	input['max_mag'] = float(S[10].split()[2])
-	input['min_lat'] = float(S[12].split()[2])
-	input['max_lat'] = float(S[13].split()[2])
-	input['min_lon'] = float(S[14].split()[2])
-	input['max_lon'] = float(S[15].split()[2])
-	input['min_depth'] = float(S[17].split()[2])
-	input['max_depth'] = float(S[18].split()[2])
-	input['max_result'] = int(S[19].split()[2])
-	input['t_before'] = float(S[21].split()[2])
-	input['t_after'] = float(S[22].split()[2])
+	input['inter_address'] = S[4].split()[2]
+	input['min_date'] = S[8].split()[2]
+	input['max_date'] = S[9].split()[2]
+	input['min_mag'] = float(S[10].split()[2])
+	input['max_mag'] = float(S[11].split()[2])
+	input['min_lat'] = float(S[13].split()[2])
+	input['max_lat'] = float(S[14].split()[2])
+	input['min_lon'] = float(S[15].split()[2])
+	input['max_lon'] = float(S[16].split()[2])
+	input['min_depth'] = float(S[18].split()[2])
+	input['max_depth'] = float(S[19].split()[2])
+	input['max_result'] = int(S[20].split()[2])
+	input['t_before'] = float(S[22].split()[2])
+	input['t_after'] = float(S[23].split()[2])
 
-	input['get_events'] = S[26].split()[2]
-	input['IRIS'] = S[27].split()[2]
-	input['ArcLink'] = S[28].split()[2]
+	input['get_events'] = S[27].split()[2]
+	input['IRIS'] = S[28].split()[2]
+	input['ArcLink'] = S[29].split()[2]
 	
-	input['mass'] = S[32].split()[2]	
-	input['nodes'] = S[33].split()[2]
+	input['mass'] = S[33].split()[2]	
+	input['nodes'] = S[34].split()[2]
 
-	input['waveform'] = S[37].split()[2]
-	input['response'] = S[38].split()[2]
+	input['waveform'] = S[38].split()[2]
+	input['response'] = S[39].split()[2]
+	input['SAC'] = S[40].split()[2]
 	
-	input['net'] = S[42].split()[2]
-	input['sta'] = S[43].split()[2]
+	input['net'] = S[44].split()[2]
+	input['sta'] = S[45].split()[2]
 	
-	if S[44].split()[2] == "''":
+	if S[46].split()[2] == "''":
 		input['loc'] = ''
-	elif S[44].split()[2] == '""':
+	elif S[46].split()[2] == '""':
 		input['loc'] = ''
 	else:
-		input['loc'] = S[44].split()[2]
+		input['loc'] = S[46].split()[2]
 	
-	input['cha'] = S[45].split()[2]
-	input['BHE'] = S[46].split()[2]
-	input['BHN'] = S[47].split()[2]
-	input['BHZ'] = S[48].split()[2]	
-	input['other'] = S[49].split()[2]
+	input['cha'] = S[47].split()[2]
+	input['BHE'] = S[48].split()[2]
+	input['BHN'] = S[49].split()[2]
+	input['BHZ'] = S[50].split()[2]	
+	input['other'] = S[51].split()[2]
 		
-	if S[55].split()[2] == 'None':
+	if S[57].split()[2] == 'None':
 		input['lat_cba'] = None
 	else:
-		input['lat_cba'] = S[55].split()[2]
+		input['lat_cba'] = S[57].split()[2]
 		
-	if S[56].split()[2] == 'None':
+	if S[58].split()[2] == 'None':
 		input['lon_cba'] = None
 	else:
-		input['lon_cba'] = S[56].split()[2]
+		input['lon_cba'] = S[58].split()[2]
 	
-	if S[57].split()[2] == 'None':
+	if S[59].split()[2] == 'None':
 		input['mr_cba'] = None
 	else:
-		input['mr_cba'] = S[57].split()[2]
-	
-	if S[58].split()[2] == 'None':
-		input['Mr_cba'] = None
-	else:
-		input['Mr_cba'] = S[58].split()[2]
-	
-		
-	if S[59].split()[2] == 'None':
-		input['mlat_rbb'] = None
-	else:
-		input['mlat_rbb'] = S[59].split()[2]
+		input['mr_cba'] = S[59].split()[2]
 	
 	if S[60].split()[2] == 'None':
-		input['Mlat_rbb'] = None
+		input['Mr_cba'] = None
 	else:
-		input['Mlat_rbb'] = S[60].split()[2]
+		input['Mr_cba'] = S[60].split()[2]
 	
+		
 	if S[61].split()[2] == 'None':
-		input['mlon_rbb'] = None
+		input['mlat_rbb'] = None
 	else:
-		input['mlon_rbb'] = S[61].split()[2]
+		input['mlat_rbb'] = S[61].split()[2]
 	
 	if S[62].split()[2] == 'None':
+		input['Mlat_rbb'] = None
+	else:
+		input['Mlat_rbb'] = S[62].split()[2]
+	
+	if S[63].split()[2] == 'None':
+		input['mlon_rbb'] = None
+	else:
+		input['mlon_rbb'] = S[63].split()[2]
+	
+	if S[64].split()[2] == 'None':
 		input['Mlon_rbb'] = None
 	else:
-		input['Mlon_rbb'] = S[62].split()[2]
+		input['Mlon_rbb'] = S[64].split()[2]
 
 	
-	input['TEST'] = S[66].split()[2]
-	input['TEST_no'] = int(S[67].split()[2])
+	input['TEST'] = S[68].split()[2]
+	input['TEST_no'] = int(S[69].split()[2])
 	
-	input['update_iris'] = S[71].split()[2]
-	input['update_arc'] = S[72].split()[2]
-	input['No_updating_IRIS'] = int(S[73].split()[2])
-	input['No_updating_ARC'] = int(S[74].split()[2])
+	input['update_iris'] = S[73].split()[2]
+	input['update_arc'] = S[74].split()[2]
+	input['No_updating_IRIS'] = int(S[75].split()[2])
+	input['No_updating_ARC'] = int(S[76].split()[2])
 
-	input['QC_IRIS'] = S[78].split()[2]
-	input['QC_ARC'] = S[79].split()[2]
+	input['QC_IRIS'] = S[80].split()[2]
+	input['QC_ARC'] = S[81].split()[2]
 	
-	input['email'] = S[83].split()[2]
-	input['email_address'] = S[84].split()[2]
+	input['email'] = S[85].split()[2]
+	input['email_address'] = S[86].split()[2]
 	
-	input['report'] = S[88].split()[2]
+	input['report'] = S[90].split()[2]
 	
-	input['plt_event'] = S[92].split()[2]
-	input['plot_IRIS'] = S[93].split()[2]
-	input['plot_ARC'] = S[94].split()[2]
-	input['plot_all_Events'] = S[95].split()[2]
+	input['plt_event'] = S[94].split()[2]
+	input['plt_sta'] = S[95].split()[2]
+	input['plt_ray'] = S[96].split()[2]
 
-	input['llcrnrlon'] = float(S[97].split()[2])
-	input['llcrnrlat'] = float(S[98].split()[2])
-	input['urcrnrlon'] = float(S[99].split()[2])
-	input['urcrnrlat'] = float(S[100].split()[2])
+	input['llcrnrlon'] = float(S[98].split()[2])
+	input['llcrnrlat'] = float(S[99].split()[2])
+	input['urcrnrlon'] = float(S[100].split()[2])
+	input['urcrnrlat'] = float(S[101].split()[2])
+	
+	input['lat_0'] = float(S[103].split()[2])
+	input['lon_0'] = float(S[104].split()[2])
+	
+	input['plt_folder'] = S[106].split()[2]
+	input['plt_save'] = S[107].split()[2]
 	
 	return input
-	
-###################################################### nodes ######################################################
 
-def nodes(input):
+###################################################### get_address ######################################################
+
+def get_address(input, interactive = 'Y'):
 	
 	"""
-	Downloading in Parallel way
-	Please change the 'INPUT-Periods' file for different requests
-	Suggestion: Do not request more than 10 in parallel...
+	This program gets the address of target stations for plotting
 	"""
 	
-	add = os.getcwd()
-	add += '/INPUT-Periods'
-	f = open(add)
-	per_tty = f.readlines()
-	
-	for i in range(0, len(per_tty)):
-		per_tty[i] = per_tty[i].split('_')
-	
-	if os.path.exists(input['Address'] + '/Data/' + 'tty-info') != True:
-	
-		if os.path.exists(input['Address'] + '/Data') != True:
-			os.makedirs(input['Address'] + '/Data')
-	
-		tty = open(input['Address'] + '/Data/' + 'tty-info', 'w')
-		
-		tty.writelines(commands.getoutput('hostname') + '  ,  ' + commands.getoutput('tty') + '  ,  ' + per_tty[0][0] + \
-				'_' + per_tty[0][1] + '_' + per_tty[0][2] + '_' + per_tty[0][3][:-1] + '  ,  ' +  '\n')
-		
-		tty.close()
+	if interactive == 'Y':
+		print '----------------------------------------------------'
+		address = raw_input('Please enter the target address:' + '\n')
+		print '----------------------------------------------------'
 		
 	else:
-		n = int(raw_input('Please enter a node number:' + '\n' + '(If you enter "-1", it means that the node number already exists in the file.)' + '\n'))
-		print '-------------------------------------------------------------'
-		
-		if n == -1:
-			print 'You entered "-1" -- the node number exists in the tty-info!'
-			print '-------------------------------------------------------------'
-		else: 
-			tty = open(input['Address'] + '/Data/' + 'tty-info', 'a')
-			tty.writelines(commands.getoutput('hostname') + '  ,  ' + commands.getoutput('tty') + '  ,  ' + per_tty[n][0] + \
-					'_' + per_tty[n][1] + '_' + per_tty[n][2] + '_' + per_tty[n][3][:-1] + '  ,  ' +  '\n')
+		address = input['plt_folder']
+	
+	return address
 
-			tty.close()		
+###################################################### get_info ######################################################
+
+def get_info(input, interactive = 'Y'):
 	
+	"""
+	Get the required info for plotting...
+	"""
+	if interactive == 'Y':
+		print 'To proceed to the next step, we need:'
+		print '--------------------'
+		net = raw_input('Network:' + '\n')
+		print '--------------------'
+		sta = raw_input('Station:' + '\n')
+		print '--------------------'
+		loc = raw_input('Location:' + '\n')
+		print '--------------------'
+		cha = raw_input('Channel:' + '\n')
+		print '--------------------'
+
+	else:
+		net = input['net']
+		sta = input['sta']
+		loc = input['loc']
+		cha = input['cha']
 	
-	Address_data = input['Address'] + '/Data'
+	return net, sta, loc, cha
+
+###################################################### address_save ######################################################
+
+def address_save(input, interactive = 'Y'):
 	
-	tty = open(input['Address'] + '/Data/' + 'tty-info', 'r')
-	tty_str = tty.readlines()
+	"""
+	This program gets the address where it should save the figures
+	"""
 	
-	for i in range(0, len(tty_str)):
-		tty_str[i] = tty_str[i].split('  ,  ')
+	if interactive == 'Y':
+		print '----------------------------------------------------'
+		address = raw_input('Please enter the address, where you want to save the figures:' + '\n')
+		print '----------------------------------------------------'
 	
-	for i in range(0, len(tty_str)):
-		if commands.getoutput('hostname') == tty_str[i][0]:
-			if commands.getoutput('tty') == tty_str[i][1]:
-				
-				input['min_date'] = tty_str[i][2].split('_')[0]
-				input['max_date'] = tty_str[i][2].split('_')[1]
+	else:
+		address = input['plt_save']
+	
+	return address
+
+###################################################### plot_file ######################################################
+
+def plot_file(add_ress, add_save, net, sta, loc, cha):
+	
+	"""
+	Write a file that contains info about event and stations...
+	"""
+	
+	if os.path.exists(add_save + '/plot_file') == True:
+		print '--------------------'
+		print '"plot_file" exists in: ' + add_ress
+		print '--------------------'
+		ques = raw_input('Do you want to update the file: (Y/N)' + '\n')
+		
+		if ques == 'Y':
+			print '--------------------'
+			print 'ObsPyPT is about to generate plot_file...'
+			print '--------------------'
+			
+			os.remove(add_save + '/plot_file')
+			
+			gl_sta = glob.glob(add_ress + '/' + net + '.' + sta + '.' + loc + '.' + cha)
+			file_plt = open(add_save + '/' + 'plot_file', 'w')
+			file_plt.close()
+			
+			for i in gl_sta:
+				file_plt = open(add_save + '/' + 'plot_file', 'a')
+				st = read(i)
+				str_file = st[0].stats['network'] + ',' + st[0].stats['station'] + ',' + \
+							st[0].stats['location'] + ',' + st[0].stats['channel'] + ',' + str(st[0].stats['sac']['stla']) + \
+							',' +  str(st[0].stats['sac']['stlo']) + ',' +  str(st[0].stats['sac']['stel']) + ',' + 'burrial' + ',' + 'event_id' + ',' + \
+							 str(st[0].stats['sac']['evla']) + ',' + str(st[0].stats['sac']['evlo']) + ',' + str(st[0].stats['sac']['evdp']) + ',' + \
+							str(st[0].stats['sac']['mag'])  + ',' + '\n'
+				file_plt.writelines(str_file)
+				file_plt.close()
+							
+	else:
+		print '--------------------'
+		print 'ObsPyPT is about to generate plot_file...'
+		print '--------------------'
+		
+		gl_sta = glob.glob(add_ress + '/' + net + '.' + sta + '.' + loc + '.' + cha)
+		file_plt = open(add_save + '/' + 'plot_file', 'w')
+		file_plt.close()
+		
+		for i in gl_sta:
+			file_plt = open(add_save + '/' + 'plot_file', 'a')
+			st = read(i)
+			str_file = st[0].stats['network'] + ',' + st[0].stats['station'] + ',' + \
+						st[0].stats['location'] + ',' + st[0].stats['channel'] + ',' + str(st[0].stats['sac']['stla']) + \
+						',' +  str(st[0].stats['sac']['stlo']) + ',' +  str(st[0].stats['sac']['stel']) + ',' + 'burrial' + ',' + 'event_id' + ',' + \
+						 str(st[0].stats['sac']['evla']) + ',' + str(st[0].stats['sac']['evlo']) + ',' + str(st[0].stats['sac']['evdp']) + ',' + \
+						str(st[0].stats['sac']['mag'])  + ',' + '\n'
+			file_plt.writelines(str_file)
+			file_plt.close()
+		
+###################################################### plot_events ######################################################
+
+def plot_event(input, add_ress, add_save):
+	
+	"""
+	Plot a map that shows the requested event...
+	"""
+	
+	fi_plt = open(add_save + '/' + 'plot_file', 'r')
+	file_plt = fi_plt.readlines()
+	
+	for i in range(0, len(file_plt)):
+		file_plt[i] = file_plt[i].split(',')
+	
+	lat_ev = float(file_plt[0][9])
+	lon_ev = float(file_plt[0][10])
+	
+	plt.clf()
+	
+	# lon_0 is central longitude of projection.
+	# resolution = 'c' means use crude resolution coastlines.
+	
+	m = Basemap(projection='moll', lon_0=lon_ev, lat_0=lat_ev, resolution='c')
+	
+	# Different Options for drawing the Earth:
+	#m = Basemap(projection='lcc',lon_0=0,resolution='c')
+	#m.bluemarble()
+	#m.drawcountries(linewidth=2)
+	
+	m.drawcoastlines()
+	
+	#m.fillcontinents(color='coral',lake_color='aqua')
+	m.fillcontinents()
+	
+	# draw parallels and meridians.
+	m.drawparallels(np.arange(-90.,120.,30.))
+	m.drawmeridians(np.arange(0.,420.,60.))
+	m.drawmapboundary() 
+	
+	#plt.title("Mollweide Projection, Events");
+	plt.title("Event");
+	
+	x, y = m(lon_ev, lat_ev)
+	m.scatter(x, y, 40, color="black", marker="o", edgecolor="k", zorder=3)
+	
+	plt.text(x, y, ' ' + str(file_plt[0][11]), va="top", family="monospace", \
+		color = 'black', size = 'x-small', weight="bold")
+	
+	plt.savefig(add_save + '/plot_event' + '.pdf')	
+
+###################################################### plot_sta ######################################################
+
+def plot_sta(input, add_ress, add_save):	
+	
+	"""
+	Plot all available IRIS stations
+	"""
+	
+	fi_plt = open(add_save + '/' + 'plot_file', 'r')
+	file_plt = fi_plt.readlines()
+	
+	for i in range(0, len(file_plt)):
+		file_plt[i] = file_plt[i].split(',')
+	
+	lat_ev = float(file_plt[0][9])
+	lon_ev = float(file_plt[0][10])
 					
-	return input
+	plt.clf()
+		
+	# lon_0 is central longitude of projection.
+	# resolution = 'c' means use crude resolution coastlines.
+				
+	m = Basemap(projection='moll', lon_0=lon_ev, lat_0=lat_ev, resolution='c')
+		
+	# Different Options for drawing the Earth:
+	#m = Basemap(projection='lcc',lon_0=0,resolution='c')
+	#m.bluemarble()
+	#m.drawcountries(linewidth=2)
+				
+	m.drawcoastlines()
+		
+	#m.fillcontinents(color='coral',lake_color='aqua')
+	m.fillcontinents()
+		
+	# draw parallels and meridians.
+	m.drawparallels(np.arange(-90.,120.,30.))
+	m.drawmeridians(np.arange(0.,420.,60.))
+	m.drawmapboundary() 
+				
+	plt.title("Stations" + ' -- ' + str(len(file_plt)));
+	
+	x, y = m(float(file_plt[0][10]), float(file_plt[0][9]))
+	m.scatter(x, y, 30, color="black", marker="o", edgecolor="k", zorder=3)
+	
+	for i in range(0, len(file_plt)):		
+		x, y = m(float(file_plt[i][5]), float(file_plt[i][4]))
+		m.scatter(x, y, 20, color='red', marker="v", edgecolor="k", zorder=10)
+								
+	plt.savefig(add_save + '/plot_iris' + '.pdf')
+
+###################################################### plot_ray ######################################################
+
+def plot_ray(input, add_ress, add_save):	
+	
+	"""
+	Plot ray path from an event to stations
+	"""
+	
+	fi_plt = open(add_save + '/' + 'plot_file', 'r')
+	file_plt = fi_plt.readlines()
+	
+	for i in range(0, len(file_plt)):
+		file_plt[i] = file_plt[i].split(',')
+						
+	plt.clf()
+	
+	lat_ev = float(file_plt[0][9])
+	lon_ev = float(file_plt[0][10])
+	
+	# lon_0 is central longitude of projection.
+	# resolution = 'c' means use crude resolution coastlines.
+				
+	m = Basemap(projection='moll', lon_0=lon_ev, lat_0=lat_ev, resolution='c')
+		
+	# Different Options for drawing the Earth:
+	#m = Basemap(projection='lcc',lon_0=0,resolution='c')
+	#m.bluemarble()
+	#m.drawcountries(linewidth=2)
+				
+	m.drawcoastlines()
+		
+	#m.fillcontinents(color='coral',lake_color='aqua')
+	m.fillcontinents()
+		
+	# draw parallels and meridians.
+	m.drawparallels(np.arange(-90.,120.,30.))
+	m.drawmeridians(np.arange(0.,420.,60.))
+	m.drawmapboundary() 
+				
+	plt.title("Ray Path");
+	
+	x, y = m(float(file_plt[0][10]), float(file_plt[0][9]))
+	m.scatter(x, y, 30, color="black", marker="o", edgecolor="k", zorder=3)
+	
+	for i in range(0, len(file_plt)):		
+		x, y = m(float(file_plt[i][5]), float(file_plt[i][4]))
+		m.scatter(x, y, 20, color='red', marker="v", edgecolor="k", zorder=10)
+		m.drawgreatcircle(float(file_plt[i][10]), float(file_plt[i][9]), float(file_plt[i][5]), float(file_plt[i][4]), \
+			color = 'blue', zorder=2, linestyle='-')
+				
+	plt.savefig(add_save + '/plot_ray' + '.pdf')
 
 ###################################################### plot_all_events ######################################################
 
@@ -420,559 +657,6 @@ def plot_all_events(input):
 		color = 'black', size = 'x-small', weight="bold")
 	
 	plt.savefig(Address_data + '/Plot_all_events' + '.pdf')
-	
-###################################################### plot_IRIS ######################################################
-
-def plot_IRIS(input):	
-	
-	"""
-	Plot all available IRIS stations
-	"""
-	
-	Address_data = input['Address'] + '/Data'
-	
-	pre_ls_event = []
-	
-	tty = open(input['Address'] + '/Data/' + 'tty-info', 'r')
-	tty_str = tty.readlines()
-	
-	for i in range(0, len(tty_str)):
-		tty_str[i] = tty_str[i].split('  ,  ')
-	
-	for i in range(0, len(tty_str)):
-		if commands.getoutput('hostname') == tty_str[i][0]:
-			if commands.getoutput('tty') == tty_str[i][1]:
-				pre_ls_event.append(Address_data + '/' + tty_str[i][2])
-	
-	for i in range(0, len(pre_ls_event)):
-		print 'Updating for: ' + '\n' + str(pre_ls_event[i])
-	print '*********************'
-	
-	ls_event_file = []
-	for i in pre_ls_event:
-		ls_event_file.append(os.listdir(i))
-	
-	ls_event = []
-	
-	for i in range(0, len(ls_event_file)):
-		for j in range(0, len(ls_event_file[i])):
-			if ls_event_file[i][j] != 'list_event':
-				if ls_event_file[i][j] != 'EVENT':
-					ls_event.append(pre_ls_event[0] + '/' + ls_event_file[i][j])
-					print ls_event_file[i][j]
-	
-	add_IRIS_events = []
-	for i in pre_ls_event:
-		add_IRIS_events.append(i + '/list_event')
-		
-	events_all = []
-	
-	for i in add_IRIS_events:
-		Event_file = open(i, 'r')
-		events_all.append(Event_file)
-			
-	
-	events_all_file = []
-	
-	for l in range(0, len(events_all)):
-		events = pickle.load(events_all[l])
-		for j in events:
-			events_all_file.append(j)
-	
-	for l in range(0, len(ls_event)):
-		
-		ls_stas_open = open(ls_event[l] + '/IRIS/STATION/Input_Syn_BHE', 'r')
-		IRIS_BHE = ls_stas_open.readlines()	
-		ls_stas_open.close()
-		
-		ls_stas_open = open(ls_event[l] + '/IRIS/STATION/Input_Syn_BHN', 'r')
-		IRIS_BHN = ls_stas_open.readlines()
-		ls_stas_open.close()
-		
-		ls_stas_open = open(ls_event[l] + '/IRIS/STATION/Input_Syn_BHZ', 'r')
-		IRIS_BHZ = ls_stas_open.readlines()
-		ls_stas_open.close()
-		
-		for i in events_all_file:
-		
-			lon_event = []
-			lat_event = []			
-			
-			if i['event_id'] == ls_event[l].split('/')[-1]:
-				lat_event.append(i['latitude'])
-				lon_event.append(i['longitude'])
-				Address = ls_event[l]
-			
-			
-			if input['BHE'] == 'Y':
-				lat_IRIS_BHE = []
-				lon_IRIS_BHE = []
-							
-				for j in range(0, len(IRIS_BHE)):
-					lat_IRIS_BHE.append(float(IRIS_BHE[j].split(',')[4]))
-					lon_IRIS_BHE.append(float(IRIS_BHE[j].split(',')[5]))
-							
-			if input['BHN'] == 'Y':
-				lat_IRIS_BHN = []
-				lon_IRIS_BHN = []
-							
-				for j in range(0, len(IRIS_BHN)):
-					lat_IRIS_BHN.append(float(IRIS_BHN[j].split(',')[4]))
-					lon_IRIS_BHN.append(float(IRIS_BHN[j].split(',')[5]))
-				
-			if input['BHZ'] == 'Y':
-				lat_IRIS_BHZ = []
-				lon_IRIS_BHZ = []
-							
-				for j in range(0, len(IRIS_BHZ)):
-					lat_IRIS_BHZ.append(float(IRIS_BHZ[j].split(',')[4]))
-					lon_IRIS_BHZ.append(float(IRIS_BHZ[j].split(',')[5]))
-			
-			if input['BHE'] == 'Y':			
-				
-				if os.path.exists(ls_event[l] + '/IRIS/STATION/FIGS') != True:
-					os.makedirs(ls_event[l] + '/IRIS/STATION/FIGS')
-				
-				plt.clf()
-		
-				# lon_0 is central longitude of projection.
-				# resolution = 'c' means use crude resolution coastlines.
-				
-				# lat_0=lat_event[0], determines that center of the map has been aligend to the first event
-				
-				m = Basemap(projection='moll', lon_0=lon_event[0], lat_0=lat_event[0], resolution='c')
-				#m = Basemap(projection='moll', lon_0=180, lat_0=0, resolution='c')
-				
-				# Different Options for drawing the Earth:
-				#m = Basemap(projection='lcc',lon_0=0,resolution='c')
-				#m.bluemarble()
-				#m.drawcountries(linewidth=2)
-				
-				m.drawcoastlines()
-				#m.fillcontinents(color='coral',lake_color='aqua')
-				m.fillcontinents()
-				# draw parallels and meridians.
-				m.drawparallels(np.arange(-90.,120.,30.))
-				m.drawmeridians(np.arange(0.,420.,60.))
-				m.drawmapboundary() 
-				
-				#plt.title("Mollweide Projection, Events");
-				plt.title("IRIS-Stations-BHE");
-				
-				x, y = m(lon_event, lat_event)
-				m.scatter(x, y, 30, color="yellow", marker="o", edgecolor="k", zorder=3)
-				
-				x, y = m(lon_IRIS_BHE, lat_IRIS_BHE)
-				m.scatter(x, y, 20, color='red', marker="v", edgecolor="k", zorder=10)
-								
-				plt.savefig(ls_event[l] + '/IRIS/STATION/FIGS' + '/IRIS_BHE.pdf')
-			
-			
-			if input['BHN'] == 'Y':			
-				
-				if os.path.exists(ls_event[l] + '/IRIS/STATION/FIGS') != True:
-					os.makedirs(ls_event[l] + '/IRIS/STATION/FIGS')
-				
-				plt.clf()
-		
-				# lon_0 is central longitude of projection.
-				# resolution = 'c' means use crude resolution coastlines.
-				
-				# lat_0=lat_event[0], determines that center of the map has been aligend to the first event
-				
-				m = Basemap(projection='moll', lon_0=lon_event[0], lat_0=lat_event[0], resolution='c')
-				#m = Basemap(projection='moll', lon_0=180, lat_0=0, resolution='c')
-				
-				# Different Options for drawing the Earth:
-				#m = Basemap(projection='lcc',lon_0=0,resolution='c')
-				#m.bluemarble()
-				#m.drawcountries(linewidth=2)
-				
-				m.drawcoastlines()
-				#m.fillcontinents(color='coral',lake_color='aqua')
-				m.fillcontinents()
-				# draw parallels and meridians.
-				m.drawparallels(np.arange(-90.,120.,30.))
-				m.drawmeridians(np.arange(0.,420.,60.))
-				m.drawmapboundary() 
-				
-				#plt.title("Mollweide Projection, Events");
-				plt.title("IRIS-Stations-BHN");
-				
-				x, y = m(lon_event, lat_event)
-				m.scatter(x, y, 30, color="yellow", marker="o", edgecolor="k", zorder=3)
-				
-				x, y = m(lon_IRIS_BHN, lat_IRIS_BHN)
-				m.scatter(x, y, 20, color='red', marker="v", edgecolor="k", zorder=10)
-								
-				plt.savefig(ls_event[l] + '/IRIS/STATION/FIGS' + '/IRIS_BHN.pdf')
-			
-			
-			if input['BHZ'] == 'Y':			
-				
-				if os.path.exists(ls_event[l] + '/IRIS/STATION/FIGS') != True:
-					os.makedirs(ls_event[l] + '/IRIS/STATION/FIGS')
-				
-				plt.clf()
-		
-				# lon_0 is central longitude of projection.
-				# resolution = 'c' means use crude resolution coastlines.
-				
-				# lat_0=lat_event[0], determines that center of the map has been aligend to the first event
-				
-				m = Basemap(projection='moll', lon_0=lon_event[0], lat_0=lat_event[0], resolution='c')
-				#m = Basemap(projection='moll', lon_0=180, lat_0=0, resolution='c')
-				
-				# Different Options for drawing the Earth:
-				#m = Basemap(projection='lcc',lon_0=0,resolution='c')
-				#m.bluemarble()
-				#m.drawcountries(linewidth=2)
-				
-				m.drawcoastlines()
-				#m.fillcontinents(color='coral',lake_color='aqua')
-				m.fillcontinents()
-				# draw parallels and meridians.
-				m.drawparallels(np.arange(-90.,120.,30.))
-				m.drawmeridians(np.arange(0.,420.,60.))
-				m.drawmapboundary() 
-				
-				#plt.title("Mollweide Projection, Events");
-				plt.title("IRIS-Stations-BHZ");
-				
-				x, y = m(lon_event, lat_event)
-				m.scatter(x, y, 30, color="yellow", marker="o", edgecolor="k", zorder=3)
-				
-				x, y = m(lon_IRIS_BHZ, lat_IRIS_BHZ)
-				m.scatter(x, y, 20, color='red', marker="v", edgecolor="k", zorder=10)
-								
-				plt.savefig(ls_event[l] + '/IRIS/STATION/FIGS' + '/IRIS_BHZ.pdf')
-
-###################################################### plot_ARC ######################################################
-
-def plot_ARC(input):	
-	
-	"""
-	Plot all available ARC stations
-	"""
-	
-	Address_data = input['Address'] + '/Data'
-	
-	ls_period = os.listdir(Address_data)
-	
-	pre_ls_event = []
-	for i in range(0, len(ls_period)):
-		pre_ls_event.append(Address_data + '/' + ls_period[i])	
-
-	pre_ls_event = nodes_update(input, pre_ls_event)
-	
-	for i in range(0, len(pre_ls_event)):
-		print 'Plotting: ' + '\n' + str(pre_ls_event[i])
-	print '*********************'
-	
-	ls_event_file = []
-	for i in pre_ls_event:
-		ls_event_file.append(os.listdir(i))
-	
-	ls_event = []
-	
-	for i in range(0, len(ls_event_file)):
-		for j in range(0, len(ls_event_file[i])):
-			if ls_event_file[i][j] != 'list_event':
-				if ls_event_file[i][j] != 'EVENT':
-					ls_event.append(pre_ls_event[0] + '/' + ls_event_file[i][j])
-					print ls_event_file[i][j]
-	
-	add_ARC_events = []
-	for i in pre_ls_event:
-		add_ARC_events.append(i + '/list_event')
-		
-	events_all = []
-	
-	for i in add_ARC_events:
-		Event_file = open(i, 'r')
-		events_all.append(Event_file)
-			
-	
-	events_all_file = []
-	
-	for l in range(0, len(events_all)):
-		events = pickle.load(events_all[l])
-		for j in events:
-			events_all_file.append(j)
-	
-	for l in range(0, len(ls_event)):
-		
-		ls_stas_open = open(ls_event[l] + '/ARC/STATION/Input_Syn_BHE', 'r')
-		ARC_BHE = ls_stas_open.readlines()	
-		ls_stas_open.close()
-		
-		ls_stas_open = open(ls_event[l] + '/ARC/STATION/Input_Syn_BHN', 'r')
-		ARC_BHN = ls_stas_open.readlines()
-		ls_stas_open.close()
-		
-		ls_stas_open = open(ls_event[l] + '/ARC/STATION/Input_Syn_BHZ', 'r')
-		ARC_BHZ = ls_stas_open.readlines()
-		ls_stas_open.close()
-		
-		for i in events_all_file:
-		
-			lon_event = []
-			lat_event = []			
-			
-			if i['event_id'] == ls_event[l].split('/')[-1]:
-				lat_event.append(i['latitude'])
-				lon_event.append(i['longitude'])
-				Address = ls_event[l]
-			
-			
-			if input['BHE'] == 'Y':
-				lat_ARC_BHE = []
-				lon_ARC_BHE = []
-							
-				for j in range(0, len(ARC_BHE)):
-					lat_ARC_BHE.append(float(ARC_BHE[j].split(',')[4]))
-					lon_ARC_BHE.append(float(ARC_BHE[j].split(',')[5]))
-							
-			if input['BHN'] == 'Y':
-				lat_ARC_BHN = []
-				lon_ARC_BHN = []
-							
-				for j in range(0, len(ARC_BHN)):
-					lat_ARC_BHN.append(float(ARC_BHN[j].split(',')[4]))
-					lon_ARC_BHN.append(float(ARC_BHN[j].split(',')[5]))
-				
-			if input['BHZ'] == 'Y':
-				lat_ARC_BHZ = []
-				lon_ARC_BHZ = []
-							
-				for j in range(0, len(ARC_BHZ)):
-					lat_ARC_BHZ.append(float(ARC_BHZ[j].split(',')[4]))
-					lon_ARC_BHZ.append(float(ARC_BHZ[j].split(',')[5]))
-			
-			import ipdb; ipdb.set_trace()
-			
-			if input['BHE'] == 'Y':			
-				
-				fig = open(ls_event[l] + '/ARC/STATION/FIGS', 'w')
-				fig.close()
-				
-				plt.clf()
-		
-				# lon_0 is central longitude of projection.
-				# resolution = 'c' means use crude resolution coastlines.
-				
-				# lat_0=lat_event[0], determines that center of the map has been aligend to the first event
-				
-				m = Basemap(projection='moll', lon_0=lon_event[0], lat_0=lat_event[0], resolution='c')
-				#m = Basemap(projection='moll', lon_0=180, lat_0=0, resolution='c')
-				
-				# Different Options for drawing the Earth:
-				#m = Basemap(projection='lcc',lon_0=0,resolution='c')
-				#m.bluemarble()
-				#m.drawcountries(linewidth=2)
-				
-				m.drawcoastlines()
-				#m.fillcontinents(color='coral',lake_color='aqua')
-				m.fillcontinents()
-				# draw parallels and meridians.
-				m.drawparallels(np.arange(-90.,120.,30.))
-				m.drawmeridians(np.arange(0.,420.,60.))
-				m.drawmapboundary() 
-				
-				#plt.title("Mollweide Projection, Events");
-				plt.title("ARC-Stations-BHE");
-				
-				x, y = m(lon_event, lat_event)
-				m.scatter(x, y, 40, color="red", marker="o", edgecolor="k", zorder=3)
-				
-				x, y = m(lon_ARC_BHE, lat_ARC_BHE)
-				m.scatter(x, y, 20, color='red', marker="v", edgecolor="k", zorder=10)
-								
-				plt.savefig(ls_event[l] + '/ARC/STATION/FIGS' + '/ARC_BHE' + '.pdf')
-			
-			
-			if input['BHN'] == 'Y':			
-				
-				fig = open(ls_event[l] + '/ARC/STATION/FIGS', 'w')
-				fig.close()
-				
-				plt.clf()
-		
-				# lon_0 is central longitude of projection.
-				# resolution = 'c' means use crude resolution coastlines.
-				
-				# lat_0=lat_event[0], determines that center of the map has been aligend to the first event
-				
-				m = Basemap(projection='moll', lon_0=lon_event[0], lat_0=lat_event[0], resolution='c')
-				#m = Basemap(projection='moll', lon_0=180, lat_0=0, resolution='c')
-				
-				# Different Options for drawing the Earth:
-				#m = Basemap(projection='lcc',lon_0=0,resolution='c')
-				#m.bluemarble()
-				#m.drawcountries(linewidth=2)
-				
-				m.drawcoastlines()
-				#m.fillcontinents(color='coral',lake_color='aqua')
-				m.fillcontinents()
-				# draw parallels and meridians.
-				m.drawparallels(np.arange(-90.,120.,30.))
-				m.drawmeridians(np.arange(0.,420.,60.))
-				m.drawmapboundary() 
-				
-				#plt.title("Mollweide Projection, Events");
-				plt.title("ARC-Stations-BHN");
-				
-				x, y = m(lon_event, lat_event)
-				m.scatter(x, y, 40, color="red", marker="o", edgecolor="k", zorder=3)
-				
-				x, y = m(lon_ARC_BHN, lat_ARC_BHN)
-				m.scatter(x, y, 20, color='red', marker="v", edgecolor="k", zorder=10)
-								
-				plt.savefig(ls_event[l] + '/ARC/STATION/FIGS' + '/ARC_BHN' + '.pdf')
-			
-			
-			if input['BHZ'] == 'Y':			
-				
-				fig = open(ls_event[l] + '/ARC/STATION/FIGS', 'w')
-				fig.close()
-				
-				plt.clf()
-		
-				# lon_0 is central longitude of projection.
-				# resolution = 'c' means use crude resolution coastlines.
-				
-				# lat_0=lat_event[0], determines that center of the map has been aligend to the first event
-				
-				m = Basemap(projection='moll', lon_0=lon_event[0], lat_0=lat_event[0], resolution='c')
-				#m = Basemap(projection='moll', lon_0=180, lat_0=0, resolution='c')
-				
-				# Different Options for drawing the Earth:
-				#m = Basemap(projection='lcc',lon_0=0,resolution='c')
-				#m.bluemarble()
-				#m.drawcountries(linewidth=2)
-				
-				m.drawcoastlines()
-				#m.fillcontinents(color='coral',lake_color='aqua')
-				m.fillcontinents()
-				# draw parallels and meridians.
-				m.drawparallels(np.arange(-90.,120.,30.))
-				m.drawmeridians(np.arange(0.,420.,60.))
-				m.drawmapboundary() 
-				
-				#plt.title("Mollweide Projection, Events");
-				plt.title("ARC-Stations-BHZ");
-				
-				x, y = m(lon_event, lat_event)
-				m.scatter(x, y, 40, color="red", marker="o", edgecolor="k", zorder=3)
-				
-				x, y = m(lon_ARC_BHZ, lat_ARC_BHZ)
-				m.scatter(x, y, 20, color='red', marker="v", edgecolor="k", zorder=10)
-								
-				plt.savefig(ls_event[l] + '/ARC/STATION/FIGS' + '/ARC_BHZ' + '.pdf')
-
-###################################################### plot_events ######################################################
-
-def plot_events(input):
-	
-	"""
-	Plot a map that shows all requested events...
-	ATTENTION: llcrnrlon, llcrnrlat, urcrnrlon, urcrnrlat --> have been imported for local plotting
-	"""
-	
-	Address_data = input['Address'] + '/Data'
-	
-	pre_ls_event = []
-	
-	tty = open(input['Address'] + '/Data/' + 'tty-info', 'r')
-	tty_str = tty.readlines()
-	
-	for i in range(0, len(tty_str)):
-		tty_str[i] = tty_str[i].split('  ,  ')
-	
-	for i in range(0, len(tty_str)):
-		if commands.getoutput('hostname') == tty_str[i][0]:
-			if commands.getoutput('tty') == tty_str[i][1]:
-				pre_ls_event.append(Address_data + '/' + tty_str[i][2])
-	
-	for i in range(0, len(pre_ls_event)):
-		print 'Updating for: ' + '\n' + str(pre_ls_event[i])
-	print '*********************'
-	
-	ls_event_file = []
-	for i in pre_ls_event:
-		ls_event_file.append(os.listdir(i))
-	
-	ls_event = []
-	
-	for i in range(0, len(ls_event_file)):
-		for j in range(0, len(ls_event_file[i])):
-			if ls_event_file[i][j] != 'list_event':
-				if ls_event_file[i][j] != 'EVENT':
-					ls_event.append(pre_ls_event[0] + '/' + ls_event_file[i][j])
-					print ls_event_file[i][j]
-	
-	add_IRIS_events = []
-	for i in pre_ls_event:
-		add_IRIS_events.append(i + '/list_event')
-		
-	events_all = []
-	
-	for i in add_IRIS_events:
-		Event_file = open(i, 'r')
-		events_all.append(Event_file)
-			
-	
-	events_all_file = []
-	
-	for l in range(0, len(events_all)):
-		events = pickle.load(events_all[l])
-		for j in events:
-			events_all_file.append(j)
-	
-	
-	lon_event = []
-	lat_event = []			
-	name_event = []
-	
-	for i in events_all_file:
-		lat_event.append(i['latitude'])
-		lon_event.append(i['longitude'])
-		name_event.append(i['depth'])
-		
-	plt.clf()
-	
-	# lon_0 is central longitude of projection.
-	# resolution = 'c' means use crude resolution coastlines.
-	
-	# lat_0=lat_event[0], determines that center of the map has been aligend to the first event
-	
-	m = Basemap(projection='moll', lon_0=lon_event[0], lat_0=lat_event[0], resolution='c')
-	#m = Basemap(projection='moll', lon_0=180, lat_0=0, resolution='c')
-	
-	# Different Options for drawing the Earth:
-	#m = Basemap(projection='lcc',lon_0=0,resolution='c')
-	#m.bluemarble()
-	#m.drawcountries(linewidth=2)
-	
-	m.drawcoastlines()
-	#m.fillcontinents(color='coral',lake_color='aqua')
-	m.fillcontinents()
-	# draw parallels and meridians.
-	m.drawparallels(np.arange(-90.,120.,30.))
-	m.drawmeridians(np.arange(0.,420.,60.))
-	m.drawmapboundary() 
-	
-	#plt.title("Mollweide Projection, Events");
-	plt.title("Events");
-	
-	x, y = m(lon_event, lat_event)
-	m.scatter(x, y, 40, color="red", marker="o", edgecolor="k", zorder=3)
-	
-	for i in range(0, len(lat_event)):
-		plt.text(x[i], y[i], ' ' + name_event[i], va="top", family="monospace", \
-		color = 'black', size = 'x-small', weight="bold")
-	
-	plt.savefig(pre_ls_event[0] + '/EVENT' + '/Plot_events' + '.pdf')
 
 ###################################################### ray_path ######################################################
 

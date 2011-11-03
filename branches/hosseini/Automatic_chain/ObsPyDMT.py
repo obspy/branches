@@ -255,114 +255,115 @@ def read_input():
 	S = f.readlines()
 	input = {}
 	input['Address'] = S[3].split()[2]
-	input['min_date'] = S[7].split()[2]
-	input['max_date'] = S[8].split()[2]
-	input['min_mag'] = float(S[9].split()[2])
-	input['max_mag'] = float(S[10].split()[2])
-	input['min_lat'] = float(S[12].split()[2])
-	input['max_lat'] = float(S[13].split()[2])
-	input['min_lon'] = float(S[14].split()[2])
-	input['max_lon'] = float(S[15].split()[2])
-	input['min_depth'] = float(S[17].split()[2])
-	input['max_depth'] = float(S[18].split()[2])
-	input['max_result'] = int(S[19].split()[2])
-	input['t_before'] = float(S[21].split()[2])
-	input['t_after'] = float(S[22].split()[2])
+	input['inter_address'] = S[4].split()[2]
+	input['min_date'] = S[8].split()[2]
+	input['max_date'] = S[9].split()[2]
+	input['min_mag'] = float(S[10].split()[2])
+	input['max_mag'] = float(S[11].split()[2])
+	input['min_lat'] = float(S[13].split()[2])
+	input['max_lat'] = float(S[14].split()[2])
+	input['min_lon'] = float(S[15].split()[2])
+	input['max_lon'] = float(S[16].split()[2])
+	input['min_depth'] = float(S[18].split()[2])
+	input['max_depth'] = float(S[19].split()[2])
+	input['max_result'] = int(S[20].split()[2])
+	input['t_before'] = float(S[22].split()[2])
+	input['t_after'] = float(S[23].split()[2])
 
-	input['get_events'] = S[26].split()[2]
-	input['IRIS'] = S[27].split()[2]
-	input['ArcLink'] = S[28].split()[2]
+	input['get_events'] = S[27].split()[2]
+	input['IRIS'] = S[28].split()[2]
+	input['ArcLink'] = S[29].split()[2]
 	
-	input['mass'] = S[32].split()[2]	
-	input['nodes'] = S[33].split()[2]
+	input['mass'] = S[33].split()[2]	
+	input['nodes'] = S[34].split()[2]
 
-	input['waveform'] = S[37].split()[2]
-	input['response'] = S[38].split()[2]
-	input['SAC'] = S[39].split()[2]
+	input['waveform'] = S[38].split()[2]
+	input['response'] = S[39].split()[2]
+	input['SAC'] = S[40].split()[2]
 	
-	input['net'] = S[43].split()[2]
-	input['sta'] = S[44].split()[2]
+	input['net'] = S[44].split()[2]
+	input['sta'] = S[45].split()[2]
 	
-	if S[45].split()[2] == "''":
+	if S[46].split()[2] == "''":
 		input['loc'] = ''
-	elif S[45].split()[2] == '""':
+	elif S[46].split()[2] == '""':
 		input['loc'] = ''
 	else:
-		input['loc'] = S[45].split()[2]
+		input['loc'] = S[46].split()[2]
 	
-	input['cha'] = S[46].split()[2]
-	input['BHE'] = S[47].split()[2]
-	input['BHN'] = S[48].split()[2]
-	input['BHZ'] = S[49].split()[2]	
-	input['other'] = S[50].split()[2]
-		
-	if S[56].split()[2] == 'None':
-		input['lat_cba'] = None
-	else:
-		input['lat_cba'] = S[56].split()[2]
+	input['cha'] = S[47].split()[2]
+	input['BHE'] = S[48].split()[2]
+	input['BHN'] = S[49].split()[2]
+	input['BHZ'] = S[50].split()[2]	
+	input['other'] = S[51].split()[2]
 		
 	if S[57].split()[2] == 'None':
+		input['lat_cba'] = None
+	else:
+		input['lat_cba'] = S[57].split()[2]
+		
+	if S[58].split()[2] == 'None':
 		input['lon_cba'] = None
 	else:
-		input['lon_cba'] = S[57].split()[2]
-	
-	if S[58].split()[2] == 'None':
-		input['mr_cba'] = None
-	else:
-		input['mr_cba'] = S[58].split()[2]
+		input['lon_cba'] = S[58].split()[2]
 	
 	if S[59].split()[2] == 'None':
+		input['mr_cba'] = None
+	else:
+		input['mr_cba'] = S[59].split()[2]
+	
+	if S[60].split()[2] == 'None':
 		input['Mr_cba'] = None
 	else:
-		input['Mr_cba'] = S[59].split()[2]
+		input['Mr_cba'] = S[60].split()[2]
 	
 		
-	if S[60].split()[2] == 'None':
+	if S[61].split()[2] == 'None':
 		input['mlat_rbb'] = None
 	else:
-		input['mlat_rbb'] = S[60].split()[2]
-	
-	if S[61].split()[2] == 'None':
-		input['Mlat_rbb'] = None
-	else:
-		input['Mlat_rbb'] = S[61].split()[2]
+		input['mlat_rbb'] = S[61].split()[2]
 	
 	if S[62].split()[2] == 'None':
-		input['mlon_rbb'] = None
+		input['Mlat_rbb'] = None
 	else:
-		input['mlon_rbb'] = S[62].split()[2]
+		input['Mlat_rbb'] = S[62].split()[2]
 	
 	if S[63].split()[2] == 'None':
+		input['mlon_rbb'] = None
+	else:
+		input['mlon_rbb'] = S[63].split()[2]
+	
+	if S[64].split()[2] == 'None':
 		input['Mlon_rbb'] = None
 	else:
-		input['Mlon_rbb'] = S[63].split()[2]
+		input['Mlon_rbb'] = S[64].split()[2]
 
 	
-	input['TEST'] = S[67].split()[2]
-	input['TEST_no'] = int(S[68].split()[2])
+	input['TEST'] = S[68].split()[2]
+	input['TEST_no'] = int(S[69].split()[2])
 	
-	input['update_iris'] = S[72].split()[2]
-	input['update_arc'] = S[73].split()[2]
-	input['No_updating_IRIS'] = int(S[74].split()[2])
-	input['No_updating_ARC'] = int(S[75].split()[2])
+	input['update_iris'] = S[73].split()[2]
+	input['update_arc'] = S[74].split()[2]
+	input['No_updating_IRIS'] = int(S[75].split()[2])
+	input['No_updating_ARC'] = int(S[76].split()[2])
 
-	input['QC_IRIS'] = S[79].split()[2]
-	input['QC_ARC'] = S[80].split()[2]
+	input['QC_IRIS'] = S[80].split()[2]
+	input['QC_ARC'] = S[81].split()[2]
 	
-	input['email'] = S[84].split()[2]
-	input['email_address'] = S[85].split()[2]
+	input['email'] = S[85].split()[2]
+	input['email_address'] = S[86].split()[2]
 	
-	input['report'] = S[89].split()[2]
+	input['report'] = S[90].split()[2]
 	
-	input['plt_event'] = S[93].split()[2]
-	input['plot_IRIS'] = S[94].split()[2]
-	input['plot_ARC'] = S[95].split()[2]
-	input['plot_all_Events'] = S[96].split()[2]
+	input['plt_event'] = S[94].split()[2]
+	input['plot_IRIS'] = S[95].split()[2]
+	input['plot_ARC'] = S[96].split()[2]
+	input['plot_all_Events'] = S[97].split()[2]
 
-	input['llcrnrlon'] = float(S[98].split()[2])
-	input['llcrnrlat'] = float(S[99].split()[2])
-	input['urcrnrlon'] = float(S[100].split()[2])
-	input['urcrnrlat'] = float(S[101].split()[2])
+	input['llcrnrlon'] = float(S[99].split()[2])
+	input['llcrnrlat'] = float(S[100].split()[2])
+	input['urcrnrlon'] = float(S[101].split()[2])
+	input['urcrnrlat'] = float(S[102].split()[2])
 	
 	return input
 
@@ -2230,6 +2231,26 @@ def Arclink_get_Waveform_single(input):
 	print 'ArcLink is DONE'
 	print "Time for getting and saving Waveforms from ArcLink:"
 	print t_wave
+
+###################################################### get_address ######################################################
+
+def get_address(interactive = input['inter_address']):
+	
+	"""
+	This program gets the address required for next steps of the program
+	"""
+	
+	if interactive == 'Y':
+		print '----------------------------------------------------'
+		address = raw_input('Please enter the target address:' + '\n')
+		print '----------------------------------------------------'
+		
+	else:
+		print '----------------------------------------------------'
+		print 'The process is about to start...'
+		print '----------------------------------------------------'
+	
+	return address
 
 ###################################################### update_IRIS ######################################################
 
