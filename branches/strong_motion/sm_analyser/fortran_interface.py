@@ -32,14 +32,16 @@ class FortranHandler():
                 Please make sure you provide this file in the same folder as the fortran executables.\n"\
                 % (self.inputfn))
         self.cmd = 'esvol2m_special'
-        self.pattern = re.compile(r'\d+\s+(s:\\[\w\\ -_.\d]*)')
+        self.pattern = re.compile(r'\d+\s+(\w:\\[\w\\ -_.\d]*)')
         self.fin = open(self.dest, 'r')
         self.firstline = self.fin.readline()
         self.data = []
+        self.linel = []
         for line in self.fin.readlines():
             # ignore commented lines
             if line.startswith('!'): continue
             self.data.append(line)
+            self.linel.append(len(line))
         self.counter = 0
 
     
@@ -58,13 +60,17 @@ class FortranHandler():
         return self.v1, self.v2
 
     def get_filename(self,date,csite,fname):
-        if csite == 'AVIS' or csite == 'BENS' or csite == 'MANS' \
-        or csite == 'PKIS' or csite == 'TKAS' or csite == 'TUDS' \
-        or csite == 'MTDS' or csite == 'MWDS' or csite == 'NZAS' \
-        or csite == 'LPOC':
-            csubd = 'S:\Power_company'
+        rootdir, subdir = self.firstline.split()
+        if subdir.find('auto') != -1:
+            if csite == 'AVIS' or csite == 'BENS' or csite == 'MANS' \
+            or csite == 'PKIS' or csite == 'TKAS' or csite == 'TUDS' \
+            or csite == 'MTDS' or csite == 'MWDS' or csite == 'NZAS' \
+            or csite == 'LPOC':
+                csubd = 'S:\Power_company'
+            else:
+                csubd = 'S:\proc'
         else:
-            csubd = 'S:\proc'
+            csubd = os.path.join(rootdir,subdir)
         dn = os.path.join(csubd,str(date.year),'%02d_Prelim'%date.month,
                           '%4d-%02d-%02d_%02d%02d%02d'%(date.year,date.month,date.day,date.hour,date.minute,date.second),
                           'Vol1','data')
@@ -83,8 +89,9 @@ class FortranHandler():
         date = UTCDateTime(int(dt[0:4]),int(dt[4:6]),int(dt[6:8]),int(t[0:2]),int(t[2:4]),int(t[4:6]))
         csite = fin.split('_')[-1] 
         if not os.path.isfile(self.get_filename(date,csite,fin)):
-            raise FortranHandlerError("Can not find %s:" % fin)
+            raise FortranHandlerError("Can't find %s." % self.get_filename(date,csite,fin))
         filtdat = open(self.inputfn, 'w')
+        filtdat.writelines(self.firstline)
         filtdat.writelines(line)
         filtdat.close()
         a = line.split()
@@ -109,7 +116,7 @@ class FortranHandler():
 if __name__ == '__main__': 
     import pylab as plt
     import numpy as np
-    bindir = u'I:\SEISMO\yannikb\standard_processing\\fortran_stripped'
+    bindir = u'H:\\workspace\\svn.obspy.org\\branches\\strong_motion\\tests\\data'
     test = FortranHandler(bindir=bindir)
     v1, v2 = test()
     fig = plt.figure()

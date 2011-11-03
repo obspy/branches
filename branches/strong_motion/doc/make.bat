@@ -124,6 +124,10 @@ if "%1" == "latex" (
 	if errorlevel 1 exit /b 1
 	echo.
 	echo.Build finished; the LaTeX files are in %BUILDDIR%/latex.
+	cd _build\latex
+	make
+	copy strongmotionanalyser.pdf %TARGETDIR%
+	cd ..\..
 	goto end
 )
 

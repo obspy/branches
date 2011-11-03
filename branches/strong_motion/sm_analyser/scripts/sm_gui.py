@@ -42,18 +42,23 @@ class DataHandler(FortranHandler):
         try:
             FortranHandler.__init__(self, bindir=bindir)
         except FortranHandlerError, e:
-            if tkMessageBox.showerror(title='Error',message=e):
+            if tkMessageBox.showerror(title='Error', message=e):
                 self.root.destroy()
                 sys.exit()
             
         self.specs = {0:None, 1:None, 2:None}
 
     def ftransform(self, tr1, tr2, tr3):
-        fspec1 = np.fft.fft(tr1.data)
-        fspec2 = np.fft.fft(tr2.data)
-        fspec3 = np.fft.fft(tr3.data)
+        traces = [tr1,tr2,tr3]
+        fspecs = []
+        # check for zero traces
+        for tr in traces:
+            if np.size(np.nonzero(tr.data)) < 1:
+                fspecs.append(np.ones(tr.data.size))
+            else:
+                fspecs.append(np.fft.fft(tr.data))
         freqs = np.fft.fftfreq(tr1.stats.npts, tr1.stats.delta)
-        return fspec1, fspec2, fspec3, freqs
+        return fspecs[0], fspecs[1], fspecs[2], freqs
         
     def getspectra(self, choices, spec_old):
         """
@@ -65,8 +70,8 @@ class DataHandler(FortranHandler):
             fspec1 = data[:]
             fspec2 = data[:]
             fspec3 = data[:]
-            freqs = np.linspace(0.01,20,npts) 
-            return fspec1,fspec2,fspec3,freqs
+            freqs = np.linspace(0.01, 20, npts) 
+            return fspec1, fspec2, fspec3, freqs
         
         idx = choices.index(spec_old)
         if idx == 0:
@@ -152,6 +157,7 @@ class SmGui(DataHandler, PlotIterator):
         self.p = {} # dictionary to hold all Tk variables
         self.p['pmax'] = Tk.IntVar(); self.p['pmax'].set(0)
         self.p['fltrng'] = Tk.IntVar(); self.p['fltrng'].set(1)
+        self.p['cutrng'] = Tk.IntVar(); self.p['cutrng'].set(1)
         self.p['pltlog2'] = Tk.IntVar(); self.p['pltlog2'].set(0)
         self.p['pltgrid'] = Tk.IntVar(); self.p['pltgrid'].set(1)
         if self.bindir is None:
@@ -195,9 +201,11 @@ class SmGui(DataHandler, PlotIterator):
         self.plotcanvas()
 
         # set line length of input file; needed to add comments to line
-        self.linel = len(self.data[0])
         # set number of points variable
-        self.p['npts'] = Tk.IntVar(); self.p['npts'].set(self.npts)
+        self.p['starttrim'] = Tk.IntVar(); self.p['starttrim'].set(self.startt)
+        self.p['endtrim'] = Tk.IntVar(); self.p['endtrim'].set(self.endt)
+        self.p['demean'] = Tk.IntVar(); self.p['demean'].set(self.dmn)
+        self.p['detrend'] = Tk.IntVar(); self.p['detrend'].set(self.dtrnd)
 
         # set filter to default filter
         self.p['hlow'] = Tk.DoubleVar();self.p['hlow'].set(self.highp[0])
@@ -205,15 +213,21 @@ class SmGui(DataHandler, PlotIterator):
   
 
         
-        # setting up spin box for trimming
-        trim_cntrl = Tk.Control(self.entry_frame, label='npts', integer=True, step=100,
-                                 variable=self.p['npts'])
-        trim_cntrl.entry.config(font=10)
-        trim_cntrl.label.config(font=10)
-        trim_cntrl.pack(side='left', padx=5)
+        # setting up spin boxes for cutting
+        trim_cntrl_st = Tk.Control(self.entry_frame, label='start', integer=True, step=1,
+                                 variable=self.p['starttrim'])
+        trim_cntrl_st.entry.config(font=10)
+        trim_cntrl_st.label.config(font=10)
+        trim_cntrl_st.pack(side='left', padx=5)
+        
+        trim_cntrl_ed = Tk.Control(self.entry_frame, label='end', integer=True, step=1,
+                                 variable=self.p['endtrim'])
+        trim_cntrl_ed.entry.config(font=10)
+        trim_cntrl_ed.label.config(font=10)
+        trim_cntrl_ed.pack(side='left', padx=5)
 
         # setting up trim button
-        trim_button = Tk.Button(self.entry_frame, text='Trim', width=8, command=self.recalc, font=10)
+        trim_button = Tk.Button(self.entry_frame, text='Cut', width=8, command=self.recalc, font=10)
         trim_button.pack(side='left', padx=10)
         
     
@@ -269,6 +283,18 @@ class SmGui(DataHandler, PlotIterator):
         self.lmag = Tk.Label(self.eq_frame, text='Local magnitude: %.2f' % self.v2.stream[0].stats.smdict.Ml,
                         font=10, padx=20)
         self.lmag.pack(side='left')
+        a = self.data[0].split()
+        fname = a[0].split('_')
+        if len(fname) > 3:
+            # building site
+            self.sensname = fname[2]+"/"+fname[3]
+        else:
+            # single instrument accelerometer
+            self.sensname = fname[2]
+            
+        self.sens = Tk.Label(self.eq_frame, text='Sensor name: %s' % self.sensname,
+                        font=10, padx=20)
+        self.sens.pack(side='left')
 
 
         # setting up navigation and save button
@@ -281,17 +307,35 @@ class SmGui(DataHandler, PlotIterator):
 
 
         # setting up radio buttons
+        detrend = Tk.Checkbutton(self.nav_frame, text='Detrend', command=self.recalc,
+                                 variable=self.p['detrend'], indicatoron=0, width=4, font=10)
+        detrend.pack(side='top', fill='x', anchor='center')
+        baldetrend = Tk.Balloon(self.nav_frame)
+        baldetrend.bind_widget(detrend, balloonmsg='Choose whether to subtract linear trend from Volume 1 acceleration timeseries.') 
+
+        demean = Tk.Checkbutton(self.nav_frame, text='Demean', command=self.recalc,
+                                 variable=self.p['demean'], indicatoron=0, width=4, font=10)
+        demean.pack(side='top', fill='x', anchor='center')
+        baldemean = Tk.Balloon(self.nav_frame)
+        baldemean.bind_widget(demean, balloonmsg='Choose whether to subtract mean from Volume 1 acceleration timeseries.') 
+
         maxb = Tk.Checkbutton(self.nav_frame, text='Max', command=self.plotmax,
                               variable=self.p['pmax'], indicatoron=0, width=4, font=10)
         maxb.pack(side='top', fill='x', anchor='center')
         balmaxb = Tk.Balloon(self.nav_frame)
         balmaxb.bind_widget(maxb, balloonmsg='Plot maxima of timeseries.') 
 
-        fltrng = Tk.Checkbutton(self.nav_frame, text='Flt', command=self.plotfltrng,
+        fltrng = Tk.Checkbutton(self.nav_frame, text='Fltrng', command=self.plotfltrng,
                                 variable=self.p['fltrng'], indicatoron=0, width=4, font=10)
         fltrng.pack(side='top', fill='x', anchor='center')
         balfltrng = Tk.Balloon(self.nav_frame)
         balfltrng.bind_widget(fltrng, balloonmsg='Plot cutoff and corner frequencies of highpass filter.') 
+
+        cutrng = Tk.Checkbutton(self.nav_frame, text='Cutrng', command=self.plotmax,
+                                variable=self.p['cutrng'], indicatoron=0, width=4, font=10)
+        cutrng.pack(side='top', fill='x', anchor='center')
+        balcutrng = Tk.Balloon(self.nav_frame)
+        balcutrng.bind_widget(cutrng, balloonmsg='Plot cutting window.') 
 
         pltlog2 = Tk.Checkbutton(self.nav_frame, text='log2', command=self.plotfltrng,
                                  variable=self.p['pltlog2'], indicatoron=0, width=4, font=10)
@@ -317,13 +361,13 @@ class SmGui(DataHandler, PlotIterator):
     def add_comment(self):
         line = self.data[self.counter] 
         # delete potential old comment
-        line = line[0:self.linel]
+        line = line[0:self.linel[self.counter]]
         # add comment
         self.data[self.counter] = line.rstrip() + "\t%s\n" % self.p['comment'].get() 
         
     def plotmax(self):
         """
-        Function called by 'Max' radio button
+        Function called by 'Max' radio button.
         """
         self.f2.clf()
         self.plottimeseries()
@@ -331,16 +375,15 @@ class SmGui(DataHandler, PlotIterator):
         
     def plotfltrng(self):
         """
-        Function called by 'Flt' radio button
+        Function called by 'Flt' radio button.
         """
         self.f1.clf()
         self.plotspectra()
         self.canvas1.draw()
-
         
     def choose_ts(self, value):
         """
-        Choose timeseries to display; called by combo box 'hist_box'
+        Choose timeseries to display; called by combo box 'hist_box'.
         """    
         if value != self.hist_old:
             self.hist_old = value
@@ -404,20 +447,28 @@ class SmGui(DataHandler, PlotIterator):
         """
         try:
             self.run_fortran()
-        except FortranHandlerError,e:
+        except FortranHandlerError, e:
             print e
             self.v1 = Vol12Reader(dummy=True)
             self.v2 = Vol12Reader(dummy=True)
-            self.highp = [0.,0.]
-            self.lowp = [0.,0.]
+            self.highp = [0., 0.]
+            self.lowp = [0., 0.]
             self.npts = self.v1.stream[0].stats.npts
-        except Vol12Error,e:
+            self.dmn = 0
+            self.dtrnd = 0
+            self.startt = 0
+            self.endt = 0
+        except Vol12Error, e:
             print e
             self.v1 = Vol12Reader(dummy=True)
             self.v2 = Vol12Reader(dummy=True)
-            self.highp = [0.,0.]
-            self.lowp = [0.,0.]
+            self.highp = [0., 0.]
+            self.lowp = [0., 0.]
             self.npts = self.v1.stream[0].stats.npts
+            self.dmn = 0
+            self.dtrnd = 0
+            self.startt = 0
+            self.endt = 0
 
         self.plotspectra()
         self.plottimeseries()
@@ -523,7 +574,7 @@ class SmGui(DataHandler, PlotIterator):
             print "Please check the Volume 1 and Volume 2 file for possible problems."
             print "Error: %s" % (e) 
     
-    def plottimeseries(self,noticks=6):
+    def plottimeseries(self, noticks=6):
         """
         Plot the timeseries using Matplotlib.
         """
@@ -536,50 +587,61 @@ class SmGui(DataHandler, PlotIterator):
             npts -= prepend
             # find indices of prepended and appended samples to color them 
             # differently
-            time = np.r_[np.arange(-prepend,0,1),np.arange(npts)] * delta
-            idxlower = np.where(time < 0.)
-            idxupper = np.where(time > (npts - append) * delta)
-            ax1 = self.f2.add_subplot(3, 1, 1)
-            ax2 = self.f2.add_subplot(3, 1, 2, sharex=ax1)
-            ax3 = self.f2.add_subplot(3, 1, 3, sharex=ax1)
-            ax1.plot(time, tr1.data, label=tr1.stats.channel)
-            ax1.plot(time[idxlower], tr1.data[idxlower], 'r')
-            ax1.plot(time[idxupper], tr1.data[idxupper], 'r')
-            ax1.legend(loc='upper right')
-            ax2.plot(time, tr2.data, label=tr2.stats.channel)
-            ax2.plot(time[idxlower], tr2.data[idxlower], 'r')
-            ax2.plot(time[idxupper], tr2.data[idxupper], 'r')
-            ax2.legend(loc='upper right')
-            ax3.plot(time, tr3.data, label=tr3.stats.channel)
-            ax3.plot(time[idxlower], tr3.data[idxlower], 'r')
-            ax3.plot(time[idxupper], tr3.data[idxupper], 'r')
-            ax3.legend(loc='upper right')
-            if self.p['pmax'].get():
-                idmax1 = abs(tr1.data).argmax()
-                max1 = tr1.data[idmax1]
-                ax1.plot(idmax1 * tr1.stats.delta, max1, 'ro')
-                idmax2 = abs(tr2.data).argmax()
-                max2 = tr2.data[idmax2]
-                ax2.plot(idmax2 * tr2.stats.delta, max2, 'ro')
-                idmax3 = abs(tr3.data).argmax()
-                max3 = tr3.data[idmax3]
-                ax3.plot(idmax3 * tr3.stats.delta, max3, 'ro')
-            ax1.set_xticklabels(ax1.get_xticks(), visible=False)
-            ax2.set_xticklabels(ax2.get_xticks(), visible=False)
-            ax3.set_xlabel('Time [s]')
-            ymax = abs(tr1.data).max()
-            ymax += 0.1 * ymax
-            ax1.set_ylim(-ymax, ymax)
-            ymax = abs(tr2.data).max()
-            ymax += 0.1 * ymax
-            ax2.set_ylim(-ymax, ymax)
-            ymax = abs(tr3.data).max()
-            ymax += 0.1 * ymax
-            ax3.set_ylim(-ymax, ymax)
+            time = np.r_[np.arange(-prepend, 0, 1), np.arange(npts)] * delta
             xmax = time.max()
             xmin = time.min()
-            ax1.set_xlim(xmin,xmax)
-            ax1.set_title(tr1.stats.station)
+            idxlower = np.where(time < 0.)
+            idxupper = np.where(time > (npts - append) * delta)
+            axislist = []
+            tracelist = [tr1, tr2, tr3]
+            if xmin < 0.:
+                ticklist = np.r_[xmin, np.arange(10, xmax, 10.)]
+                stind = 1
+            else:
+                ticklist = np.arange(10, xmax, 10.)
+                stind = 0
+            labellist = [str(i) for i in ticklist]
+            labelmajor = tr1.stats.starttime.strftime('%H:%M:%S')
+            for i in xrange(3):
+                if i > 0:
+                    ax = self.f2.add_subplot(3, 1, i + 1, sharex=axislist[0])
+                else:
+                    ax = self.f2.add_subplot(3, 1, i + 1)
+                axislist.append(ax)
+                tr = tracelist[i]
+                ax.plot(time, tr.data, label=tr.stats.channel)
+                ax.plot(time[idxlower], tr.data[idxlower], 'r')
+                ax.plot(time[idxupper], tr.data[idxupper], 'r')
+                ax.set_xticks(ticklist, minor=True)
+                ax.set_xticks([0], minor=False)
+                ax.legend(loc='upper right')
+                ymax = abs(tr.data).max()
+                ymax += 0.1 * ymax
+
+                if self.p['pmax'].get():
+                    idmax = abs(tr.data).argmax()
+                    max = tr.data[idmax]
+                    ax.plot(time[idmax], max, 'ro')
+                if self.p['cutrng'].get():
+                    if self.hist_old == self.choices_ts[2]:
+                        if int(self.startt / delta) < int(self.endt / delta):
+                            if int(self.startt / delta) < tr.stats.npts and int(self.endt / delta) < tr.stats.npts:
+                                t1 = self.startt
+                                t2 = self.endt
+                                ax.vlines(t1, -ymax, ymax, color='k')
+                                ax.vlines(t2, -ymax, ymax, color='k')
+                if i < 2:
+                    ax.set_xticklabels(labellist, visible=False, minor=True)
+                    ax.set_xticklabels([labelmajor], visible=False, minor=False)
+                else:
+                    ax.set_xticklabels(labellist, visible=True, minor=True)
+                    ax.set_xticklabels([labelmajor], visible=True, minor=False)
+                    ax.tick_params(direction='out', axis='x', length=10, pad=10, top='off')
+                    ax.set_xlabel('Time [s]')
+                ax.set_ylim(-ymax, ymax)
+                ax.set_xlim(xmin, xmax)
+            axislist[0].set_title(tr1.stats.station)
+
         except Exception, e:
             print "Problems in plotting the timeseries of %s" % (self.data[self.counter].split()[0])
             print "Please check the Volume 1 and Volume 2 file for possible problems."
@@ -597,17 +659,29 @@ class SmGui(DataHandler, PlotIterator):
         self.canvas2.draw()
         self.p['hlow'].set(self.highp[0])
         self.p['hhgh'].set(self.highp[1])
-        self.p['npts'].set(self.npts)
+        self.p['starttrim'].set(self.startt)
+        self.p['endtrim'].set(self.endt)
+        self.p['demean'].set(self.dmn)
+        self.p['detrend'].set(self.dtrnd)
         line = self.data[self.counter]
-        if line[self.linel - 1] == '\n':
+        if line[self.linel[self.counter] - 1] == '\n':
             self.p['comment'].set('')
         else:
-            oldcmnt = line[(self.linel - 1):-1]
+            oldcmnt = line[(self.linel[self.counter] - 1):-1]
             self.p['comment'].set(oldcmnt.strip())
         self.eqdist.config(text='Epicentral distance: %d km' % self.v2.stream[0].stats.smdict.epicdist)
         self.evtime.config(text='Event time: %s' % self.v2.stream[0].stats.smdict.eventtime.strftime("%d/%m/%Y %H:%M:%S"))
         self.hdep.config(text='Hypocentral depth: %d km' % self.v2.stream[0].stats.smdict.hypodep)
         self.lmag.config(text='Local magnitude: %.2f' % self.v2.stream[0].stats.smdict.Ml)
+        a = line.split()
+        fname = a[0].split('_')
+        if len(fname) > 3:
+            # building site
+            self.sensname = fname[2]+"/"+fname[3]
+        else:
+            # single instrument accelerometer
+            self.sensname = fname[2]
+        self.sens.config(text='Sensor name: %s' % self.sensname)
 
     def check_filterband(self):
         """
@@ -635,13 +709,14 @@ class SmGui(DataHandler, PlotIterator):
         """
         line = self.data[self.counter]
         a = line.split()
-        nline = "%-20s%6.2f%6.2f" % (a[0], self.p['hlow'].get(), self.p['hhgh'].get())
-        idx1 = line.find(a[2]) + len(a[2])
-        idx2 = line.find(a[9]) + len(a[9]) - 12
-        idx3 = idx2 + 12
-        nline += line[idx1:idx2]
-        nline += "%12d" % self.p['npts'].get()
-        nline += line[idx3::]
+        #nline = "%-20s%6.2f%6.2f" % (a[0], self.p['hlow'].get(), self.p['hhgh'].get())
+        nline = "%s%6.2f%6.2f" % (a[0], self.p['hlow'].get(), self.p['hhgh'].get())
+        #nline += line[32:72]
+        nline += "%6.2f%6.2f%6d%10d %06d"%(float(a[3]),float(a[4]),int(a[5]),int(a[6]),int(a[7]))
+        nline += "%5.2f"%(float(a[8]))
+        nline += "%6d%6d" % (self.p['starttrim'].get(),self.p['endtrim'].get())
+        nline += "%2d%2d" % (self.p['demean'].get(),self.p['detrend'].get())
+        nline += line[self.linel[self.counter] - 1::]
         print "old line: ", line
         print "new line: ", nline
         try:

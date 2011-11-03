@@ -7,15 +7,12 @@
 Welcome to the Strong Motion Analyser documentation!
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-Here are a few lines of documentation on the Strong Motion Analyser GUI, 
-a thin wrapper around one of the Fortran programs used to analyse strong motion 
-records at GNS Science, New Zealand. 
-
-.. image:: start_window.JPG
-   :scale: 50 %
-
 Installation
 ------------
+
+The Strong Motion Analyser GUI is a thin wrapper around one of the Fortran programs used to analyse strong motion 
+records at GNS Science, New Zealand. 
+
 To install the package under Windows go to ``I:\SEISMO\yannikb\strong_motion_analyser`` and start the ``setup.exe`` installer. 
 This will install Python 2.6 and all the dependencies necessary to run the program. The installer will call several other installers 
 and if you don't have special preferences, you can always accept the installers' suggestions for directories etc.
@@ -28,24 +25,86 @@ After installing the ``sm_analyser`` package you will have a script called ``sm_
 your local Python installation.
 
 You finally have to make sure that you have the Fortran program ``esvol2m_special.exe`` (written and maintained by Jim Cousins) together
-with the input file ``filt_special.dat``. The required format for each line of the input file in Fortran syntax
-is ``(a,4f6.0,2i6,2i2,1x,3i2,f5.2,i12,i12,f12.0,f12.0)`` and the entries are:
-``filename; cutoff frequency high pass filter; corner frequency high pass filter; cutoff frequency low pass filter; 
-corner frequency low pass filter; ?? ; event date; event time; magnitude??; number of points; starting index??; latitude of accelerometer; 
-longitude of accelerometer``
-You can find an example of the input file under ``I:\SEISMO\yannikb\strong_motion_analyser``.
+with the input file ``filt_special.dat``. The required format for each line (starting from the second line) of the input file is as follows:
 
-The Fortran program further needs to have the network drive ``nickel.geonet.org.nz\smdata`` mounted as a local drive under ``S:\`` to 
-access the raw data. You can find a copy of the Fortran routines under ``I:\SEISMO\yannikb\strong_motion_analyser\Fortran_programs``. 
-To compile them first copy the directory and then make sure that you have a Fortran compiler installed. If you have gfortran from the MinGW
-project (http://www.mingw.org/) together with GNU's make for windows (http://gnuwin32.sourceforge.net/packages/make.htm) installed you can
-open a command prompt, ``cd`` to the directory where you copied the Fortran routines to and then type ``make``. To check whether your 
-installation is working you can type ``esvol2m_special.exe`` on the command prompt. This will read in the file `filt_special.dat` and 
-process the files listed therein. If the Fortran program worked correctly you will find a couple of ``*.V2A`` files in the directory after
-the Fortran program finished. There is no point trying the ``sm_gui.py`` program until the Fortran program is working correctly. 
+.. tabularcolumns:: |c|l|
+
++--------------+-----------------------------------------------------+
+| Fortran Size | Description                                         |
++--------------+-----------------------------------------------------+
+| a            | filename                                            |
++--------------+-----------------------------------------------------+
+| f6.0         |  cut-off frequency high pass filter                 |
++--------------+-----------------------------------------------------+
+| f6.0         |  roll-off frequency high pass filter                |
++--------------+-----------------------------------------------------+
+| f6.0         |  cut-off frequency low pass filter                  |
++--------------+-----------------------------------------------------+
+| f6.0         |  roll-off frequency low pass filter                 |
++--------------+-----------------------------------------------------+
+| i6           |  longitudinal axis bearing                          |
++--------------+-----------------------------------------------------+
+| i6           |  event year                                         |
++--------------+-----------------------------------------------------+
+| i2           |  event month                                        |
++--------------+-----------------------------------------------------+
+| i2           |  event day                                          |
++--------------+-----------------------------------------------------+
+| 1x           |  place holder (space)                               |
++--------------+-----------------------------------------------------+
+| i2           |  event hour                                         |
++--------------+-----------------------------------------------------+
+| i2           |  event minute                                       |
++--------------+-----------------------------------------------------+
+| i2           |  event second                                       |
++--------------+-----------------------------------------------------+
+| f5.2         |  magnitude                                          |
++--------------+-----------------------------------------------------+
+| i6           |  start time of cut in seconds after buffer start    | 
++--------------+-----------------------------------------------------+
+| i6           |  end time of cut in seconds after buffer start      |
++--------------+-----------------------------------------------------+
+| i2           |  switch for subtracting mean (either 0 or 1)        |
++--------------+-----------------------------------------------------+
+| i2           |  switch for subtracting linear trend (either 0 or 1)|
++--------------+-----------------------------------------------------+
+
+The Fortran program further requires the Volume1-formatted files, listed in the input file, to be stored in the following directory structure:
+``year\month_Prelim\year-month-day_time\Vol1\data``. So, for example the file ``20110603_230732_CPXB_24.V1A`` 
+has to be located under ``2011\06_Prelim\2011-06-03_230732\Vol1\data``. You can pass the name of the root directory under 
+which this directory structure resides on the first line of the input file. As a second entry on the first line you have to 
+give either a further subdirectory name or the keyword ``auto``. So, let's say, your data directory structure, as described above, is located under ``H:\mydata\vol1_data`` the 
+first line of the input file then has to look like this:
+``H:\mydata\  vol1_data``. 
+
+If it was:
+``H:\mydata\vol1_data  auto`` the program ``esvol2m_special.exe`` would construct the root directory name ``H:\mydata\vol1_data\proc`` 
+or ``H:\mydata\vol1_data\Power_company`` depending on the seismic station name. 
+ 
+You can find a test dataset together with the input file and a copy of the ``esvol2m_special.exe`` program under ``I:\SEISMO\yannikb\strong_motion_analyser\test``. If you
+are working on a different computer platform than 32bit Windows you most likely will have to recompile ``esvol2m_special.exe``. You can find the source code under 
+``I:\SEISMO\yannikb\standard_processing\fortran_stripped``. 
+
+.. To compile them first copy the directory and then make sure that you have a Fortran compiler installed. If you have gfortran from the MinGW
+.. project (http://www.mingw.org/) together with GNU's make for windows (http://gnuwin32.sourceforge.net/packages/make.htm) installed you can
+.. open a command prompt, ``cd`` to the directory where you copied the Fortran routines to and then type ``make``. To check whether your 
+.. installation is working you can type ``esvol2m_special.exe`` on the command prompt. This will read in the file `filt_special.dat` and 
+.. process the files listed therein. If the Fortran program worked correctly you will find a couple of ``*.V2A`` files in the directory after
+.. the Fortran program finished. There is no point trying the ``sm_gui.py`` program until the Fortran program is working correctly. 
+
+Troubleshooting
+^^^^^^^^^^^^^^^
+
+In case the installer doesn't find your Python 2.6.x installation you can check in the registry for the correct entry of 
+``SOFTWARE\Python\PythonCore\2.6\InstallPath\`` under the ``HKEY_LOCAL_MACHINE`` category. It should point to the Python 
+installation on your computer.
+
   
 Running the program
 -------------------
+
+.. image:: start_window.JPG
+   :scale: 100 %
 
 Once you have installed ``sm_gui.py`` and compiled the Fortran program you can start the GUI by typing ``sm_gui.py`` on the command prompt. 
 Let's say the Fortran program is installed under ``I:\some\path`` than you could pass this information to the GUI on the command line
@@ -76,17 +135,11 @@ The navigation buttons below each canvas can be used for things like zooming int
 .. _Python: http://www.python.org
 
 
-Troubleshooting
----------------
-
-In case the installer doesn't find your Python 2.6.x installation you can check in the registry for the correct entry of 
-``SOFTWARE\Python\PythonCore\2.6\InstallPath\`` under the ``HKEY_LOCAL_MACHINE`` category. It should point to the Python 
-installation on your computer.
-
  
 
 .. toctree::
    :maxdepth: 2
+
 
 Modules
 -------

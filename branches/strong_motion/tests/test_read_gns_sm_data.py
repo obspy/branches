@@ -24,6 +24,10 @@ class GNSSmTestCase(unittest.TestCase):
         self.assertEqual(v1.stream[0].stats.npts,29000)
         self.assertEqual(v1.stream[0].data.size,29000)
         self.assertEqual(v1.stream[1].stats.sampling_rate,200.0)
+        testfile = os.path.join(self.path, 'data','vol1_data','2009',
+                                '01_Prelim','2009-01-10_115326','Vol1',
+                                 'data','20090110_115326_AVAB_2A.V1A')
+        v1 = Vol12Reader(testfile,headonly=False)
 
     def test_Vol2Reader(self):
         testfile = os.path.join(self.path, 'data', '19900210032700E_Vol2_o90400A1.V2A')

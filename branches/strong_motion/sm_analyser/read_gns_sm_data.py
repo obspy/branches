@@ -27,7 +27,8 @@ class Vol12Reader(object):
             self.headonly = headonly
             for i in xrange(3):
                 self.stream += self.read_comp(self.f)
-        
+            self.f.close()
+            
     def read_comp(self,f):
         """
         Read all time series for one sensor orientation. Can be called several 
@@ -51,28 +52,32 @@ class Vol12Reader(object):
         comp = f.readline().split()[1]
         for i in xrange(3): f.readline()#skip three lines
         # read integer header
+        # first line
         a = map(int,f.readline().split())
         year, month, day, hour, minute, sec = a[0:6]
         nsec, microsec = divmod(sec,10)
         microsec *= 1e5
         smdict['eventtime'] = UTCDateTime(year, month, day, hour, minute, nsec, int(microsec))
         bfyear, bfmonth = a[8:10]
+        # second line
         a = map(int,f.readline().split())
         smdict['hypodep'] = a[6]
         smdict['centdep'] = a[7]
         bfday,bfhour = a[8:10]
+        # third line
         a = map(int,f.readline().split())
         smdict['lilax'] = a[-4]
         smdict['compdir'] = a[-3]
         smdict['epicdist'] = a[-1]
+        # fourth line
         a = map(int,f.readline().split())
         smdict['prepend'] = a[1]
         smdict['append'] = a[2]
         nptsa = a[3]
         nptsv = a[4]
         nptsd = a[5]
-        bfmin,bfsec = map(int,a[8:10])
-        bfnsec, bfmicrosec = divmod(sec,1000)
+        bfmin,bfsec = a[8:10]
+        bfnsec, bfmicrosec = divmod(bfsec,1000)
         bfmicrosec *= 1e3
         # Currently the buffer start time is not stored in Volume 2 files
         # replace it with the event time in this case
