@@ -49,6 +49,7 @@ import glob
 import shutil
 import pickle
 import os
+import ConfigParser
 
 try:
 	from mpl_toolkits.basemap import Basemap
@@ -79,7 +80,7 @@ def ObsPyPT():
 	
 	# ------------------------Read INPUT file (Parameters)--------------------
 	(input) = read_input()
-	
+	import ipdb; ipdb.set_trace()
 	add_ress = get_address(input, interactive = input['inter_address'])
 	(net, sta, loc, cha) = get_info(input, interactive = input['inter_address'])
 	add_save = address_save(input, interactive = input['inter_address'])
@@ -153,127 +154,129 @@ def read_input():
 	This module will read the INPUT files which is located in the same folder as ObsPyDMT.py
 	"""
 	
+	config = ConfigParser.RawConfigParser()
+
 	add = os.getcwd()
-	add += '/INPUT'
-	f = open(add)
-	S = f.readlines()
+	add += '/INPUT.cfg'
+	config.read('INPUT.cfg')
+
 	input = {}
-	input['Address'] = S[3].split()[2]
-	input['inter_address'] = S[4].split()[2]
-	input['min_date'] = S[8].split()[2]
-	input['max_date'] = S[9].split()[2]
-	input['min_mag'] = float(S[10].split()[2])
-	input['max_mag'] = float(S[11].split()[2])
-	input['min_lat'] = float(S[13].split()[2])
-	input['max_lat'] = float(S[14].split()[2])
-	input['min_lon'] = float(S[15].split()[2])
-	input['max_lon'] = float(S[16].split()[2])
-	input['min_depth'] = float(S[18].split()[2])
-	input['max_depth'] = float(S[19].split()[2])
-	input['max_result'] = int(S[20].split()[2])
-	input['t_before'] = float(S[22].split()[2])
-	input['t_after'] = float(S[23].split()[2])
+	input['Address'] = config.get('Address_info', 'address')
+	input['inter_address'] = config.get('Address_info', 'interactive_address')
+	input['target_folder'] = config.get('Address_info', 'target_folder')
+	input['save_folder'] = config.get('Address_info', 'save_folder')
+	
+	input['min_date'] = config.get('Event_Request', 'min_datetime')
+	input['max_date'] = config.get('Event_Request', 'max_datetime')
+	input['min_mag'] = config.getfloat('Event_Request', 'min_magnitude')
+	input['max_mag'] = config.getfloat('Event_Request', 'max_magnitude')
+	input['min_depth'] = config.getfloat('Event_Request', 'min_depth')
+	input['max_depth'] = config.getfloat('Event_Request', 'max_depth')
+	input['min_lon'] = config.getfloat('Event_Request', 'min_longitude')
+	input['max_lon'] = config.getfloat('Event_Request', 'max_longitude')
+	input['min_lat'] = config.getfloat('Event_Request', 'min_latitude')
+	input['max_lat'] = config.getfloat('Event_Request', 'max_latitude')
+	input['t_before'] = config.getfloat('Event_Request', 'time_before')
+	input['t_after'] = config.getfloat('Event_Request', 'time_after')
+	input['max_result'] = config.getint('Event_Request', 'max_results')
+	
+	input['get_events'] = config.get('Request', 'get_events')
+	input['IRIS'] = config.get('Request', 'IRIS')
+	input['ArcLink'] = config.get('Request', 'ArcLink')
+	
+	input['mass'] = config.get('Parallel', 'mass')
+	input['nodes'] = config.get('Parallel', 'nodes')
 
-	input['get_events'] = S[27].split()[2]
-	input['IRIS'] = S[28].split()[2]
-	input['ArcLink'] = S[29].split()[2]
+	input['waveform'] = config.get('what_to_get', 'waveform')
+	input['response'] = config.get('what_to_get', 'response')
+	input['SAC'] = config.get('what_to_get', 'SAC')
 	
-	input['mass'] = S[33].split()[2]	
-	input['nodes'] = S[34].split()[2]
-
-	input['waveform'] = S[38].split()[2]
-	input['response'] = S[39].split()[2]
-	input['SAC'] = S[40].split()[2]
+	input['net'] = config.get('specifications_request', 'network')
+	input['sta'] = config.get('specifications_request', 'station')
 	
-	input['net'] = S[44].split()[2]
-	input['sta'] = S[45].split()[2]
-	
-	if S[46].split()[2] == "''":
+	if config.get('specifications_request', 'location') == "''":
 		input['loc'] = ''
-	elif S[46].split()[2] == '""':
+	elif config.get('specifications_request', 'location') == '""':
 		input['loc'] = ''
 	else:
-		input['loc'] = S[46].split()[2]
+		input['loc'] = config.get('specifications_request', 'location')
 	
-	input['cha'] = S[47].split()[2]
-	input['BHE'] = S[48].split()[2]
-	input['BHN'] = S[49].split()[2]
-	input['BHZ'] = S[50].split()[2]	
-	input['other'] = S[51].split()[2]
+	input['cha'] = config.get('specifications_request', 'channel')
+	input['BHE'] = config.get('specifications_request', 'BHE')
+	input['BHN'] = config.get('specifications_request', 'BHN')
+	input['BHZ'] = config.get('specifications_request', 'BHZ')
+	input['other'] = config.get('specifications_request', 'other')
 		
-	if S[57].split()[2] == 'None':
+	if config.get('specifications_request', 'lat') == 'None':
 		input['lat_cba'] = None
 	else:
-		input['lat_cba'] = S[57].split()[2]
+		input['lat_cba'] = config.get('specifications_request', 'lat')
 		
-	if S[58].split()[2] == 'None':
+	if config.get('specifications_request', 'lon') == 'None':
 		input['lon_cba'] = None
 	else:
-		input['lon_cba'] = S[58].split()[2]
+		input['lon_cba'] = config.get('specifications_request', 'lon')
 	
-	if S[59].split()[2] == 'None':
+	if config.get('specifications_request', 'minradius') == 'None':
 		input['mr_cba'] = None
 	else:
-		input['mr_cba'] = S[59].split()[2]
+		input['mr_cba'] = config.get('specifications_request', 'minradius')
 	
-	if S[60].split()[2] == 'None':
+	if config.get('specifications_request', 'maxradius') == 'None':
 		input['Mr_cba'] = None
 	else:
-		input['Mr_cba'] = S[60].split()[2]
+		input['Mr_cba'] = config.get('specifications_request', 'maxradius')
 	
 		
-	if S[61].split()[2] == 'None':
+	if config.get('specifications_request', 'minlat') == 'None':
 		input['mlat_rbb'] = None
 	else:
-		input['mlat_rbb'] = S[61].split()[2]
+		input['mlat_rbb'] = config.get('specifications_request', 'minlat')
 	
-	if S[62].split()[2] == 'None':
+	if config.get('specifications_request', 'maxlat') == 'None':
 		input['Mlat_rbb'] = None
 	else:
-		input['Mlat_rbb'] = S[62].split()[2]
+		input['Mlat_rbb'] = config.get('specifications_request', 'maxlat')
 	
-	if S[63].split()[2] == 'None':
+	if config.get('specifications_request', 'minlon') == 'None':
 		input['mlon_rbb'] = None
 	else:
-		input['mlon_rbb'] = S[63].split()[2]
+		input['mlon_rbb'] = config.get('specifications_request', 'minlon')
 	
-	if S[64].split()[2] == 'None':
+	if config.get('specifications_request', 'maxlon') == 'None':
 		input['Mlon_rbb'] = None
 	else:
-		input['Mlon_rbb'] = S[64].split()[2]
+		input['Mlon_rbb'] = config.get('specifications_request', 'maxlon')
 
 	
-	input['TEST'] = S[68].split()[2]
-	input['TEST_no'] = int(S[69].split()[2])
+	input['TEST'] = config.get('test', 'TEST')
+	input['TEST_no'] = config.getint('test', 'TEST_no')
 	
-	input['update_iris'] = S[73].split()[2]
-	input['update_arc'] = S[74].split()[2]
-	input['No_updating_IRIS'] = int(S[75].split()[2])
-	input['No_updating_ARC'] = int(S[76].split()[2])
+	input['update_iris'] = config.get('update', 'update_iris')
+	input['update_arc'] = config.get('update', 'update_arc')
+	input['No_updating_IRIS'] = config.getint('update', 'num_updating_IRIS')
+	input['No_updating_ARC'] = config.getint('update', 'num_updating_ARC')
 
-	input['QC_IRIS'] = S[80].split()[2]
-	input['QC_ARC'] = S[81].split()[2]
+	input['QC_IRIS'] = config.get('QC', 'QC_IRIS')
+	input['QC_ARC'] = config.get('QC', 'QC_ARC')
 	
-	input['email'] = S[85].split()[2]
-	input['email_address'] = S[86].split()[2]
+	input['email'] = config.get('email', 'email')
+	input['email_address'] = config.get('email', 'email_address')
 	
-	input['report'] = S[90].split()[2]
+	input['report'] = config.get('report', 'report')
 	
-	input['plt_event'] = S[94].split()[2]
-	input['plt_sta'] = S[95].split()[2]
-	input['plt_ray'] = S[96].split()[2]
+	input['plt_event'] = config.get('ObsPyPT', 'plot_event')
+	input['plt_sta'] = config.get('ObsPyPT', 'plot_sta')
+	input['plt_ray'] = config.get('ObsPyPT', 'plot_ray')
 
-	input['llcrnrlon'] = float(S[98].split()[2])
-	input['llcrnrlat'] = float(S[99].split()[2])
-	input['urcrnrlon'] = float(S[100].split()[2])
-	input['urcrnrlat'] = float(S[101].split()[2])
+	input['llcrnrlon'] = config.getfloat('ObsPyPT', 'llcrnrlon')
+	input['urcrnrlon'] = config.getfloat('ObsPyPT', 'urcrnrlon')
+	input['llcrnrlat'] = config.getfloat('ObsPyPT', 'llcrnrlat')
+	input['urcrnrlat'] = config.getfloat('ObsPyPT', 'urcrnrlat')
 	
-	input['lat_0'] = float(S[103].split()[2])
-	input['lon_0'] = float(S[104].split()[2])
-	
-	input['plt_folder'] = S[106].split()[2]
-	input['plt_save'] = S[107].split()[2]
-	
+	input['lon_0'] = config.getfloat('ObsPyPT', 'lon_0')
+	input['lat_0'] = config.getfloat('ObsPyPT', 'lat_0')
+		
 	return input
 
 ###################################################### get_address ######################################################
