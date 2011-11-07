@@ -38,7 +38,7 @@ if not windows:
     import threading
     import termios
     TERMIOS = termios
-    # need a lock for the global quit variable which is used in two threads
+    # need a lock for the global quitflag variable which is used in two threads
     lock = threading.RLock()
 from ConfigParser import ConfigParser
 from optparse import OptionParser
@@ -109,10 +109,10 @@ else:
         """
         This class will run as a second thread to capture keypress events
         """
-        global quit, done
+        global quitflag, done
 
         def run(self):
-            global quit, done
+            global quitflag, done
             msg = 'Keypress capture thread initialized...\n'
             msg += "Press 'q' at any time to finish " \
             + "the file in progress and quit."
@@ -123,7 +123,7 @@ else:
                 if c == 'q' and not done:
                     try:
                         with lock:
-                            quit = True
+                            quitflag = True
                     except:
                         pass
                     print "You pressed q."
@@ -155,9 +155,9 @@ else:
         """
         Checks if the user pressed q to quit downloading meanwhile.
         """
-        global quit
+        global quitflag
         with lock:
-            if quit:
+            if quitflag :
                 msg = "Quitting. To resume the download, just run " + \
                 "ObsPyLoad again, using the same arguments."
                 print msg
@@ -168,12 +168,117 @@ else:
 ####################################################
 
 
-def main():
+def main(**kwargs):
     """
-    Main function to run as a dedicated program.
+    Main function to run as a dedicated program. It may also be imported and
+    called with appropriate keyword arguments. This is mainly provided as a
+    convenience for other scripts, there are no sanity checks for the keywords,
+    so be sure to get them right.
+
+    Parameters
+    ----------
+
+    :type start: str, optional
+    :param start: Start time of event query timeframe. obspy.core.UTCDateTime
+        recognizable string.
+    :type end: str, optional
+    :param end: End time of event query timeframe. obspy.core.UTCDateTime
+        recognizable string.
+    :type magmin: str or int or float, optional
+    :param magmin: Minimum magnitude.
+    :type magmax: str or int or float, optional
+    :param magmax: Maximum magnitude.
+    :type nt: str, optional
+    :param nt: Network restriction, wildcards supported.
+    :type st: str, optional
+    :param st: Station restriction, wildcards supported.
+    :type lo: str, optional
+    :param lo: Location restriction, wildcards supported.
+    :type ch: str, optional
+    :param ch: Channel restriction, wildcards supported.
+    :type latmin: str or int or float, optional
+    :param latmin: Minimum Latitude.
+    :type latmax: str or int or float, optional
+    :param latmax: Maximum Latitude.
+    :type lonmin: str or int or float, optional
+    :param lonmin: Minimum Longitude.
+    :type lonmax: str or int or float, optional
+    :param lonmax: Maximum Longitude.
+    :type datapath: str, optional
+    :param datapath: Relative or absolute path to data or metadata folder.
+    :type metadata: bool, optional
+    :param metadata: Download metadata instead of waveform data if True.
+    :type update: bool, optional
+    :param update: If set to True, update the event database if running on the
+        same directory for a second time.
+    :type reset: bool, optional
+    :param reset: If set to True, redownload everything if datapath present.
+        Same as deleting the datapath before running ObsPyLoad.
+    :type exceptions: bool, optional
+    :param exceptions: If set to True, the file exceptions.txt in the datapath
+        is read. This mode will try to download the data from every station
+        that returned an error other than 'no data available' last time.
+    :type permanent: bool, optional
+    :param permanent: Download only permanent data if set to True, only
+        temporary data if set to False. The default is ``None`` and will
+        download all data.
+    :type force: bool, optional
+    :param force: Skip working directory warning (default is ``True`` and will
+                  skip the warning.
+    :type model: str, optional
+    :param model: Velocity model for arrival time calculation used to crop the
+        data, either 'iasp91' or 'ak135'. (default is ``'iasp91'``).
+    :type preset: str or int or float, optional
+    :param preset: Time parameter in seconds which determines how close the
+        event data will be cropped before the calculated arrival time.
+        Defaults to 5 minutes.
+    :type offset: str or int or float, optional
+    :param offset: Time parameter in seconds which determines how close the
+        event data will be cropped after the calculated arrival time.
+        Defaults to 80 minutes.
+    :type plt: str, optional
+    :param plt: For each event, create one plot with the data from all
+        stations together with theoretical arrival times. You may provide the
+        internal plotting resolution: e.g. -I 900x600x5. This gives you a
+        resolution of 900x600, and 5 units broad station columns. If -I d, or
+        -I default, the default of 1200x800x1 will be used. If this parameter
+        is not passed to ObsPyLoad at all, no plots will be created. You may
+        additionally specify the timespan of the plot after event origin time
+        in minutes: e.g. for timespan lasting 30 minutes: -I 1200x800x1/30 (or
+        -I d/30). Defaults to 100 minutes.
+    :type fill: bool, optional
+    :param fill: When creating the plot, download all the data needed to
+        fill the rectangular area of the plot.
+    :type phases: str, optional
+    :param phases: Comma-delimited enumeration of phases for which the
+        theoretical arrival times should be plotted on top if creating the data
+        plot. To plot all available phases, use 'all'. If you just want to plot
+        the data and no phases, use 'none'.
+    :type debug: bool, optional
+    :param debug: Print debugging information.
+    :return:
+        Saves waveform data or metadata into folder structure.
+
+    .. rubric:: Example
+
+        >>> from obspyload import main as obspyload
+        >>> obspyload(datapath="van", magmin=7, start="2011-10-23", force=True)
+        Downloading NERIES eventlist... Keypress capture thread initialized...
+        Press 'q' at any time to finish the file in progress and quit.
+        done.
+        Received 1 event(s) from NERIES.
+        Downloading ArcLink inventory data...
+        (...)
+
+    .. rubric:: Notes
+
+         See ObsPyLoad's help functions (command line: obspyload -h and
+         obspyload -H) as well as the ObsPyLoad manual (available on the ObsPy
+         SVN server) for further documentation.
     """
 
-    global datapath, quit, done, skip_networks
+    global datapath, quitflag, done, skip_networks
+    quitflag = False
     # dead networks deactivated for now
     skip_networks = []
     # if hardcoded skip networks are ok, uncomment this line:
@@ -191,6 +296,11 @@ def main():
     # default for start is three months ago, end is now
     # default offset is 80 min, preset 5min, default velocity model is 'iasp91'
     config = ConfigParser({'magmin': '3',  # (\\label{lst:configstart})
+                           'magmax': '12',
+                           'latmin': '-90',
+                           'latmax': '90',
+                           'lonmin': '-180',
+                           'lonmax': '180',
                            'dt': '10',
                            'start': str(UTCDateTime.utcnow()
                                         - 60 * 60 * 24 * 30 * 3),
@@ -206,7 +316,7 @@ def main():
                            'ch': '*',
                           })  # (\\label{lst:configend})
 
-    # read config file, if it exists, possibly overriding defaults as set above
+    # read config file, if it exists, possibly overriding defaults
     config.read('~/.obspyloadrc')
 
     # create command line option parser
@@ -219,25 +329,26 @@ def main():
     # store_false saves bool FALSE, store saves string; into the variable
     # given with dest="var"
     # * you need to provide every possible option here.
-    # reihenfolge wird eingehalten in help msg. # (\\label{lst:optionstart})
+    # reihenfolge wird eingehalten in help msg # (\\label{lst:optionstart})
     parser.add_option("-H", "--more-help", action="store_true",
-                      dest="showhelp", help="Show explanatory help and exit.")
-    helpmsg = "Instead of downloading seismic data, download metadata: " + \
-              "resp instrument and dataless seed files."
+                      dest="showhelp", help="Show long help and exit.")
+    helpmsg = "Instead of downloading seismic data, download metadata:" + \
+              " resp instrument and dataless seed files."
     parser.add_option("-q", "--query-metadata", action="store_true",
                       dest="metadata", help=helpmsg)
-    helpmsg = "The path where ObsPyLoad will store the data (default is " + \
-              "./ObsPyLoad-data for the data download mode and " + \
+    helpmsg = "The path where ObsPyLoad will store the data (default " + \
+              "is ./ObsPyLoad-data for the data download mode and " + \
               "./ObsPyLoad-metadata for metadata download mode)."
     parser.add_option("-P", "--datapath", action="store", dest="datapath",
                       help=helpmsg)
-    helpmsg = "Update the event database when ObsPyLoad runs on the same " + \
-              "directory a second time in order to continue data downloading."
+    helpmsg = "Update the event database if ObsPyLoad runs on the same" + \
+              " directory a second time to continue data downloading."
     parser.add_option("-u", "--update", help=helpmsg,
                       action="store_true", dest="update")
-    helpmsg = "If the datapath is found, do not resume previous downloads " + \
-              "as is the default behaviour, but redownload everything. " + \
-              "Same as deleting the datapath before running ObsPyLoad."
+    helpmsg = "If the datapath is found, do not resume previous " + \
+              "downloads as is the default behaviour, but redownload " + \
+              "everything. Same as deleting the datapath before " + \
+              "running ObsPyLoad."
     parser.add_option("-R", "--reset", action="store_true",
                       dest="reset", help=helpmsg)
     parser.add_option("-s", "--starttime", action="store", dest="start",
@@ -246,38 +357,38 @@ def main():
                       help="End time. Default: now.")
     parser.add_option("-t", "--time", action="store", dest="time",
                       help="Start and End Time delimited by a slash.")
-    helpmsg = "Velocity model for arrival time calculation used to crop " + \
-              "the data, either 'iasp91' or 'ak135'. Default: 'iasp91'."
-    parser.add_option("-v", "--velocity-model", action="store", dest="model",
-                      help=helpmsg)
-    helpmsg = "Time parameter in seconds which determines how close the " + \
-            "event data will be cropped before the calculated arrival " + \
-            "time. Default: 5 minutes."
+    helpmsg = "Velocity model for arrival time calculation used to cr" + \
+              "op the data, either 'iasp91' or 'ak135'. Default: 'iasp91'."
+    parser.add_option("-v", "--velocity-model", action="store",
+                      dest="model", help=helpmsg)
+    helpmsg = "Time parameter in seconds which determines how close " + \
+              "the event data will be cropped before the calculated " + \
+              "arrival time. Default: 5 minutes."
     parser.add_option("-p", "--preset", action="store", dest="preset",
                       help=helpmsg)
-    helpmsg = "Time parameter in seconds which determines how close the " + \
-            "event data will be cropped after the calculated arrival time." + \
-            " Default: 80 minutes."
+    helpmsg = "Time parameter in seconds which determines how close " + \
+              "the event data will be cropped after the calculated " + \
+              "arrival time. Default: 80 minutes."
     parser.add_option("-o", "--offset", action="store", dest="offset",
                       help=helpmsg)
     parser.add_option("-m", "--magmin", action="store", dest="magmin",
                       help="Minimum magnitude. Default: 3")
     parser.add_option("-M", "--magmax", action="store", dest="magmax",
                       help="Maximum magnitude.")
-    helpmsg = "Provide rectangle with GMT syntax: <west>/<east>/<south>/" \
-            + "<north> (alternative to -x -X -y -Y)."
+    helpmsg = "Provide rectangle with GMT syntax: <lonmin>/<lonmax>/<latmin>" \
+            + "/<latmax> (alternative to -x -X -y -Y)."
     parser.add_option("-r", "--rect", action="store", dest="rect",
                       help=helpmsg)
-    parser.add_option("-x", "--latmin", action="store", dest="south",
+    parser.add_option("-x", "--latmin", action="store", dest="latmin",
                       help="Minimum latitude.")
-    parser.add_option("-X", "--latmax", action="store", dest="north",
+    parser.add_option("-X", "--latmax", action="store", dest="latmax",
                       help="Maximum latitude.")
-    parser.add_option("-y", "--lonmin", action="store", dest="west",
+    parser.add_option("-y", "--lonmin", action="store", dest="lonmin",
                       help="Minimum longitude.")
-    parser.add_option("-Y", "--lonmax", action="store", dest="east",
+    parser.add_option("-Y", "--lonmax", action="store", dest="lonmax",
                       help="Maximum longitude.")
-    helpmsg = "Identity code restriction, syntax: nw.st.l.ch (alternative " + \
-              "to -N -S -L -C)."
+    helpmsg = "Identity code restriction, syntax: nw.st.l.ch (" + \
+              "alternative to -N -S -L -C)."
     parser.add_option("-i", "--identity", action="store", dest="identity",
                       help=helpmsg)
     parser.add_option("-N", "--network", action="store", dest="nw",
@@ -288,22 +399,23 @@ def main():
                       help="Location restriction.")
     parser.add_option("-C", "--channel", action="store", dest="ch",
                       help="Channel restriction.")
-    helpmsg = "Do not request all networks (default), but only permanent ones."
+    helpmsg = "Do not request all networks (default), but only " + \
+              "permanent ones."
     parser.add_option("-n", "--no-temporary", action="store_true",
                       dest="permanent", help=helpmsg)
     parser.add_option("-f", "--force", action="store_true", dest="force",
                       help="Skip working directory warning.")
-    helpmsg = "Instead entering the normal download procedure, read the " + \
-              "file exceptions.txt in the datapath, in which all " + \
-              "errors ObsPyLoad encountered while downloading are saved. " + \
+    helpmsg = "Instead entering the normal download procedure, read " + \
+              "the file exceptions.txt in the datapath, in which all " + \
+              "errors encountered while downloading are saved. " + \
               "This mode will try to download the data from every " + \
               "station that returned an error other than 'no data " + \
               "available' last time."
     parser.add_option("-E", "--exceptions", action="store_true",
                       dest="exceptions", help=helpmsg)
     helpmsg = "For each event, create one plot with the data from all " + \
-              "stations together with theoretical arrival times. You may " + \
-              "provide the internal plotting resolution: e.g. " + \
+              "stations together with theoretical arrival times. " + \
+              "You may provide the internal plotting resolution: e.g. " + \
               "-I 900x600x5. This gives you a resolution of 900x600, " + \
               "and 5 units broad station columns. If -I d, " + \
               "or -I default, the default of " + \
@@ -316,16 +428,16 @@ def main():
               "will be in pdf format."
     parser.add_option("-I", "--plot", action="store", dest="plt",
                       help=helpmsg)
-    helpmsg = "When creating the plot, download all the data needed to " + \
-              "fill the rectangular area of the plot. Note: depending on " + \
-              "your options, this will approximately double the data " + \
+    helpmsg = "When creating the plot, download all the data needed to" + \
+              " fill the rectangular area of the plot. Note: depending" + \
+              " on your options, this will approx. double the data " + \
               "download volume (but you'll end up with nicer plots ;-))."
-    parser.add_option("-F", "--fill-plot", action="store_true", dest="fill",
-                      help=helpmsg)
+    parser.add_option("-F", "--fill-plot", action="store_true",
+                      dest="fill", help=helpmsg)
     helpmsg = "Specify phases for which the theoretical arrival times " + \
               "should be plotted on top if creating the data plot(see " + \
-              "above, -I option). Usage: -a phase1,phase2,(...)." + \
-              " Default: -a P,S. See the long help for available phases. " + \
+              "above, -I option). Usage: -a phase1,phase2,(...). " + \
+              "Default: -a P,S. See long help for available phases. " + \
               "To plot all available phases, use -a all. If you just " + \
               "want to plot the data and no phases, use -a none."
     parser.add_option("-a", "--phases", action="store", dest="phases",
@@ -340,13 +452,13 @@ def main():
 
     # config_options is dictionary of _strings_(see above dict),
     # override respective correct # default types here
-    # * you dont need to provide every possible option here, just the ones with
+    # * dont need to provide every possible option here, just the ones with
     # default values overriden  # (\\label{lst:override})
     config_options['magmin'] = config.getfloat('DEFAULT', 'magmin')
     config_options['dt'] = config.getfloat('DEFAULT', 'dt')
     config_options['preset'] = config.getfloat('DEFAULT', 'preset')
     config_options['offset'] = config.getfloat('DEFAULT', 'offset')
-    # it's not possible to override the start and end time defaults here, since
+    # Not possible to override the start and end time defaults here, since
     # they are of obspy's own UTCDateTime type. will handle below.
 
     # feed config_options dictionary of defaults into parser object
@@ -358,22 +470,31 @@ def main():
         print "(options, args) created"
         print "options: ", options
         print "args: ", args
+    # Check if keyword arguments have been passed to the main function from
+    # another script and parse here:
+    if kwargs:
+        if options.debug:
+            print "Parsing kwargs dictionary..."
+            print kwargs
+        # assigning kwargs to entries of OptionParser object - I'm very open
+        # to suggestions of prettier solutions...
+        for arg in kwargs:
+            exec("options.%s = kwargs[arg]") % arg
     # command line options can now be accessed via options.varname.
     # check flags just like if options.flag:, so without == True, because even
     # if they do not have a default False value, they are None/don't exist,
     # which also leads to False in the if-statement
-
     # * override respective correct default types for _every_ possible option
     # that is not of type 'string' here. take care that it is only done if the
     # var. really exists
-    if options.south:
-        options.south = float(options.south)
-    if options.north:
-        options.north = float(options.north)
-    if options.west:
-        options.west = float(options.west)
-    if options.east:
-        options.east = float(options.east)
+    if options.latmin:
+        options.latmin = float(options.latmin)
+    if options.latmax:
+        options.latmax = float(options.latmax)
+    if options.lonmin:
+        options.lonmin = float(options.lonmin)
+    if options.lonmax:
+        options.lonmax = float(options.lonmax)
     ##########################################################################
     # VARIABLE SPLITTING AND SANITY CHECK SECTION as described in the thesis #
     ##########################################################################
@@ -459,7 +580,7 @@ def main():
     # extract min. and max. longitude and latitude if the user has given the
     # coordinates with -r (GMT syntax)
     if options.rect:
-        if options.west or options.east or options.south or options.north:
+        if options.lonmin or options.lonmax or options.latmin or options.latmax:
             msg = "Either provide the rectangle with GMT syntax, or with " + \
             "-x -X -y -Y, not both."
             print msg
@@ -471,10 +592,10 @@ def main():
             if len(options.rect) != 4:
                 print "Erroneous rectangle given."
                 sys.exit(2)
-            options.west = float(options.rect[0])
-            options.east = float(options.rect[1])
-            options.south = float(options.rect[2])
-            options.north = float(options.rect[3])
+            options.lonmin = float(options.rect[0])
+            options.lonmax = float(options.rect[1])
+            options.latmin = float(options.rect[2])
+            options.latmax = float(options.rect[3])
         except:
             print "Erroneous rectangle given."
             print optarg, rect
@@ -551,7 +672,8 @@ def main():
     if options.metadata:
         print "ObsPyLoad will download resp and dataless seed instrument " + \
               "files and quit.\n"
-        queryMeta(options.west, options.east, options.south, options.north,
+        queryMeta(options.lonmin, options.lonmax, options.latmin,
+                  options.latmax,
                   options.start, options.end, options.nw, options.st,
                   options.lo, options.ch, options.permanent, options.debug)
         return
@@ -618,8 +740,8 @@ def main():
         print '#############'
         print "options: ", options
         print '#############'
-    events = get_events(options.west, options.east, options.south,
-                            options.north, options.start, options.end,
+    events = get_events(options.lonmin, options.lonmax, options.latmin,
+                            options.latmax, options.start, options.end,
                             options.magmin, options.magmax)
     if options.debug:
         print 'events from NERIES:', events
@@ -1186,22 +1308,22 @@ def main():
 #############################################################
 
 
-def get_events(west, east, south, north, start, end, magmin, magmax):
+def get_events(lonmin, lonmax, latmin, latmax, start, end, magmin, magmax):
     """
     Downloads and saves a list of events if not present in datapath.
 
     Parameters
     ----------
-    west : int or float, optional
+    lonmin : int or float, optional
         Minimum ("left-side") longitude.
         Format: +/- 180 decimal degrees.
-    east : int or float, optional
+    lonmax : int or float, optional
         Maximum ("right-side") longitude.
         Format: +/- 180 decimal degrees.
-    south : int or float, optional
+    latmin : int or float, optional
         Minimum latitude.
         Format: +/- 90 decimal degrees.
-    north : int or float, optional
+    latmax : int or float, optional
         Maximum latitude.
         Format: +/- 90 decimal degrees.
     start : str, optional
@@ -1234,11 +1356,11 @@ def get_events(west, east, south, north, start, end, magmin, magmax):
         result = []
         events = range(9999)  # (\\label{lst:getevents})
         while len(events) == 9999:
-            events = client.getEvents(min_latitude=south, max_latitude=north,
-                                  min_longitude=west, max_longitude=east,
-                                  min_datetime=start, max_datetime=end,
-                                  min_magnitude=magmin, max_magnitude=magmax,
-                                  max_results=9999)
+            events = client.getEvents(min_latitude=latmin, max_latitude=latmax,
+                                min_longitude=lonmin, max_longitude=lonmax,
+                                min_datetime=str(start), max_datetime=str(end),
+                                min_magnitude=magmin, max_magnitude=magmax,
+                                max_results=9999)
             result.extend(events)
             try:
                 start = events[-1]['datetime']
@@ -1304,6 +1426,10 @@ def get_inventory(start, end, nw, st, lo, ch, permanent, debug=False):
         if debug:
             print "permanent flag: ", permanent
         try:
+            if debug:
+                print "these parameters will be passed to " + \
+                "arcclient.getInventory: " + nw2, st, lo, ch, str(start), + \
+                str(end), permanent
             inventory = arcclient.getInventory(network=nw2, station=st,
                                                location=lo, channel=ch,
                                                starttime=start, endtime=end,
@@ -1442,12 +1568,12 @@ def getnparse_availability(start, end, nw, st, lo, ch, debug):
 ##################################################################
 
 
-def queryMeta(west, east, south, north, start, end, nw, st, lo, ch, permanent,
-              debug):
+def queryMeta(lonmin, lonmax, latmin, latmax, start, end, nw, st, lo, ch,
+              permanent, debug):
     """
     Downloads Resp instrument data and dataless seed files.
     """
-    global quit, done, skip_networks
+    global quitflag, done, skip_networks
     # start keypress thread, so we can quit by pressing 'q' anytime from now on
     # during the downloads
     done = False
@@ -1707,8 +1833,8 @@ def help():
     print "============================================\n\n"
     print "The CLI allows for different flavors of usage, in short:"
     print "--------------------------------------------------------\n"
-    printWrap("e.g.:", "obspyload.py -r <west>/<east>/<south>/<north> -t " + \
-          "<start>/<end> -m <min_mag> -M <max_mag> -i <nw>.<st>.<l>.<ch>")
+    printWrap("e.g.:", "obspyload.py -r <lonmin>/<lonmax>/<latmin>/<latmax>" \
+          + "-t <start>/<end> -m <min_mag> -M <max_mag> -i <nw>.<st>.<l>.<ch>")
     printWrap("e.g.:", "obspyload.py -y <min_lon> -Y <max_lon> " + \
           "-x <min_lat> -X <max_lat> -s <start> -e <end> -P <datapath> " + \
           "-o <offset> --reset -f")
@@ -1907,8 +2033,8 @@ if __name__ == "__main__":
     signal.signal(signal.SIGINT, interrupt_handler)
     signal.siginterrupt(signal.SIGINT, False)
     """
-    global quit, done
-    quit = False
+    global quitflag, done
+    quitflag = False
     begin = time.time()
     status = main()
     size = getFolderSize(datapath)
