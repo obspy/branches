@@ -110,44 +110,26 @@ def ObsPyDMT():
 
 	# ------------------------Arclink------------------------------------------------
 	if input['ArcLink'] == 'Y':
-		
-		if input['mass'] == 'Y':
 			
-			print '\n' + '************************************************************************************************'
-			print 'ArcLink -- Download all waveforms, Response file and other information based on requested events'
-			print '************************************************************************************************'
-					
-			(Nets_Arc_req_BHE, Nets_Arc_req_BHN, Nets_Arc_req_BHZ, t_arclink) = \
-				Arclink_get_Network(input)
-		
-			Arclink_get_Waveform(input, Nets_Arc_req_BHE, \
-				Nets_Arc_req_BHN, Nets_Arc_req_BHZ, t_arclink)
-
-		else:
-			
-			print '\n' + '**************************************************************************************************'
-			print 'ArcLink -- Download single waveform, Response file and other information based on requested events'
-			print '**************************************************************************************************'
-			
-			Arclink_get_Waveform_single(input)
+		print '\n' + '************************************************************************************************'
+		print 'ArcLink -- Download waveforms, Response file and other information based on requested events'
+		print '************************************************************************************************'
+				
+		(Stas_arc, t_arc) = ARC_get_Network(input)
+		ARC_Waveform(input, Stas_arc, t_arc)
 				
 	# ------------------------Updating--------------------------------
 	if input['update_iris'] == 'Y':
 		
 		print '\n' + '*********************'
-		print 'IRIS -- Updating Mode' + '\n'
-		print '*********************'
-
-		IRIS_update(input)
-		
-		
-		print '---------------------------------'
+		print 'IRIS -- Updating Mode'
 		print 'Number of iterations:'
-		print input['No_updating_IRIS']	
-		print '---------------------------------'
+		print input['No_updating_IRIS']
+		print '*********************'
 		
 		for i in range(0, input['No_updating_IRIS']):
 			update_IRIS(input)
+		
 
 	if input['update_arc'] == 'Y':
 		
@@ -648,25 +630,6 @@ def IRIS_get_Network(input):
 	return Stas_iris, t
 	#Sta_BHE, Sta_BHN, Sta_BHZ, 
 	
-
-def IRIS_update(input):
-	
-	if input['BHE'] == 'Y':
-		channel = 'BHE'	
-		update_IRIS(input, channel, interactive = 'N')
-	
-	if input['BHN'] == 'Y':
-		channel = 'BHN'
-		update_IRIS(input, channel, interactive = 'N')
-	
-	if input['BHZ'] == 'Y':
-		channel = 'BHZ'
-		update_IRIS(input, channel, interactive = 'N')
-
-	print "-------------------------------------------------"
-	print 'IRIS-UPDATE is DONE'
-	print "-------------------------------------------------"
-	
 ###################################################### IRIS_Waveform ######################################################
 
 def IRIS_Waveform(input, Stas_iris, t):
@@ -677,15 +640,19 @@ def IRIS_Waveform(input, Stas_iris, t):
 	
 	if input['BHE'] == 'Y':
 		Sta_req = IRIS_folder_sta_initialize(input, Stas_iris, channel = 'BHE')
-		IRIS_get_Waveform(input, Sta_req, channel = 'BHE', interactive = 'N', type = 'saved')
+		IRIS_get_Waveform(input, Sta_req, channel = 'BHE', interactive = 'N', type = 'save')
 	
 	if input['BHN'] == 'Y':
 		Sta_req = IRIS_folder_sta_initialize(input, Stas_iris, channel = 'BHN')
-		IRIS_get_Waveform(input, Sta_req, channel = 'BHN', interactive = 'N', type = 'saved')
+		IRIS_get_Waveform(input, Sta_req, channel = 'BHN', interactive = 'N', type = 'save')
 	
 	if input['BHZ'] == 'Y':
 		Sta_req = IRIS_folder_sta_initialize(input, Stas_iris, channel = 'BHZ')
-		IRIS_get_Waveform(input, Sta_req, channel = 'BHZ', interactive = 'N', type = 'saved')
+		IRIS_get_Waveform(input, Sta_req, channel = 'BHZ', interactive = 'N', type = 'save')
+	
+	if input['other'] == 'Y':
+		Sta_req = IRIS_folder_sta_initialize(input, Stas_iris, channel = input['cha'])
+		IRIS_get_Waveform(input, Sta_req, channel = input['cha'], interactive = 'N', type = 'save')
 
 	print "-------------------------------------------------"
 	print 'IRIS is DONE'
@@ -885,6 +852,10 @@ def IRIS_get_Waveform(input, Sta_req, channel, interactive, type):
 				print "Saving Station  for: " + Sta_req[i][j][0] +	'.' + Sta_req[i][j][1] + '.' + \
 					Sta_req[i][j][2] + '.' + channel + "  ---> DONE"
 				
+				Station_file = open(Address_events + '/' + events[i]['event_id'] + '/IRIS/info/' + 'avail_iris_' + channel, 'a')
+				pickle.dump(dic[j], Station_file)
+				Station_file.close()
+				
 			except Exception, e:	
 				
 				print dummy + '---' + Sta_req[i][j][0] +	'.' + Sta_req[i][j][1] + \
@@ -900,11 +871,8 @@ def IRIS_get_Waveform(input, Sta_req, channel, interactive, type):
 				
 				Exception_file.writelines(ee)
 				Exception_file.close()
-				print e
-	
-		Station_file = open(Address_events + '/' + events[i]['event_id'] + '/IRIS/info/' + 'avail_iris_' + channel, 'a')
-		pickle.dump(dic, Station_file)
-		Station_file.close()
+				print e	
+			
 		
 		Report = open(Address_events + '/' + events[i]['event_id'] + '/IRIS/info/' + 'report_st', 'a')
 		eventsID = events[i]['event_id']
@@ -926,16 +894,29 @@ def IRIS_get_Waveform(input, Sta_req, channel, interactive, type):
 		Report.writelines('----------------------------------' + '\n')
 		Report.close()
 
-###################################################### Arclink_get_Network ######################################################
+###################################################### get_address ######################################################
 
-def Arclink_get_Network(input):
+def get_address():
 	
 	"""
-	Arclink: Returns available stations for all requested events
+	This program gets the address for next steps...
+	"""
+	
+	print '----------------------------------------------------'
+	address = raw_input('Please enter the target address:' + '\n')
+	print '----------------------------------------------------'
+			
+	return address
+
+###################################################### Arclink_get_Network ######################################################
+
+def ARC_get_Network(input):
+	
+	"""
+	Returns available Arclink stations for all requested events
 	-----------------
 	Problems:
 	- ['BW', 'WETR', '', 'BH*']
-	- Client_arclink(command_delay=0.1)
 	"""
 		
 	t_arc_1 = datetime.now()
@@ -983,11 +964,7 @@ def Arclink_get_Network(input):
 	
 	
 	t = []
-	
-	Networks_Arclink = []
-	Nets_Arc_req_BHE = []
-	Nets_Arc_req_BHN = []
-	Nets_Arc_req_BHZ = []
+	Stas = []
 
 	for i in range(0, len_events):
 		
@@ -995,7 +972,7 @@ def Arclink_get_Network(input):
 	
 		try:
 			
-			Networks_Arclink.append(client_arclink.getNetworks(t[i]-10, t[i]+10))
+			Stas.append(client_arclink.getNetworks(t[i]-10, t[i]+10))
 			print 'ArcLink-Availability for event: ' + str(i) + '  --->' + 'DONE'
 
 		except Exception, e:
@@ -1007,85 +984,19 @@ def Arclink_get_Network(input):
 			Exception_file.writelines(ee)
 			Exception_file.close()
 			print e
-				
-		nets_Arc_req_BHE=sorted([X for X in Networks_Arclink[i].keys() if ".BHE" in X])
-		Nets_Arc_req_BHE.append(nets_Arc_req_BHE)	
-		nets_Arc_req_BHN=sorted([X for X in Networks_Arclink[i].keys() if ".BHN" in X])
-		Nets_Arc_req_BHN.append(nets_Arc_req_BHN)
-		nets_Arc_req_BHZ=sorted([X for X in Networks_Arclink[i].keys() if ".BHZ" in X])
-		Nets_Arc_req_BHZ.append(nets_Arc_req_BHZ)
-
 	
-		
-	#client_arclink.close()
+	Stas_arc = []
 	
 	for i in range(0, len_events):
-		len_req_Arc_BHE = len(Nets_Arc_req_BHE[i])
-		for j in range(0, len_req_Arc_BHE):
-			Nets_Arc_req_BHE[i][j] = Nets_Arc_req_BHE[i][j].split('.')
-
-	for i in range(0, len_events):
-		len_req_Arc_BHN = len(Nets_Arc_req_BHN[i])
-		for j in range(0, len_req_Arc_BHN):
-			Nets_Arc_req_BHN[i][j] = Nets_Arc_req_BHN[i][j].split('.')
-
-	for i in range(0, len_events):
-		len_req_Arc_BHZ = len(Nets_Arc_req_BHZ[i])
-		for j in range(0, len_req_Arc_BHZ):
-			Nets_Arc_req_BHZ[i][j] = Nets_Arc_req_BHZ[i][j].split('.')
-	
-	for j in range(0, len_events):
-		for i in range(0, len(Nets_Arc_req_BHE[j])):
-			if Nets_Arc_req_BHE[j][i] == ['BW', 'WETR', '', 'BHE']:
-				del Nets_Arc_req_BHE[j][i]
-				break
+		stas_arc = []
+		for j in range(0, len(Stas[i].keys())):
+			Stas_tmp = Stas[i].keys()[j].split('.')
+			if len(Stas_tmp) == 4:
+				stas_arc.append(Stas_tmp)
 		
-		for i in range(0, len(Nets_Arc_req_BHN[j])):
-			if Nets_Arc_req_BHN[j][i] == ['BW', 'WETR', '', 'BHN']:
-				del Nets_Arc_req_BHN[j][i]
-				break
-		
-		for i in range(0, len(Nets_Arc_req_BHZ[j])):
-			if Nets_Arc_req_BHZ[j][i] == ['BW', 'WETR', '', 'BHZ']:
-				del Nets_Arc_req_BHZ[j][i]
-				break
-	
-	
-	for i in range(0, len_events):
-		print "--------------------"
-		print 'ARC-Available stations (BHE) for event' + '-' + str(i) + ':' + str(len_req_Arc_BHE)
-		print 'ARC-Available stations (BHN) for event' + '-' + str(i) + ':' + str(len_req_Arc_BHN)
-		print 'ARC-Available stations (BHZ) for event' + '-' + str(i) + ':' + str(len_req_Arc_BHZ)
-		Report = open(Address_events + '/' + events[i]['event_id'] + '/ARC/info/' + 'report_st', 'a')
-		eventsID = events[i]['event_id']
-		Report.writelines('<><><><><><><><><><><><><><><><><>' + '\n')
-		Report.writelines(eventsID + '\n')		
-		Report.writelines('---------------ArcLink---------------' + '\n')
-		rep1 = 'ARC-Available stations (BHE) for event' + '-' + str(i) + ':' + str(len_req_Arc_BHE) + '\n'
-		rep2 = 'ARC-Available stations (BHN) for event' + '-' + str(i) + ':' + str(len_req_Arc_BHN) + '\n'
-		rep3 = 'ARC-Available stations (BHZ) for event' + '-' + str(i) + ':' + str(len_req_Arc_BHZ) + '\n'
-		Report.writelines(rep1)
-		Report.writelines(rep2)
-		Report.writelines(rep3)
-		Report.writelines('----------------------------------' + '\n')
-		Report.close()
-		
-	for i in range(0, len_events):
-		Station_file1 = open(Address_events + '/' + events[i]['event_id'] + \
-			'/ARC/info/' + 'All_ARC_Stations_BHE', 'w')
-		pickle.dump(Nets_Arc_req_BHE[i], Station_file1)
-		Station_file1.close()
-		
-		Station_file2 = open(Address_events + '/' + events[i]['event_id'] + \
-			'/ARC/info/' + 'All_ARC_Stations_BHN', 'w')
-		pickle.dump(Nets_Arc_req_BHN[i], Station_file2)
-		Station_file2.close()
-		
-		Station_file3 = open(Address_events + '/' + events[i]['event_id'] + \
-			'/ARC/info/' + 'All_ARC_Stations_BHZ', 'w')
-		pickle.dump(Nets_Arc_req_BHZ[i], Station_file3)
-		Station_file3.close()
-		
+		Stas_arc.append(stas_arc)
+		Stas_arc[i].sort()
+			
 	t_arc_2 = datetime.now()
 	t_arc_21 = t_arc_2 - t_arc_1
 	
@@ -1093,12 +1004,88 @@ def Arclink_get_Network(input):
 	print 'ARC-Time: (Availability)'
 	print t_arc_21
 	
-	return Nets_Arc_req_BHE, Nets_Arc_req_BHN, Nets_Arc_req_BHZ, t
+	return Stas_arc, t
+
+###################################################### ARC_Waveform ######################################################
+
+def ARC_Waveform(input, Stas_arc, t):
+	
+	"""
+	Gets Waveforms, Response files and other information from ArcLink based on the requested events...
+	"""
+	
+	if input['BHE'] == 'Y':
+		Sta_req = ARC_folder_sta_initialize(input, Stas_arc, channel = 'BHE')
+		ARC_get_Waveform(input, Sta_req, channel = 'BHE', interactive = 'N', type = 'save')
+	
+	if input['BHN'] == 'Y':
+		Sta_req = ARC_folder_sta_initialize(input, Stas_arc, channel = 'BHN')
+		ARC_get_Waveform(input, Sta_req, channel = 'BHN', interactive = 'N', type = 'save')
+	
+	if input['BHZ'] == 'Y':
+		Sta_req = ARC_folder_sta_initialize(input, Stas_arc, channel = 'BHZ')
+		ARC_get_Waveform(input, Sta_req, channel = 'BHZ', interactive = 'N', type = 'save')
+	
+	if input['other'] == 'Y':
+		Sta_req = ARC_folder_sta_initialize(input, Stas_arc, channel = input['cha'])
+		ARC_get_Waveform(input, Sta_req, channel = input['cha'], interactive = 'N', type = 'save')
+
+	print "-------------------------------------------------"
+	print 'ArcLink is DONE'
+	print "-------------------------------------------------"
+
+###################################################### ARC_folder_sta_initialize ######################################################
+
+def ARC_folder_sta_initialize(input, Stas_arc, channel):
+	
+	Period = input['min_date'] + '_' + input['max_date'] + '_' + str(input['min_mag']) + '_' + str(input['max_mag'])
+	Address_events = input['Address'] + '/' + Period
+	
+	Event_file = open(Address_events + '/EVENT/event_list', 'r')
+	events = pickle.load(Event_file)
+	
+	len_events = len(events)
+	
+	Sta_req = []
+
+	for i in range(0, len_events):
+		sta_req = []
+		for j in range(0, len(Stas_arc[i])):
+			if Stas_arc[i][j][3] == channel:
+				sta_req.append(Stas_arc[i][j])
+		Sta_req.append(sta_req)
+
+
+	for i in range(0, len_events):
+		Sta_req_target = Sta_req[i]
+		
+		Station_file = open(Address_events + '/' + events[i]['event_id'] + \
+			'/ARC/info/' + 'all_arc_' + channel, 'w')
+		pickle.dump(Sta_req_target, Station_file)
+		Station_file.close()
+	
+	for i in range(0, len_events):
+		Exception_file = open(Address_events + '/' + events[i]['event_id'] + \
+			'/ARC/Excep_py/' + 'excep_arc_' + channel, 'w')
+		eventsID = events[i]['event_id']
+		Exception_file.writelines('\n' + eventsID + '\n')
+		Exception_file.writelines('----------------------------ARC----------------------------'+ '\n')
+		Exception_file.writelines('----------------------------EXCEPTION----------------------------'+ '\n')
+		Exception_file.close()
+		
+		Station_file = open(Address_events + '/' + events[i]['event_id'] + \
+			'/ARC/info/' + 'avail_arc_' + channel, 'w')
+		Station_file.close()
+		
+		Syn_file = open(Address_events + '/' + events[i]['event_id'] + \
+			'/ARC/info/' + 'arc_' + channel, 'w')
+		Syn_file.close()
+	
+	return Sta_req
 
 ###################################################### Arclink_get_Waveform ######################################################
 
-def Arclink_get_Waveform(input, Nets_Arc_req_BHE, \
-	Nets_Arc_req_BHN, Nets_Arc_req_BHZ, t):
+def ARC_get_Waveform(input, Sta_req, channel, interactive, type):
 	
 	"""
 	Gets Waveforms, Response files and other information from ArcLink based on the requested events...
@@ -1109,696 +1096,183 @@ def Arclink_get_Waveform(input, Nets_Arc_req_BHE, \
 	
 	t_wave_1 = datetime.now()
 	
-	Period = input['min_date'] + '_' + input['max_date'] + '_' + str(input['min_mag']) + '_' + str(input['max_mag'])
-	Address_events = input['Address'] + '/' + Period
+	if interactive == 'N':
+		Period = input['min_date'] + '_' + input['max_date'] + '_' + str(input['min_mag']) + '_' + str(input['max_mag'])
+		Address_events = input['Address'] + '/' + Period
+	else:
+		address_inter = get_address()
+		Address_events = address_inter
 	
 	Event_file = open(Address_events + '/EVENT/event_list', 'r')
 	events = pickle.load(Event_file)
 	
 	len_events = len(events)
 	
-	
-	for i in range(0, len_events):
-		Exception_file = open(Address_events + '/' + events[i]['event_id'] + \
-			'/ARC/Excep_py/' + 'Exception_file_ARC', 'w')
-		eventsID = events[i]['event_id']
-		Exception_file.writelines('\n' + eventsID + '\n')
-		Exception_file.writelines('----------------------------ARC----------------------------'+ '\n')
-		Exception_file.writelines('----------------------------EXCEPTION----------------------------'+ '\n')
-		Exception_file.close()
-		
-		Station_file = open(Address_events + '/' + events[i]['event_id'] + \
-			'/ARC/info/' + 'Avail_ARC_Stations_BHE', 'w')
-		Station_file.close()
-		Station_file = open(Address_events + '/' + events[i]['event_id'] + \
-			'/ARC/info/' + 'Avail_ARC_Stations_BHN', 'w')
-		Station_file.close()
-		Station_file = open(Address_events + '/' + events[i]['event_id'] + \
-			'/ARC/info/' + 'Avail_ARC_Stations_BHZ', 'w')
-		Station_file.close()
-		
-		Syn_file = open(Address_events + '/' + events[i]['event_id'] + \
-			'/ARC/info/' + 'iris_BHE', 'w')
-		Syn_file.close()
-		Syn_file = open(Address_events + '/' + events[i]['event_id'] + \
-			'/ARC/info/' + 'iris_BHN', 'w')
-		Syn_file.close()
-		Syn_file = open(Address_events + '/' + events[i]['event_id'] + \
-			'/ARC/info/' + 'iris_BHZ', 'w')
-		Syn_file.close()
-	
-	for i in range(0, len_events):
-		
-		t_wave_1 = datetime.now()
-		
-		if input['TEST'] == 'Y':
-			len_req_Arc_BHE = input['TEST_no']
-			len_req_Arc_BHN = input['TEST_no']
-			len_req_Arc_BHZ = input['TEST_no']
-
-		else:	
-			len_req_Arc_BHE = len(Nets_Arc_req_BHE[i]) 
-			len_req_Arc_BHN = len(Nets_Arc_req_BHN[i]) 
-			len_req_Arc_BHZ = len(Nets_Arc_req_BHZ[i]) 		
-		
-		
-		inv_BHE = {}
-		
-		if input['BHE'] == 'Y':
-			
-			for j in range(0, len_req_Arc_BHE):
-			
-				print '------------------'
-				print 'ArcLink-Event and Station Numbers are:'
-				print str(i) + '-' + str(j) + '-BHE'
-				
-				try:
-					
-					client_arclink = Client_arclink(timeout=5)
-					
-					# BHE
-					if input['waveform'] == 'Y':
-						
-						dummy = 'Waveform'
-						
-						client_arclink.saveWaveform(Address_events + '/' + events[i]['event_id'] + \
-							'/ARC/BH_RAW/' + Nets_Arc_req_BHE[i][j][0] +	'.' + Nets_Arc_req_BHE[i][j][1] + '.' + \
-							Nets_Arc_req_BHE[i][j][2] + '.' + 'BHE', Nets_Arc_req_BHE[i][j][0], Nets_Arc_req_BHE[i][j][1], \
-							Nets_Arc_req_BHE[i][j][2], 'BHE', t[i]-input['t_before'], t[i]+input['t_after'])
-						
-						print "Saving Waveform for: " + Nets_Arc_req_BHE[i][j][0] + '.' + Nets_Arc_req_BHE[i][j][1] + '.' + \
-							Nets_Arc_req_BHE[i][j][2] + '.' + 'BHE' + "  ---> DONE"  
-					
-					if input['response'] == 'Y':
-
-						dummy = 'Response'
-						
-						client_arclink.saveResponse(Address_events + '/' + events[i]['event_id'] + \
-							'/ARC/Resp/' + 'RESP' + '.' + Nets_Arc_req_BHE[i][j][0] +	'.' + Nets_Arc_req_BHE[i][j][1] + '.' + \
-							Nets_Arc_req_BHE[i][j][2] + '.' + 'BHE', Nets_Arc_req_BHE[i][j][0], Nets_Arc_req_BHE[i][j][1], \
-							Nets_Arc_req_BHE[i][j][2], 'BHE', t[i]-input['t_before'], t[i]+input['t_after'])
-						
-						sp = Parser(Address_events + '/' + events[i]['event_id'] + \
-							'/ARC/Resp/' + 'RESP' + '.' + Nets_Arc_req_BHE[i][j][0] +	'.' + Nets_Arc_req_BHE[i][j][1] + '.' + \
-							Nets_Arc_req_BHE[i][j][2] + '.' + 'BHE')
-						
-						sp.writeRESP(Address_events + '/' + events[i]['event_id'] + \
-							'/ARC/Resp')
-							
-						'''
-						pars = Parser()
-							
-						pars.read(Address_events + '/' + events[i]['event_id'] + \
-							'/ARC/Resp/' + 'RESP' + '.' + Nets_Arc_req_BHE[i][j][0] +	'.' + Nets_Arc_req_BHE[i][j][1] + '.' + \
-							Nets_Arc_req_BHE[i][j][2] + '.' + 'BHE')
-						
-						pars.writeRESP(Address_events + '/' + events[i]['event_id'] + \
-							'/ARC/Resp/' + 'RESP' + '.' + Nets_Arc_req_BHE[i][j][0] +	'.' + Nets_Arc_req_BHE[i][j][1] + '.' + \
-							Nets_Arc_req_BHE[i][j][2] + '.' + 'BHE')	
-						'''	
-					
-						print "Saving Response for: " + Nets_Arc_req_BHE[i][j][0] + '.' + Nets_Arc_req_BHE[i][j][1] + '.' + \
-							Nets_Arc_req_BHE[i][j][2] + '.' + 'BHE' + "  ---> DONE"
-						
-					
-					dummy = 'Inventory'
-					
-					inv_BHE[j] = client_arclink.getInventory(Nets_Arc_req_BHE[i][j][0], Nets_Arc_req_BHE[i][j][1], \
-						Nets_Arc_req_BHE[i][j][2], 'BHE')
-					
-					dum = Nets_Arc_req_BHE[i][j][0] + '.' + Nets_Arc_req_BHE[i][j][1]
-					
-					if input['SAC'] == 'Y':
-									
-						st = read(Address_events + '/' + events[i]['event_id'] + \
-								'/ARC/BH_RAW/' + Nets_Arc_req_BHE[i][j][0] +	'.' + Nets_Arc_req_BHE[i][j][1] + '.' + \
-								Nets_Arc_req_BHE[i][j][2] + '.' + 'BHE')
-						st[0].write(Address_events + '/' + events[i]['event_id'] + \
-								'/ARC/BH_RAW/' + Nets_Arc_req_BHE[i][j][0] +	'.' + Nets_Arc_req_BHE[i][j][1] + '.' + \
-								Nets_Arc_req_BHE[i][j][2] + '.' + 'BHE', 'SAC')
-						st = read(Address_events + '/' + events[i]['event_id'] + \
-								'/ARC/BH_RAW/' + Nets_Arc_req_BHE[i][j][0] +	'.' + Nets_Arc_req_BHE[i][j][1] + '.' + \
-								Nets_Arc_req_BHE[i][j][2] + '.' + 'BHE')
-						
-						if inv_BHE[j][dum]['latitude'] != None:
-							st[0].stats['sac']['stla'] = inv_BHE[j][dum]['latitude']
-						if inv_BHE[j][dum]['longitude'] != None:
-							st[0].stats['sac']['stlo'] = inv_BHE[j][dum]['longitude']
-						if inv_BHE[j][dum]['elevation'] != None:
-							st[0].stats['sac']['stel'] = inv_BHE[j][dum]['elevation']
-						if inv_BHE[j][dum]['depth'] != None:
-							st[0].stats['sac']['stdp'] = inv_BHE[j][dum]['depth']
-						
-						st[0].stats['sac']['evla'] = events[i]['latitude']
-						st[0].stats['sac']['evlo'] = events[i]['longitude']
-						st[0].stats['sac']['evdp'] = events[i]['depth']
-						st[0].stats['sac']['mag'] = events[i]['magnitude']
-						
-						st[0].write(Address_events + '/' + events[i]['event_id'] + \
-								'/ARC/BH_RAW/' + Nets_Arc_req_BHE[i][j][0] +	'.' + Nets_Arc_req_BHE[i][j][1] + '.' + \
-								Nets_Arc_req_BHE[i][j][2] + '.' + 'BHE', 'SAC')
-
-					Syn_file = open(Address_events + '/' + events[i]['event_id'] + \
-						'/ARC/info/' + 'iris_BHE', 'a')
-					syn = Nets_Arc_req_BHE[i][j][0] + ',' + Nets_Arc_req_BHE[i][j][1] + ',' + \
-						Nets_Arc_req_BHE[i][j][2] + ',' + Nets_Arc_req_BHE[i][j][3] + ',' + str(inv_BHE[j][dum]['latitude']) + \
-						',' + str(inv_BHE[j][dum]['longitude']) + ',' + str(inv_BHE[j][dum]['elevation']) + ',' + \
-						str(inv_BHE[j][dum]['depth']) + ',' + events[i]['event_id'] + ',' + str(events[i]['latitude']) \
-						 + ',' + str(events[i]['longitude']) + ',' + str(events[i]['depth']) + ',' + str(events[i]['magnitude']) + ',' + '\n'
-					Syn_file.writelines(syn)
-					Syn_file.close()
-					
-					print "Saving Station  for: " + Nets_Arc_req_BHE[i][j][0] +	'.' + Nets_Arc_req_BHE[i][j][1] + '.' + \
-						Nets_Arc_req_BHE[i][j][2] + '.' + 'BHE' + "  ---> DONE"
-					
-					#client_arclink.close()
-					
-				except Exception, e:	
-					
-					print dummy + '---' + Nets_Arc_req_BHE[i][j][0] +	'.' + Nets_Arc_req_BHE[i][j][1] + \
-						'.' +Nets_Arc_req_BHE[i][j][2] + '.' + 'BHE'
-					
-					Exception_file = open(Address_events + '/' + \
-						events[i]['event_id'] + '/ARC/Excep_py/' + 'Exception_file_ARC', 'a')
-
-					ee = dummy + '---' + str(i) + '-' + str(j) + '---' + Nets_Arc_req_BHE[i][j][0] + \
-						'.' + Nets_Arc_req_BHE[i][j][1] + '.' + \
-						Nets_Arc_req_BHE[i][j][2] + '.' + 'BHE' + \
-						'---' + str(e) + '\n'
-					
-					Exception_file.writelines(ee)
-					Exception_file.close()
-					print e
-		
-		
-		Station_file = open(Address_events + '/' + events[i]['event_id'] + '/ARC/info/' + 'Avail_ARC_Stations_BHE', 'a')
-		pickle.dump(inv_BHE, Station_file)
-		Station_file.close()
-		
-		
-		Report = open(Address_events + '/' + events[i]['event_id'] + '/ARC/info/' + 'report_st', 'a')
-		rep1 = 'ArcLink-Saved stations (BHE) for event' + '-' + str(i) + ': ' + str(len(inv_BHE)) + '\n'
-		Report.writelines(rep1)
-		Report.close()	
-		
-		
-		
-		inv_BHN = {}
-		
-		if input['BHN'] == 'Y':
-			
-			for j in range(0, len_req_Arc_BHN):
-			
-				print '------------------'
-				print 'ArcLink-Event and Station Numbers are:'
-				print str(i) + '-' + str(j) + '-BHN'
-				
-				try:
-					
-					client_arclink = Client_arclink(timeout=5)
-					
-					# BHN
-					if input['waveform'] == 'Y':
-						
-						dummy = 'Waveform'
-						
-						client_arclink.saveWaveform(Address_events + '/' + events[i]['event_id'] + \
-							'/ARC/BH_RAW/' + Nets_Arc_req_BHN[i][j][0] +	'.' + Nets_Arc_req_BHN[i][j][1] + '.' + \
-							Nets_Arc_req_BHN[i][j][2] + '.' + 'BHN', Nets_Arc_req_BHN[i][j][0], Nets_Arc_req_BHN[i][j][1], \
-							Nets_Arc_req_BHN[i][j][2], 'BHN', t[i]-input['t_before'], t[i]+input['t_after'])
-						
-						print "Saving Waveform for: " + Nets_Arc_req_BHN[i][j][0] + '.' + Nets_Arc_req_BHN[i][j][1] + '.' + \
-							Nets_Arc_req_BHN[i][j][2] + '.' + 'BHN' + "  ---> DONE"  
-					
-					
-					if input['response'] == 'Y':
-							
-						dummy = 'Response'
-						
-						client_arclink.saveResponse(Address_events + '/' + events[i]['event_id'] + \
-							'/ARC/Resp/' + 'RESP' + '.' + Nets_Arc_req_BHN[i][j][0] +	'.' + Nets_Arc_req_BHN[i][j][1] + '.' + \
-							Nets_Arc_req_BHN[i][j][2] + '.' + 'BHN', Nets_Arc_req_BHN[i][j][0], Nets_Arc_req_BHN[i][j][1], \
-							Nets_Arc_req_BHN[i][j][2], 'BHN', t[i]-input['t_before'], t[i]+input['t_after'])
-						
-						sp = Parser(Address_events + '/' + events[i]['event_id'] + \
-							'/ARC/Resp/' + 'RESP' + '.' + Nets_Arc_req_BHN[i][j][0] +	'.' + Nets_Arc_req_BHN[i][j][1] + '.' + \
-							Nets_Arc_req_BHN[i][j][2] + '.' + 'BHN')
-						
-						sp.writeRESP(Address_events + '/' + events[i]['event_id'] + \
-							'/ARC/Resp')
-						
-						'''
-						pars = Parser()
-							
-						pars.read(Address_events + '/' + events[i]['event_id'] + \
-							'/ARC/Resp/' + 'RESP' + '.' + Nets_Arc_req_BHN[i][j][0] +	'.' + Nets_Arc_req_BHN[i][j][1] + '.' + \
-							Nets_Arc_req_BHN[i][j][2] + '.' + 'BHN')
-						
-						pars.writeRESP(Address_events + '/' + events[i]['event_id'] + \
-							'/ARC/Resp/' + 'RESP' + '.' + Nets_Arc_req_BHN[i][j][0] +	'.' + Nets_Arc_req_BHN[i][j][1] + '.' + \
-							Nets_Arc_req_BHN[i][j][2] + '.' + 'BHN')
-						'''
-					
-										
-						print "Saving Response for: " + Nets_Arc_req_BHN[i][j][0] + '.' + Nets_Arc_req_BHN[i][j][1] + '.' + \
-							Nets_Arc_req_BHN[i][j][2] + '.' + 'BHN' + "  ---> DONE"
-						
-					
-					dummy = 'Inventory'
-					
-					inv_BHN[j] = client_arclink.getInventory(Nets_Arc_req_BHN[i][j][0], Nets_Arc_req_BHN[i][j][1], \
-						Nets_Arc_req_BHN[i][j][2], 'BHN')
-					
-					dum = Nets_Arc_req_BHN[i][j][0] + '.' + Nets_Arc_req_BHN[i][j][1]
-					
-					if input['SAC'] == 'Y':
-									
-						st = read(Address_events + '/' + events[i]['event_id'] + \
-								'/ARC/BH_RAW/' + Nets_Arc_req_BHN[i][j][0] +	'.' + Nets_Arc_req_BHN[i][j][1] + '.' + \
-								Nets_Arc_req_BHN[i][j][2] + '.' + 'BHN')
-						st[0].write(Address_events + '/' + events[i]['event_id'] + \
-								'/ARC/BH_RAW/' + Nets_Arc_req_BHN[i][j][0] +	'.' + Nets_Arc_req_BHN[i][j][1] + '.' + \
-								Nets_Arc_req_BHN[i][j][2] + '.' + 'BHN', 'SAC')
-						st = read(Address_events + '/' + events[i]['event_id'] + \
-								'/ARC/BH_RAW/' + Nets_Arc_req_BHN[i][j][0] +	'.' + Nets_Arc_req_BHN[i][j][1] + '.' + \
-								Nets_Arc_req_BHN[i][j][2] + '.' + 'BHN')
-								
-						if inv_BHN[j][dum]['latitude'] != None:
-							st[0].stats['sac']['stla'] = inv_BHN[j][dum]['latitude']
-						if inv_BHN[j][dum]['longitude'] != None:
-							st[0].stats['sac']['stlo'] = inv_BHN[j][dum]['longitude']
-						if inv_BHN[j][dum]['elevation'] != None:
-							st[0].stats['sac']['stel'] = inv_BHN[j][dum]['elevation']
-						if inv_BHN[j][dum]['depth'] != None:
-							st[0].stats['sac']['stdp'] = inv_BHN[j][dum]['depth']
-						
-						st[0].stats['sac']['evla'] = events[i]['latitude']
-						st[0].stats['sac']['evlo'] = events[i]['longitude']
-						st[0].stats['sac']['evdp'] = events[i]['depth']
-						st[0].stats['sac']['mag'] = events[i]['magnitude']
-						
-						st[0].write(Address_events + '/' + events[i]['event_id'] + \
-								'/ARC/BH_RAW/' + Nets_Arc_req_BHN[i][j][0] +	'.' + Nets_Arc_req_BHN[i][j][1] + '.' + \
-								Nets_Arc_req_BHN[i][j][2] + '.' + 'BHN', 'SAC')
-
-					Syn_file = open(Address_events + '/' + events[i]['event_id'] + \
-						'/ARC/info/' + 'iris_BHN', 'a')
-					syn = Nets_Arc_req_BHN[i][j][0] + ',' + Nets_Arc_req_BHN[i][j][1] + ',' + \
-						Nets_Arc_req_BHN[i][j][2] + ',' + Nets_Arc_req_BHN[i][j][3] + ',' + str(inv_BHN[j][dum]['latitude']) + \
-						',' + str(inv_BHN[j][dum]['longitude']) + ',' + str(inv_BHN[j][dum]['elevation']) + ',' + \
-						str(inv_BHN[j][dum]['depth']) + ',' + events[i]['event_id'] + ',' + str(events[i]['latitude']) \
-						 + ',' + str(events[i]['longitude']) + ',' + str(events[i]['depth']) + ',' + str(events[i]['magnitude']) + ',' + '\n'
-					Syn_file.writelines(syn)
-					Syn_file.close()
-					
-					print "Saving Station  for: " + Nets_Arc_req_BHN[i][j][0] +	'.' + Nets_Arc_req_BHN[i][j][1] + '.' + \
-						Nets_Arc_req_BHN[i][j][2] + '.' + 'BHN' + "  ---> DONE"
-					
-					#client_arclink.close()
-					
-				except Exception, e:	
-					
-					print dummy + '---' + Nets_Arc_req_BHN[i][j][0] +	'.' + Nets_Arc_req_BHN[i][j][1] + \
-						'.' +Nets_Arc_req_BHN[i][j][2] + '.' + 'BHN'
-					
-					Exception_file = open(Address_events + '/' + \
-						events[i]['event_id'] + '/ARC/Excep_py/' + 'Exception_file_ARC', 'a')
-
-					ee = dummy + '---' + str(i) + '-' + str(j) + '---' + Nets_Arc_req_BHN[i][j][0] + \
-						'.' + Nets_Arc_req_BHN[i][j][1] + '.' + \
-						Nets_Arc_req_BHN[i][j][2] + '.' + 'BHN' + \
-						'---' + str(e) + '\n'
-					
-					Exception_file.writelines(ee)
-					Exception_file.close()
-					print e
-		
-		
-		Station_file = open(Address_events + '/' + events[i]['event_id'] + '/ARC/info/' + 'Avail_ARC_Stations_BHN', 'a')
-		pickle.dump(inv_BHN, Station_file)
-		Station_file.close()
-		
-		
-		Report = open(Address_events + '/' + events[i]['event_id'] + '/ARC/info/' + 'report_st', 'a')
-		rep1 = 'ArcLink-Saved stations (BHN) for event' + '-' + str(i) + ': ' + str(len(inv_BHN)) + '\n'
-		Report.writelines(rep1)
-		Report.close()	
-		
-
-		inv_BHZ = {}
-		
-		if input['BHZ'] == 'Y':
-			
-			for j in range(0, len_req_Arc_BHZ):
-			
-				print '------------------'
-				print 'ArcLink-Event and Station Numbers are:'
-				print str(i) + '-' + str(j) + '-BHZ'
-				
-				try:
-					
-					client_arclink = Client_arclink(timeout=5)
-					
-					# BHZ
-					if input['waveform'] == 'Y':
-							
-						dummy = 'Waveform'
-						
-						client_arclink.saveWaveform(Address_events + '/' + events[i]['event_id'] + \
-							'/ARC/BH_RAW/' + Nets_Arc_req_BHZ[i][j][0] +	'.' + Nets_Arc_req_BHZ[i][j][1] + '.' + \
-							Nets_Arc_req_BHZ[i][j][2] + '.' + 'BHZ', Nets_Arc_req_BHZ[i][j][0], Nets_Arc_req_BHZ[i][j][1], \
-							Nets_Arc_req_BHZ[i][j][2], 'BHZ', t[i]-input['t_before'], t[i]+input['t_after'])
-						
-						print "Saving Waveform for: " + Nets_Arc_req_BHZ[i][j][0] + '.' + Nets_Arc_req_BHZ[i][j][1] + '.' + \
-							Nets_Arc_req_BHZ[i][j][2] + '.' + 'BHZ' + "  ---> DONE"  
-						
-					
-					if input['response'] == 'Y':
-							
-						dummy = 'Response'
-						
-						client_arclink.saveResponse(Address_events + '/' + events[i]['event_id'] + \
-							'/ARC/Resp/' + 'RESP' + '.' + Nets_Arc_req_BHZ[i][j][0] +	'.' + Nets_Arc_req_BHZ[i][j][1] + '.' + \
-							Nets_Arc_req_BHZ[i][j][2] + '.' + 'BHZ', Nets_Arc_req_BHZ[i][j][0], Nets_Arc_req_BHZ[i][j][1], \
-							Nets_Arc_req_BHZ[i][j][2], 'BHZ', t[i]-input['t_before'], t[i]+input['t_after'])
-						
-						sp = Parser(Address_events + '/' + events[i]['event_id'] + \
-							'/ARC/Resp/' + 'RESP' + '.' + Nets_Arc_req_BHZ[i][j][0] +	'.' + Nets_Arc_req_BHZ[i][j][1] + '.' + \
-							Nets_Arc_req_BHZ[i][j][2] + '.' + 'BHZ')
-						
-						sp.writeRESP(Address_events + '/' + events[i]['event_id'] + \
-							'/ARC/Resp')
-						
-						'''
-						pars = Parser()
-							
-						pars.read(Address_events + '/' + events[i]['event_id'] + \
-							'/ARC/Resp/' + 'RESP' + '.' + Nets_Arc_req_BHZ[i][j][0] +	'.' + Nets_Arc_req_BHZ[i][j][1] + '.' + \
-							Nets_Arc_req_BHZ[i][j][2] + '.' + 'BHZ')
-						
-						pars.writeRESP(Address_events + '/' + events[i]['event_id'] + \
-							'/ARC/Resp/' + 'RESP' + '.' + Nets_Arc_req_BHZ[i][j][0] +	'.' + Nets_Arc_req_BHZ[i][j][1] + '.' + \
-							Nets_Arc_req_BHZ[i][j][2] + '.' + 'BHZ')
-						'''
-					
-						print "Saving Response for: " + Nets_Arc_req_BHZ[i][j][0] + '.' + Nets_Arc_req_BHZ[i][j][1] + '.' + \
-							Nets_Arc_req_BHZ[i][j][2] + '.' + 'BHZ' + "  ---> DONE"
-							
-					
-					
-					dummy = 'Inventory'
-					
-					inv_BHZ[j] = client_arclink.getInventory(Nets_Arc_req_BHZ[i][j][0], Nets_Arc_req_BHZ[i][j][1], \
-						Nets_Arc_req_BHZ[i][j][2], 'BHZ')
-					
-					dum = Nets_Arc_req_BHZ[i][j][0] + '.' + Nets_Arc_req_BHZ[i][j][1]
-					
-					if input['SAC'] == 'Y':
-								
-						st = read(Address_events + '/' + events[i]['event_id'] + \
-								'/ARC/BH_RAW/' + Nets_Arc_req_BHZ[i][j][0] +	'.' + Nets_Arc_req_BHZ[i][j][1] + '.' + \
-								Nets_Arc_req_BHZ[i][j][2] + '.' + 'BHZ')
-						st[0].write(Address_events + '/' + events[i]['event_id'] + \
-								'/ARC/BH_RAW/' + Nets_Arc_req_BHZ[i][j][0] +	'.' + Nets_Arc_req_BHZ[i][j][1] + '.' + \
-								Nets_Arc_req_BHZ[i][j][2] + '.' + 'BHZ', 'SAC')
-						st = read(Address_events + '/' + events[i]['event_id'] + \
-								'/ARC/BH_RAW/' + Nets_Arc_req_BHZ[i][j][0] +	'.' + Nets_Arc_req_BHZ[i][j][1] + '.' + \
-								Nets_Arc_req_BHZ[i][j][2] + '.' + 'BHZ')
-						
-						if inv_BHZ[j][dum]['latitude'] != None:
-							st[0].stats['sac']['stla'] = inv_BHZ[j][dum]['latitude']
-						if inv_BHZ[j][dum]['longitude'] != None:
-							st[0].stats['sac']['stlo'] = inv_BHZ[j][dum]['longitude']
-						if inv_BHZ[j][dum]['elevation'] != None:
-							st[0].stats['sac']['stel'] = inv_BHZ[j][dum]['elevation']
-						if inv_BHZ[j][dum]['depth'] != None:
-							st[0].stats['sac']['stdp'] = inv_BHZ[j][dum]['depth']
-						
-						st[0].stats['sac']['evla'] = events[i]['latitude']
-						st[0].stats['sac']['evlo'] = events[i]['longitude']
-						st[0].stats['sac']['evdp'] = events[i]['depth']
-						st[0].stats['sac']['mag'] = events[i]['magnitude']
-						
-						st[0].write(Address_events + '/' + events[i]['event_id'] + \
-								'/ARC/BH_RAW/' + Nets_Arc_req_BHZ[i][j][0] +	'.' + Nets_Arc_req_BHZ[i][j][1] + '.' + \
-								Nets_Arc_req_BHZ[i][j][2] + '.' + 'BHZ', 'SAC')
-
-					Syn_file = open(Address_events + '/' + events[i]['event_id'] + \
-						'/ARC/info/' + 'iris_BHZ', 'a')
-					syn = Nets_Arc_req_BHZ[i][j][0] + ',' + Nets_Arc_req_BHZ[i][j][1] + ',' + \
-						Nets_Arc_req_BHZ[i][j][2] + ',' + Nets_Arc_req_BHZ[i][j][3] + ',' + str(inv_BHZ[j][dum]['latitude']) + \
-						',' + str(inv_BHZ[j][dum]['longitude']) + ',' + str(inv_BHZ[j][dum]['elevation']) + ',' + \
-						str(inv_BHZ[j][dum]['depth']) + ',' + events[i]['event_id'] + ',' + str(events[i]['latitude']) \
-						 + ',' + str(events[i]['longitude']) + ',' + str(events[i]['depth']) + ',' + str(events[i]['magnitude']) + ',' + '\n'
-					Syn_file.writelines(syn)
-					Syn_file.close()
-					
-					print "Saving Station  for: " + Nets_Arc_req_BHZ[i][j][0] +	'.' + Nets_Arc_req_BHZ[i][j][1] + '.' + \
-						Nets_Arc_req_BHZ[i][j][2] + '.' + 'BHZ' + "  ---> DONE"
-					
-					#client_arclink.close()
-					
-				except Exception, e:	
-					
-					print dummy + '---' + Nets_Arc_req_BHZ[i][j][0] +	'.' + Nets_Arc_req_BHZ[i][j][1] + \
-						'.' +Nets_Arc_req_BHZ[i][j][2] + '.' + 'BHZ'
-					
-					Exception_file = open(Address_events + '/' + \
-						events[i]['event_id'] + '/ARC/Excep_py/' + 'Exception_file_ARC', 'a')
-
-					ee = dummy + '---' + str(i) + '-' + str(j) + '---' + Nets_Arc_req_BHZ[i][j][0] + \
-						'.' + Nets_Arc_req_BHZ[i][j][1] + '.' + \
-						Nets_Arc_req_BHZ[i][j][2] + '.' + 'BHZ' + \
-						'---' + str(e) + '\n'
-					
-					Exception_file.writelines(ee)
-					Exception_file.close()
-					print e
-		
-		
-		Station_file = open(Address_events + '/' + events[i]['event_id'] + '/ARC/info/' + 'Avail_ARC_Stations_BHZ', 'a')
-		pickle.dump(inv_BHZ, Station_file)
-		Station_file.close()
-		
-		
-		Report = open(Address_events + '/' + events[i]['event_id'] + '/ARC/info/' + 'report_st', 'a')
-		rep1 = 'ArcLink-Saved stations (BHZ) for event' + '-' + str(i) + ': ' + str(len(inv_BHZ)) + '\n'
-		Report.writelines(rep1)
-		Report.close()	
-	
-	
-		t_wave_2 = datetime.now()
-		t_wave = t_wave_2 - t_wave_1
-		
-		
-		Report = open(Address_events + '/' + events[i]['event_id'] + '/ARC/info/' + 'report_st', 'a')
-		Report.writelines('----------------------------------' + '\n')
-		rep1 = "Time for getting and saving Waveforms from ArcLink: " + str(t_wave) + '\n'
-		Report.writelines(rep1)
-		Report.writelines('----------------------------------' + '\n' + '\n')
-		Report.close()
-		
-		print "-------------------------------------------------"
-		print 'ArcLink is DONE'
-		print "Time for getting and saving Waveforms from ArcLink:"
-		print t_wave
-
-###################################################### Arclink_get_Waveform_single ######################################################
-
-def Arclink_get_Waveform_single(input):
-	
-	"""
-	Gets one Waveform, Response file and other information from ArcLink based on the requested network, station, location, channel and events...
-	ATTENTION: In this case, you should exactly know the net, sta, loc, cha of your request. Wild-cards are not allowed!
-	-----------------
-	Problems:
-	- Client_arclink(command_delay=0.1)
-	"""
-	
-	t_wave_1 = datetime.now()
-	
-	Networks_ARC = [input['net'], input['sta'], input['loc'], input['cha']]
-	
-	Period = input['min_date'] + '_' + input['max_date'] + '_' + str(input['min_mag']) + '_' + str(input['max_mag'])
-	Address_events = input['Address'] + '/' + Period
-	
-	Event_file = open(Address_events + '/EVENT/event_list', 'r')
-	events = pickle.load(Event_file)
-	
-	len_events = len(events)
-		
 	t = []
+	
 	for i in range(0, len_events):
 		t.append(UTCDateTime(events[i]['datetime']))
 	
 	for i in range(0, len_events):
-		os.makedirs(Address_events + '/' + events[i]['event_id'] + '/ARC/Resp/')
-		os.makedirs(Address_events + '/' + events[i]['event_id'] + '/ARC/info/')
-		os.makedirs(Address_events + '/' + events[i]['event_id'] + '/ARC/Excep_py/')
+		print "--------------------"
+		if input['TEST'] == 'Y':
+			len_req_arc = input['TEST_no']
+			
+		else:	 
+			len_req_arc = len(Sta_req[i]) 		
 		
-	for i in range(0, len_events):
-		Exception_file = open(Address_events + '/' + events[i]['event_id'] + \
-			'/ARC/Excep_py/' + 'Exception_file_ARC', 'w')
-		eventsID = events[i]['event_id']
-		Exception_file.writelines('\n' + eventsID + '\n')
-		Exception_file.writelines('----------------------------ARC----------------------------'+ '\n')
-		Exception_file.writelines('----------------------------EXCEPTION----------------------------'+ '\n')
-		Exception_file.close()
-		
-		Station_file = open(Address_events + '/' + events[i]['event_id'] + \
-			'/ARC/info/' + 'Avail_ARC_Stations', 'w')
-		Station_file.close()
-		
-		Syn_file = open(Address_events + '/' + events[i]['event_id'] + \
-			'/ARC/info/' + 'Input_Syn', 'w')
-		Syn_file.close()
-	
-	
-	client_arclink = Client_arclink(timeout=5)
-	
-	for i in range(0, len_events):
-		
-		print '------------------'
-		print 'ArcLink-Event Number is:'
-		print str(i)
-		
-		inv = {}
-				
-		try:
-				
-			client_arclink = Client_arclink(timeout=5)
-					
-			if input['waveform'] == 'Y':
-					
-				dummy = 'Waveform'
-					
-				client_arclink.saveWaveform(Address_events + '/' + events[i]['event_id'] + \
-					'/ARC/BH_RAW/' + Networks_ARC[0] +	'.' + Networks_ARC[1] + '.' + \
-					Networks_ARC[2] + '.' + Networks_ARC[3], Networks_ARC[0], Networks_ARC[1], \
-					Networks_ARC[2], Networks_ARC[3], t[i]-input['t_before'], t[i]+input['t_after'])
-						
-				print "Saving Waveform for: " + Networks_ARC[0] + '.' + Networks_ARC[1] + '.' + \
-					Networks_ARC[2] + '.' + Networks_ARC[3] + "  ---> DONE"  
-					
-			if input['response'] == 'Y':
-									
-				dummy = 'Response'
-						
-				client_arclink.saveResponse(Address_events + '/' + events[i]['event_id'] + \
-					'/ARC/Resp/' + 'RESP' + '.' + Networks_ARC[0] +	'.' + Networks_ARC[1] + '.' + \
-					Networks_ARC[2] + '.' + Networks_ARC[3], Networks_ARC[0], Networks_ARC[1], \
-					Networks_ARC[2], Networks_ARC[3], t[i]-input['t_before'], t[i]+input['t_after'])
-											
-				print "Saving Response for: " + Networks_ARC[0] + '.' + Networks_ARC[1] + '.' + \
-					Networks_ARC[2] + '.' + Networks_ARC[3] + "  ---> DONE"
-							
-					
-			dummy = 'Inventory'
-					
-			inv = client_arclink.getInventory(Networks_ARC[0], Networks_ARC[1], \
-				Networks_ARC[2], Networks_ARC[3])
-										
-			print "Saving Station  for: " + Networks_ARC[0] +	'.' + Networks_ARC[1] + '.' + \
-				Networks_ARC[2] + '.' + Networks_ARC[3] + "  ---> DONE"
-				
-		except Exception, e:	
-					
-			print dummy + '---' + Networks_ARC[0] +	'.' + Networks_ARC[1] + \
-				'.' +Networks_ARC[2] + '.' + Networks_ARC[3]
-					
-			Exception_file = open(Address_events + '/' + \
-				events[i]['event_id'] + '/ARC/Excep_py/' + 'Exception_file_ARC', 'a')
 
-			ee = dummy + '---' + str(i) + '---' + Networks_ARC[0] + \
-				'.' + Networks_ARC[1] + '.' + Networks_ARC[2] + '.' + Networks_ARC[3] + \
-				'---' + str(e) + '\n'
+		inv = {}
+			
+		for j in range(0, len_req_arc):
+		
+			print '------------------'
+			print type
+			print 'ArcLink-Event and Station Numbers are:'
+			print str(i) + '-' + str(j+1) + '/' + str(len(Sta_req[i])) + '-' + channel
+			
+			try:
+				
+				client_arclink = Client_arclink(timeout=5)
+				
+				if input['waveform'] == 'Y':
+						
+					dummy = 'Waveform'
 					
-			Exception_file.writelines(ee)
-			Exception_file.close()
-			print e
+					client_arclink.saveWaveform(Address_events + '/' + events[i]['event_id'] + \
+						'/ARC/BH_RAW/' + Sta_req[i][j][0] +	'.' + Sta_req[i][j][1] + '.' + \
+						Sta_req[i][j][2] + '.' + channel, Sta_req[i][j][0], Sta_req[i][j][1], \
+						Sta_req[i][j][2], channel, t[i]-input['t_before'], t[i]+input['t_after'])
+					
+					print "Saving Waveform for: " + Sta_req[i][j][0] + '.' + Sta_req[i][j][1] + '.' + \
+						Sta_req[i][j][2] + '.' + channel + "  ---> DONE"  
+					
+				
+				if input['response'] == 'Y':
+						
+					dummy = 'Response'
+					
+					client_arclink.saveResponse(Address_events + '/' + events[i]['event_id'] + \
+						'/ARC/Resp/' + 'RESP' + '.' + Sta_req[i][j][0] + '.' + Sta_req[i][j][1] + '.' + \
+						Sta_req[i][j][2] + '.' + channel, Sta_req[i][j][0], Sta_req[i][j][1], \
+						Sta_req[i][j][2], channel, t[i]-input['t_before'], t[i]+input['t_after'])
+					
+					sp = Parser(Address_events + '/' + events[i]['event_id'] + \
+						'/ARC/Resp/' + 'RESP' + '.' + Sta_req[i][j][0] +	'.' + Sta_req[i][j][1] + '.' + \
+						Sta_req[i][j][2] + '.' + channel)
+					
+					sp.writeRESP(Address_events + '/' + events[i]['event_id'] + '/ARC/Resp')
+					
+					'''
+					pars = Parser()
+						
+					pars.read(Address_events + '/' + events[i]['event_id'] + \
+						'/ARC/Resp/' + 'RESP' + '.' + Sta_req[i][j][0] +	'.' + Sta_req[i][j][1] + '.' + \
+						Sta_req[i][j][2] + '.' + channel)
+					
+					pars.writeRESP(Address_events + '/' + events[i]['event_id'] + \
+						'/ARC/Resp/' + 'RESP' + '.' + Sta_req[i][j][0] +	'.' + Sta_req[i][j][1] + '.' + \
+						Sta_req[i][j][2] + '.' + channel)
+					'''
+				
+					print "Saving Response for: " + Sta_req[i][j][0] + '.' + Sta_req[i][j][1] + '.' + \
+						Sta_req[i][j][2] + '.' + channel + "  ---> DONE"
+						
+				
+				dummy = 'Inventory'
+				
+				inv[j] = client_arclink.getInventory(Sta_req[i][j][0], Sta_req[i][j][1], \
+					Sta_req[i][j][2], channel)
+				
+				dum = Sta_req[i][j][0] + '.' + Sta_req[i][j][1]
+				
+				if input['SAC'] == 'Y':
+							
+					st = read(Address_events + '/' + events[i]['event_id'] + \
+							'/ARC/BH_RAW/' + Sta_req[i][j][0] +	'.' + Sta_req[i][j][1] + '.' + \
+							Sta_req[i][j][2] + '.' + channel)
+					st[0].write(Address_events + '/' + events[i]['event_id'] + \
+							'/ARC/BH_RAW/' + Sta_req[i][j][0] +	'.' + Sta_req[i][j][1] + '.' + \
+							Sta_req[i][j][2] + '.' + channel, 'SAC')
+					st = read(Address_events + '/' + events[i]['event_id'] + \
+							'/ARC/BH_RAW/' + Sta_req[i][j][0] +	'.' + Sta_req[i][j][1] + '.' + \
+							Sta_req[i][j][2] + '.' + channel)
+					
+					if inv[j][dum]['latitude'] != None:
+						st[0].stats['sac']['stla'] = inv[j][dum]['latitude']
+					if inv[j][dum]['longitude'] != None:
+						st[0].stats['sac']['stlo'] = inv[j][dum]['longitude']
+					if inv[j][dum]['elevation'] != None:
+						st[0].stats['sac']['stel'] = inv[j][dum]['elevation']
+					if inv[j][dum]['depth'] != None:
+						st[0].stats['sac']['stdp'] = inv[j][dum]['depth']
+					
+					st[0].stats['sac']['evla'] = events[i]['latitude']
+					st[0].stats['sac']['evlo'] = events[i]['longitude']
+					st[0].stats['sac']['evdp'] = events[i]['depth']
+					st[0].stats['sac']['mag'] = events[i]['magnitude']
+					
+					st[0].write(Address_events + '/' + events[i]['event_id'] + \
+							'/ARC/BH_RAW/' + Sta_req[i][j][0] +	'.' + Sta_req[i][j][1] + '.' + \
+							Sta_req[i][j][2] + '.' + channel, 'SAC')
+
+				Syn_file = open(Address_events + '/' + events[i]['event_id'] + \
+					'/ARC/info/' + 'arc_' + channel, 'a')
+				syn = Sta_req[i][j][0] + ',' + Sta_req[i][j][1] + ',' + \
+					Sta_req[i][j][2] + ',' + Sta_req[i][j][3] + ',' + str(inv[j][dum]['latitude']) + \
+					',' + str(inv[j][dum]['longitude']) + ',' + str(inv[j][dum]['elevation']) + ',' + \
+					str(inv[j][dum]['depth']) + ',' + events[i]['event_id'] + ',' + str(events[i]['latitude']) \
+					 + ',' + str(events[i]['longitude']) + ',' + str(events[i]['depth']) + ',' + str(events[i]['magnitude']) + ',' + '\n'
+				Syn_file.writelines(syn)
+				Syn_file.close()
+				
+				print "Saving Station  for: " + Sta_req[i][j][0] +	'.' + Sta_req[i][j][1] + '.' + \
+					Sta_req[i][j][2] + '.' + channel + "  ---> DONE"
+				
+				Station_file = open(Address_events + '/' + events[i]['event_id'] + '/ARC/info/' + 'avail_arc_' + channel, 'a')
+				pickle.dump(inv[j], Station_file)
+				Station_file.close()
+				
+			except Exception, e:	
+				
+				print dummy + '---' + Sta_req[i][j][0] +	'.' + Sta_req[i][j][1] + \
+					'.' +Sta_req[i][j][2] + '.' + channel
+				
+				Exception_file = open(Address_events + '/' + \
+					events[i]['event_id'] + '/ARC/Excep_py/' + 'excep_arc_' + channel, 'a')
+
+				ee = dummy + '---' + str(i) + '-' + str(j) + '---' + Sta_req[i][j][0] + \
+					'.' + Sta_req[i][j][1] + '.' + Sta_req[i][j][2] + '.' + channel + \
+					'---' + str(e) + '\n'
+				
+				Exception_file.writelines(ee)
+				Exception_file.close()
+				print e
+							
 		
-		
-		#client_arclink.close()
-		
-		if len(inv) == 0:
-			print 'No waveform Available'
-		
-		else:
-			
-			Station_file = open(Address_events + '/' + events[i]['event_id'] + '/ARC/info/' + 'Avail_ARC_Stations_BHE', 'a')
-			pickle.dump(inv, Station_file)
-			Station_file.close()
-			
-			
-			Report = open(Address_events + '/' + events[i]['event_id'] + '/ARC/info/' + 'report_st', 'a')
-			rep1 = 'ArcLink-Saved stations (BHE) for event' + '-' + str(i) + ': ' + str(len(inv)) + '\n'
-			Report.writelines(rep1)
-			Report.close()	
-			
-			dum = Networks_ARC[0] + '.' + Networks_ARC[1]
-			Syn_file = open(Address_events + '/' + events[i]['event_id'] + \
-				'/ARC/info/' + 'Input_Syn', 'a')
-			
-			syn = Networks_ARC[0] + '  ' + Networks_ARC[1] + '  ' + \
-				Networks_ARC[2] + '  ' + Networks_ARC[3] + '  ' + str(inv[dum]['latitude']) + \
-				'  ' + str(inv[dum]['longitude']) + '  ' + str(inv[dum]['elevation']) + '  ' + \
-				str(inv[dum]['depth']) + '\n'
-			
-			Syn_file.writelines(syn)
-			Syn_file.close()		
+		Report = open(Address_events + '/' + events[i]['event_id'] + '/ARC/info/' + 'report_st', 'a')
+		eventsID = events[i]['event_id']
+		Report.writelines('<><><><><><><><><><><><><><><><><>' + '\n')
+		Report.writelines(eventsID + '\n')
+		Report.writelines('---------------ARC---------------' + '\n')
+		Report.writelines('---------------' + channel + '---------------' + '\n')
+		rep = 'ARC-Available stations for channel ' + channel + ' and for event' + '-' + str(i) + ': ' + str(len(Sta_req[i])) + '\n'
+		Report.writelines(rep)
+		rep = 'ARC-' + type + ' stations for channel ' + channel + ' and for event' + '-' + str(i) + ':     ' + str(len(inv)) + '\n'
+		Report.writelines(rep)
+		Report.writelines('----------------------------------' + '\n')
 		
 		t_wave_2 = datetime.now()
 		t_wave = t_wave_2 - t_wave_1
 		
-		
-		Report = open(Address_events + '/' + events[i]['event_id'] + '/ARC/info/' + 'report_st', 'a')
+		rep = "Time for " + type + "ing Waveforms from ArcLink: " + str(t_wave) + '\n'
+		Report.writelines(rep)
 		Report.writelines('----------------------------------' + '\n')
-		rep1 = "Time for getting and saving Waveforms from ArcLink: " + str(t_wave) + '\n'
-		Report.writelines(rep1)
-		Report.writelines('----------------------------------' + '\n' + '\n')
 		Report.close()
-		
-	print "-------------------------------------------------"
-	print 'ArcLink is DONE'
-	print "Time for getting and saving Waveforms from ArcLink:"
-	print t_wave
-
-###################################################### get_address ######################################################
-'''
-def get_address(interactive = input['inter_address']):
-	
-	"""
-	This program gets the address required for next steps of the program
-	"""
-	
-	if interactive == 'Y':
-		print '----------------------------------------------------'
-		address = raw_input('Please enter the target address:' + '\n')
-		print '----------------------------------------------------'
-		
-	else:
-		print '----------------------------------------------------'
-		print 'The process is about to start...'
-		print '----------------------------------------------------'
-	
-	return address
-'''
-
-def get_address():
-	
-	"""
-	This program gets the address for next steps...
-	"""
-	
-	print '----------------------------------------------------'
-	address = raw_input('Please enter the target address:' + '\n')
-	print '----------------------------------------------------'
-			
-	return address
 
 ###################################################### update_IRIS ######################################################
 
-def update_IRIS(input, channel, interactive = 'N'):
+def update_IRIS(input):
 	
 	"""
 	Updating the station folders from IRIS web-service
@@ -1824,6 +1298,7 @@ def update_IRIS(input, channel, interactive = 'N'):
 	print 'IRIS-Update is DONE'
 	print "-------------------------------------------------"
 	
+###################################################### update_req_sta_IRIS ######################################################
 	
 def update_req_sta_IRIS(input, channel, interactive = 'N'):
 	
@@ -1893,683 +1368,89 @@ def update_req_sta_IRIS(input, channel, interactive = 'N'):
 def update_ARC(input):
 	
 	"""
-	Updating the station folders from ArcLink
+	Updating the station folders from IRIS web-service
 	Attention: This module update all station folders for all events in one directory.
 	-----------------
 	Problems:
-	- Exception_file_ARC_update OR Exception_file_ARC?
+	- excep_iris_update OR excep_iris?
 	"""
+
+	if input['BHE'] == 'Y':
+		Sta_req = update_req_sta_ARC(input, channel = 'BHE', interactive = input['inter_address'])
+		ARC_get_Waveform(input, Sta_req, channel = 'BHE', interactive = 'N', type = 'update')
+	
+	if input['BHN'] == 'Y':
+		Sta_req = update_req_sta_ARC(input, channel = 'BHN', interactive = input['inter_address'])
+		ARC_get_Waveform(input, Sta_req, channel = 'BHN', interactive = 'N', type = 'update')
+	
+	if input['BHZ'] == 'Y':
+		Sta_req = update_req_sta_ARC(input, channel = 'BHZ', interactive = input['inter_address'])
+		ARC_get_Waveform(input, Sta_req, channel = 'BHZ', interactive = 'N', type = 'update')
+
+	print "-------------------------------------------------"
+	print 'ArcLink-Update is DONE'
+	print "-------------------------------------------------"
+	
+###################################################### update_req_sta_ARC ######################################################
+	
+def update_req_sta_ARC(input, channel, interactive = 'N'):
 	
 	t_update_1 = datetime.now()
 	
-	Address_data = input['Address']
-		
-	pre_ls_event = []
-	
-	tty = open(input['Address'] + '/tty-info', 'r')
-	tty_str = tty.readlines()
-	
-	for i in range(0, len(tty_str)):
-		tty_str[i] = tty_str[i].split('  ,  ')
-	
-	for i in range(0, len(tty_str)):
-		if commands.getoutput('hostname') == tty_str[i][0]:
-			if commands.getoutput('tty') == tty_str[i][1]:
-				pre_ls_event.append(Address_data + '/' + tty_str[i][2])
-
-	for i in range(0, len(pre_ls_event)):
-		print 'Updating for: ' + '\n' + str(pre_ls_event[i])
-	print '*********************'
-	
-	ls_event_file = []
-	for i in pre_ls_event:
-		ls_event_file.append(os.listdir(i))
-	
-	ls_event = []
-	
-	for i in range(0, len(ls_event_file)):
-		for j in range(0, len(ls_event_file[i])):
-			if ls_event_file[i][j] != 'list_event':
-				if ls_event_file[i][j] != 'EVENT':
-					ls_event.append(pre_ls_event[0] + '/' + ls_event_file[i][j])
-					print ls_event_file[i][j]
-	
-	add_ARC_events = []
-	for i in pre_ls_event:
-		add_ARC_events.append(i + '/EVENT/event_list')
-		
-	events_all = []
-	
-	for i in add_ARC_events:
-		Event_file = open(i, 'r')
-		events_all.append(Event_file)
-			
-	
-	events_all_file = []
-	
-	for l in range(0, len(events_all)):
-		events = pickle.load(events_all[l])
-		for j in events:
-			events_all_file.append(j)
-	
-	for l in range(0, len(ls_event)):
-		
-		ls_stas_open = open(ls_event[l] + '/ARC/info/All_ARC_Stations_BHE', 'r')
-		All_ARC_Stations_BHE = pickle.load(ls_stas_open)
-		ls_stas_open.close()
-		
-		ls_stas_open = open(ls_event[l] + '/ARC/info/All_ARC_Stations_BHN', 'r')
-		All_ARC_Stations_BHN = pickle.load(ls_stas_open)
-		ls_stas_open.close()
-		
-		ls_stas_open = open(ls_event[l] + '/ARC/info/All_ARC_Stations_BHZ', 'r')
-		All_ARC_Stations_BHZ = pickle.load(ls_stas_open)
-		ls_stas_open.close()
-		'''
-		upfile = open(ls_event[l] + '/ARC/info/' + 'UPDATE', 'w')
-		upfile.writelines('\n' + ls_event[l].split('/')[-1] + '\n')
-		upfile.writelines('----------------------------ARC----------------------------'+ '\n')
-		upfile.writelines('----------------------------UPDATED----------------------------'+ '\n')
-		upfile.close()
-		'''
-		
-		#------------------------------------------------------------------------------------
-		exception_arc = open(ls_event[l] + '/ARC/Excep_py/' + 'Exception_file_ARC', 'r')
-		excepts = exception_arc.readlines()
-		
-		for i in range(0, len(excepts)):
-   			excepts[i] = excepts[i].split('---')
-   		
-   		Access_denied = []
-   		No_data = []
-   		
-   		for i in range(2, len(excepts)):
-			if excepts[i][3] == 'DENIED access denied for user ObsPy\n':
-				Access_denied.append(excepts[i][2])
-				
-			if excepts[i][3] == 'No data available\n':
-				No_data.append(excepts[i][2])
-				
-		
-		for i in range(0, len(Access_denied)):
-			Access_denied[i] = Access_denied[i].split('.')
-		
-		
-		for i in range(0, len(No_data)):
-			No_data[i] = No_data[i].split('.')
-		
-		#------------------------------------------------------------------------------------
-		pre_Sta_BHE = []
-		pre_Sta_BHN = []
-		pre_Sta_BHZ = []
-		
-		Sta_BHE = []
-		Sta_BHN = []
-		Sta_BHZ = []
-		
-		
-		file_BHE = open(ls_event[l] + '/ARC/info/iris_BHE', 'r')
-		
-		pre_Sta_BHE = file_BHE.readlines()
-		
-		for i in range(0, len(pre_Sta_BHE)):
-			pre_Sta_BHE[i] = pre_Sta_BHE[i].split(',')
-		
-		for i in range(0, len(pre_Sta_BHE)):
-			if pre_Sta_BHE[i][2] == '  ':
-				pre_Sta_BHE[i][2] = ''
-			pre_Sta_BHE[i] = [pre_Sta_BHE[i][0], pre_Sta_BHE[i][1], pre_Sta_BHE[i][2], pre_Sta_BHE[i][3]]
-			Sta_BHE.append(pre_Sta_BHE[i])
-		
-		
-		file_BHN = open(ls_event[l] + '/ARC/info/iris_BHN', 'r')
-		
-		pre_Sta_BHN = file_BHN.readlines()
-		
-		for i in range(0, len(pre_Sta_BHN)):
-			pre_Sta_BHN[i] = pre_Sta_BHN[i].split(',')
-		
-		for i in range(0, len(pre_Sta_BHN)):
-			if pre_Sta_BHN[i][2] == '  ':
-				pre_Sta_BHN[i][2] = ''
-			pre_Sta_BHN[i] = [pre_Sta_BHN[i][0], pre_Sta_BHN[i][1], pre_Sta_BHN[i][2], pre_Sta_BHN[i][3]]
-			Sta_BHN.append(pre_Sta_BHN[i])
-		
-		
-		file_BHZ = open(ls_event[l] + '/ARC/info/iris_BHZ', 'r')
-		
-		pre_Sta_BHZ = file_BHZ.readlines()
-		
-		for i in range(0, len(pre_Sta_BHZ)):
-			pre_Sta_BHZ[i] = pre_Sta_BHZ[i].split(',')
-		
-		for i in range(0, len(pre_Sta_BHZ)):
-			if pre_Sta_BHZ[i][2] == '  ':
-				pre_Sta_BHZ[i][2] = ''
-			pre_Sta_BHZ[i] = [pre_Sta_BHZ[i][0], pre_Sta_BHZ[i][1], pre_Sta_BHZ[i][2], pre_Sta_BHZ[i][3]]
-			Sta_BHZ.append(pre_Sta_BHZ[i])
-			
-		
- 		common_BHE = []
- 		
- 		for i in range(0, len(All_ARC_Stations_BHE)):
- 			for j in range(0, len(Sta_BHE)):
- 				if All_ARC_Stations_BHE[i] == Sta_BHE[j]:
- 					common_BHE.append(All_ARC_Stations_BHE[i])
- 			
- 			for m in range(0, len(Access_denied)):
- 				if All_ARC_Stations_BHE[i] == Access_denied[m]:
- 					common_BHE.append(All_ARC_Stations_BHE[i])
- 			
- 			for n in range(0, len(No_data)):
- 				if All_ARC_Stations_BHE[i] == No_data[n]:
- 					common_BHE.append(All_ARC_Stations_BHE[i])
- 		
- 		num_j = []
- 		for i in range(0, len(common_BHE)):
- 			for j in range(0, len(All_ARC_Stations_BHE)):
- 				if common_BHE[i] == All_ARC_Stations_BHE[j]:
- 					num_j.append(j)
- 		
- 		num_j.reverse()
- 		
- 		for i in num_j:
- 			All_ARC_Stations_BHE[i] = []
- 		
- 		
- 		Stas_req_BHE = []
- 		
- 		for i in All_ARC_Stations_BHE:
- 			if i != []:
- 				Stas_req_BHE.append(i)
- 				
- 		common_BHN = []
- 		
- 		for i in range(0, len(All_ARC_Stations_BHN)):
- 			for j in range(0, len(Sta_BHN)):
- 				if All_ARC_Stations_BHN[i] == Sta_BHN[j]:
- 					common_BHN.append(All_ARC_Stations_BHN[i])
- 			
- 			for m in range(0, len(Access_denied)):
- 				if All_ARC_Stations_BHN[i] == Access_denied[m]:
- 					common_BHN.append(All_ARC_Stations_BHN[i])
- 			
- 			for n in range(0, len(No_data)):
- 				if All_ARC_Stations_BHN[i] == No_data[n]:
- 					common_BHN.append(All_ARC_Stations_BHN[i])
- 		
- 		num_j = []
- 		for i in range(0, len(common_BHN)):
- 			for j in range(0, len(All_ARC_Stations_BHN)):
- 				if common_BHN[i] == All_ARC_Stations_BHN[j]:
- 					num_j.append(j)
- 		
- 		num_j.reverse()
- 		
- 		for i in num_j:
- 			All_ARC_Stations_BHN[i] = []
- 		
- 		
- 		Stas_req_BHN = []
- 		
- 		for i in All_ARC_Stations_BHN:
- 			if i != []:
- 				Stas_req_BHN.append(i)
- 				
- 				
- 		common_BHZ = []
- 		
- 		for i in range(0, len(All_ARC_Stations_BHZ)):
- 			for j in range(0, len(Sta_BHZ)):
- 				if All_ARC_Stations_BHZ[i] == Sta_BHZ[j]:
- 					common_BHZ.append(All_ARC_Stations_BHZ[i])
- 			
- 			for m in range(0, len(Access_denied)):
- 				if All_ARC_Stations_BHZ[i] == Access_denied[m]:
- 					common_BHZ.append(All_ARC_Stations_BHZ[i])
- 			
- 			for n in range(0, len(No_data)):
- 				if All_ARC_Stations_BHZ[i] == No_data[n]:
- 					common_BHZ.append(All_ARC_Stations_BHZ[i])
- 				
- 		num_j = []
- 		for i in range(0, len(common_BHZ)):
- 			for j in range(0, len(All_ARC_Stations_BHZ)):
- 				if common_BHZ[i] == All_ARC_Stations_BHZ[j]:
- 					num_j.append(j)
- 		
- 		num_j.reverse()
- 		
- 		for i in num_j:
- 			All_ARC_Stations_BHZ[i] = []
- 		
- 		
- 		Stas_req_BHZ = []
- 		
- 		for i in All_ARC_Stations_BHZ:
- 			if i != []:
- 				Stas_req_BHZ.append(i)
- 		
- 		for i in events_all_file:
-			if i['event_id'] == ls_event[l].split('/')[-1]:
-				
-				event_id = i['event_id']
-				event_dp= i['depth']
-				event_la= i['latitude']
-				event_lo= i['longitude']
-				event_mag= i['magnitude']
-				event_origin = i['datetime']
-				
-				Address = ls_event[l]
-				t1 = i['datetime']-input['t_before']
-				t2 = i['datetime']+input['t_after']
-				
-		
-		
-		Exception_file = open(Address + '/' + '/ARC/Excep_py/' + 'Exception_file_ARC_update', 'w')
-		Exception_file.writelines('\n' + event_id + '\n')
-		Exception_file.writelines('----------------------------UPDATE - ARC----------------------------'+ '\n')
-		Exception_file.writelines('----------------------------EXCEPTION----------------------------'+ '\n')
-		
-		
-		#import ipdb; ipdb.set_trace()
-		inv_BHE = {}
-		
-		if input['BHE'] == 'Y':
-			
-			for i in range(0, len(Stas_req_BHE)):
-				
-				print '------------------'
-				print 'Updating - ArcLink-BHE - ' + str(l) + ' -- ' + str(i) + ':'
-				
-				try:
-					
-					client_arclink = Client_arclink(timeout=5)
-					
-					# BHE
-					if input['waveform'] == 'Y':
-					
-						dummy = 'UPDATE-Waveform'
-						
-						client_arclink.saveWaveform(Address + '/ARC/BH_RAW/' + Stas_req_BHE[i][0] +	'.' + Stas_req_BHE[i][1] + '.' + \
-							Stas_req_BHE[i][2] + '.' + 'BHE', Stas_req_BHE[i][0], Stas_req_BHE[i][1], \
-							Stas_req_BHE[i][2], 'BHE', t1, t2)
-						
-						print "UPDATE - Saving Waveform for: " + Stas_req_BHE[i][0] + '.' + Stas_req_BHE[i][1] + '.' + \
-							Stas_req_BHE[i][2] + '.' + 'BHE' + "  ---> DONE"  
-										
-					if input['response'] == 'Y':
-						
-						dummy = 'UPDATE-Response'
-						
-						client_arclink.saveResponse(Address + '/ARC/Resp/' + 'RESP' + '.' + Stas_req_BHE[i][0] +	'.' + Stas_req_BHE[i][1] + '.' + \
-							Stas_req_BHE[i][2] + '.' + 'BHE', Stas_req_BHE[i][0], Stas_req_BHE[i][1], \
-							Stas_req_BHE[i][2], 'BHE', t1, t2)
-						
-						sp = Parser(Address + '/ARC/Resp/' + 'RESP' + '.' + Stas_req_BHE[i][0] +	'.' + Stas_req_BHE[i][1] + '.' + \
-							Stas_req_BHE[i][2] + '.' + 'BHE')
-						
-						sp.writeRESP(Address + '/ARC/Resp')
-						
-						
-						'''
-						pars = Parser()
-							
-						pars.read(Address_events + '/' + events[i]['event_id'] + \
-							'/ARC/Resp/' + 'RESP' + '.' + Stas_req_BHE[i][0] +	'.' + Stas_req_BHE[i][1] + '.' + \
-							Stas_req_BHE[i][2] + '.' + 'BHE')
-						
-						pars.writeRESP(Address_events + '/' + events[i]['event_id'] + \
-							'/ARC/Resp/' + 'RESP' + '.' + Stas_req_BHE[i][0] +	'.' + Stas_req_BHE[i][1] + '.' + \
-							Stas_req_BHE[i][2] + '.' + 'BHE')	
-						'''	
-						
-						print "UPDATE - Saving Response for: " + Stas_req_BHE[i][0] + '.' + Stas_req_BHE[i][1] + '.' + \
-							Stas_req_BHE[i][2] + '.' + 'BHE' + "  ---> DONE"
-						
-					
-					dummy = 'UPDATE-Inventory'
-					
-					inv_BHE[i] = client_arclink.getInventory(Stas_req_BHE[i][0], Stas_req_BHE[i][1], \
-						Stas_req_BHE[i][2], 'BHE')
-					
-					dum = Stas_req_BHE[i][0] + '.' + Stas_req_BHE[i][1]
-									
-					st = read(Address + '/ARC/BH_RAW/' + Stas_req_BHE[i][0] +	'.' + Stas_req_BHE[i][1] + '.' + \
-							Stas_req_BHE[i][2] + '.' + 'BHE')
-					st[0].write(Address + '/ARC/BH_RAW/' + Stas_req_BHE[i][0] +	'.' + Stas_req_BHE[i][1] + '.' + \
-							Stas_req_BHE[i][2] + '.' + 'BHE', 'SAC')
-					st = read(Address + '/ARC/BH_RAW/' + Stas_req_BHE[i][0] +	'.' + Stas_req_BHE[i][1] + '.' + \
-							Stas_req_BHE[i][2] + '.' + 'BHE')
-					
-					if inv_BHE[i][dum]['latitude'] != None:
-						st[0].stats['sac']['stla'] = inv_BHE[i][dum]['latitude']
-					if inv_BHE[i][dum]['longitude'] != None:
-						st[0].stats['sac']['stlo'] = inv_BHE[i][dum]['longitude']
-					if inv_BHE[i][dum]['elevation'] != None:
-						st[0].stats['sac']['stel'] = inv_BHE[i][dum]['elevation']
-					if inv_BHE[i][dum]['depth'] != None:
-						st[0].stats['sac']['stdp'] = inv_BHE[i][dum]['depth']
-					
-					st[0].stats['sac']['evla'] = event_la
-					st[0].stats['sac']['evlo'] = event_lo
-					st[0].stats['sac']['evdp'] = event_dp
-					st[0].stats['sac']['mag'] = event_mag
-					
-					st[0].write(Address + '/ARC/BH_RAW/' + Stas_req_BHE[i][0] +	'.' + Stas_req_BHE[i][1] + '.' + \
-							Stas_req_BHE[i][2] + '.' + 'BHE', 'SAC')
-					
-					Syn_file = open(Address + '/ARC/info/' + 'iris_BHE', 'a')
-					syn = Stas_req_BHE[i][0] + ',' + Stas_req_BHE[i][1] + ',' + \
-					Stas_req_BHE[i][2] + ',' + Stas_req_BHE[i][3] + ',' + str(inv_BHE[i][dum]['latitude']) + \
-						',' + str(inv_BHE[i][dum]['longitude']) + ',' + str(inv_BHE[i][dum]['elevation']) + ',' + \
-						str(inv_BHE[i][dum]['depth']) + ',' + events[l]['event_id'] + ',' + str(events[l]['latitude']) \
-						 + ',' + str(events[l]['longitude']) + ',' + str(events[l]['depth']) + ',' + '\n'
-					Syn_file.writelines(syn)
-					Syn_file.close()
-					
-					print "UPDATE - Saving Station  for: " + Stas_req_BHE[i][0] +	'.' + Stas_req_BHE[i][1] + '.' + \
-						Stas_req_BHE[i][2] + '.' + 'BHE' + "  ---> DONE"
-					
-					#client_arclink.close()
-					
-				except Exception, e:	
-					
-					print dummy + '---' + Stas_req_BHE[i][0] +	'.' + Stas_req_BHE[i][1] + \
-						'.' +Stas_req_BHE[i][2] + '.' + 'BHE'
-					
-					Exception_file = open(Address + '/ARC/Excep_py/' + 'Exception_file_ARC_update', 'a')
-
-					ee = dummy + '---' + str(l) + '-' + str(i) + '---' + Stas_req_BHE[i][0] + \
-						'.' + Stas_req_BHE[i][1] + '.' + \
-						Stas_req_BHE[i][2] + '.' + 'BHE' + \
-						'---' + str(e) + '\n'
-					
-					Exception_file.writelines(ee)
-					Exception_file.close()
-					print e
-		
-		
-		Station_file = open(Address + '/ARC/info/' + 'Avail_ARC_Stations_BHE', 'a')
-		pickle.dump(inv_BHE, Station_file)
-		Station_file.close()
-		
-		
-		Report = open(Address + '/ARC/info/' + 'report_st', 'a')
-		rep1 = 'ArcLink-Saved stations (BHE) for event' + '-' + str(i) + ': ' + str(len(inv_BHE)) + '\n'
-		Report.writelines(rep1)
-		Report.close()	
-				
-		
-		inv_BHN = {}
-		
-		if input['BHN'] == 'Y':
-			
-			for i in range(0, len(Stas_req_BHN)):
-				
-				print '------------------'
-				print 'Updating - ArcLink-BHN - ' + str(l) + ' -- ' + str(i) + ':'
-				
-				try:
-					
-					client_arclink = Client_arclink(timeout=5)
-					
-					# BHN
-					if input['waveform'] == 'Y':
-							
-						dummy = 'UPDATE-Waveform'
-						
-						client_arclink.saveWaveform(Address + '/ARC/BH_RAW/' + Stas_req_BHN[i][0] +	'.' + Stas_req_BHN[i][1] + '.' + \
-							Stas_req_BHN[i][2] + '.' + 'BHN', Stas_req_BHN[i][0], Stas_req_BHN[i][1], \
-							Stas_req_BHN[i][2], 'BHN', t1, t2)
-						
-						print "UPDATE - Saving Waveform for: " + Stas_req_BHN[i][0] + '.' + Stas_req_BHN[i][1] + '.' + \
-							Stas_req_BHN[i][2] + '.' + 'BHN' + "  ---> DONE"  
-										
-					if input['response'] == 'Y':
-						
-						dummy = 'UPDATE-Response'
-						
-						client_arclink.saveResponse(Address + '/ARC/Resp/' + 'RESP' + '.' + Stas_req_BHN[i][0] +	'.' + Stas_req_BHN[i][1] + '.' + \
-							Stas_req_BHN[i][2] + '.' + 'BHN', Stas_req_BHN[i][0], Stas_req_BHN[i][1], \
-							Stas_req_BHN[i][2], 'BHN', t1, t2)
-						
-						
-						sp = Parser(Address + '/ARC/Resp/' + 'RESP' + '.' + Stas_req_BHN[i][0] +	'.' + Stas_req_BHN[i][1] + '.' + \
-							Stas_req_BHN[i][2] + '.' + 'BHN')
-						
-						sp.writeRESP(Address + '/ARC/Resp')
-						
-						'''
-						pars = Parser()
-							
-						pars.read(Address_events + '/' + events[i]['event_id'] + \
-							'/ARC/Resp/' + 'RESP' + '.' + Stas_req_BHN[i][0] +	'.' + Stas_req_BHN[i][1] + '.' + \
-							Stas_req_BHN[i][2] + '.' + 'BHN')
-						
-						pars.writeRESP(Address_events + '/' + events[i]['event_id'] + \
-							'/ARC/Resp/' + 'RESP' + '.' + Stas_req_BHN[i][0] +	'.' + Stas_req_BHN[i][1] + '.' + \
-							Stas_req_BHN[i][2] + '.' + 'BHN')	
-						'''	
-						
-						print "UPDATE - Saving Response for: " + Stas_req_BHN[i][0] + '.' + Stas_req_BHN[i][1] + '.' + \
-							Stas_req_BHN[i][2] + '.' + 'BHN' + "  ---> DONE"
-							
-						
-					dummy = 'UPDATE-Inventory'
-					
-					inv_BHN[i] = client_arclink.getInventory(Stas_req_BHN[i][0], Stas_req_BHN[i][1], \
-						Stas_req_BHN[i][2], 'BHN')
-					
-					dum = Stas_req_BHN[i][0] + '.' + Stas_req_BHN[i][1]
-									
-					st = read(Address + '/ARC/BH_RAW/' + Stas_req_BHN[i][0] +	'.' + Stas_req_BHN[i][1] + '.' + \
-							Stas_req_BHN[i][2] + '.' + 'BHN')
-					st[0].write(Address + '/ARC/BH_RAW/' + Stas_req_BHN[i][0] +	'.' + Stas_req_BHN[i][1] + '.' + \
-							Stas_req_BHN[i][2] + '.' + 'BHN', 'SAC')
-					st = read(Address + '/ARC/BH_RAW/' + Stas_req_BHN[i][0] +	'.' + Stas_req_BHN[i][1] + '.' + \
-							Stas_req_BHN[i][2] + '.' + 'BHN')
-					
-					if inv_BHN[i][dum]['latitude'] != None:
-						st[0].stats['sac']['stla'] = inv_BHN[i][dum]['latitude']
-					if inv_BHN[i][dum]['longitude'] != None:
-						st[0].stats['sac']['stlo'] = inv_BHN[i][dum]['longitude']
-					if inv_BHN[i][dum]['elevation'] != None:
-						st[0].stats['sac']['stel'] = inv_BHN[i][dum]['elevation']
-					if inv_BHN[i][dum]['depth'] != None:
-						st[0].stats['sac']['stdp'] = inv_BHN[i][dum]['depth']
-					
-					st[0].stats['sac']['evla'] = event_la
-					st[0].stats['sac']['evlo'] = event_lo
-					st[0].stats['sac']['evdp'] = event_dp
-					st[0].stats['sac']['mag'] = event_mag
-					
-					st[0].write(Address + '/ARC/BH_RAW/' + Stas_req_BHN[i][0] +	'.' + Stas_req_BHN[i][1] + '.' + \
-							Stas_req_BHN[i][2] + '.' + 'BHN', 'SAC')
-					
-					Syn_file = open(Address + '/ARC/info/' + 'iris_BHN', 'a')
-					syn = Stas_req_BHN[i][0] + ',' + Stas_req_BHN[i][1] + ',' + \
-						Stas_req_BHN[i][2] + ',' + Stas_req_BHN[i][3] + ',' + str(inv_BHN[i][dum]['latitude']) + \
-						',' + str(inv_BHN[i][dum]['longitude']) + ',' + str(inv_BHN[i][dum]['elevation']) + ',' + \
-						str(inv_BHN[i][dum]['depth']) + ',' + events[l]['event_id'] + ',' + str(events[l]['latitude']) \
-						 + ',' + str(events[l]['longitude']) + ',' + str(events[l]['depth']) + ',' + '\n'
-					Syn_file.writelines(syn)
-					Syn_file.close()
-					
-					print "UPDATE - Saving Station  for: " + Stas_req_BHN[i][0] +	'.' + Stas_req_BHN[i][1] + '.' + \
-						Stas_req_BHN[i][2] + '.' + 'BHN' + "  ---> DONE"
-					
-					#client_arclink.close()
-					
-				except Exception, e:	
-					
-					print dummy + '---' + Stas_req_BHN[i][0] +	'.' + Stas_req_BHN[i][1] + \
-						'.' +Stas_req_BHN[i][2] + '.' + 'BHN'
-					
-					Exception_file = open(Address + '/ARC/Excep_py/' + 'Exception_file_ARC_update', 'a')
-
-					ee = dummy + '---' + str(l) + '-' + str(i) + '---' + Stas_req_BHN[i][0] + \
-						'.' + Stas_req_BHN[i][1] + '.' + \
-						Stas_req_BHN[i][2] + '.' + 'BHN' + \
-						'---' + str(e) + '\n'
-					
-					Exception_file.writelines(ee)
-					Exception_file.close()
-					print e
-		
-		
-		Station_file = open(Address + '/ARC/info/' + 'Avail_ARC_Stations_BHN', 'a')
-		pickle.dump(inv_BHN, Station_file)
-		Station_file.close()
-			
-			
-		Report = open(Address + '/ARC/info/' + 'report_st', 'a')
-		rep1 = 'ArcLink-Saved stations (BHN) for event' + '-' + str(i) + ': ' + str(len(inv_BHN)) + '\n'
-		Report.writelines(rep1)
-		Report.close()			
-				
-		
-		inv_BHZ = {}
-		
-		if input['BHZ'] == 'Y':
-			
-			for i in range(0, len(Stas_req_BHZ)):
-				
-				print '------------------'
-				print 'Updating - ArcLink-BHZ - ' + str(l) + ' -- ' + str(i) + ':'
-				
-				try:
-					
-					client_arclink = Client_arclink(timeout=5)
-					
-					# BHZ
-					if input['waveform'] == 'Y':
-							
-						dummy = 'UPDATE-Waveform'
-						
-						client_arclink.saveWaveform(Address + '/ARC/BH_RAW/' + Stas_req_BHZ[i][0] +	'.' + Stas_req_BHZ[i][1] + '.' + \
-							Stas_req_BHZ[i][2] + '.' + 'BHZ', Stas_req_BHZ[i][0], Stas_req_BHZ[i][1], \
-							Stas_req_BHZ[i][2], 'BHZ', t1, t2)
-						
-						print "UPDATE - Saving Waveform for: " + Stas_req_BHZ[i][0] + '.' + Stas_req_BHZ[i][1] + '.' + \
-							Stas_req_BHZ[i][2] + '.' + 'BHZ' + "  ---> DONE"  
-						
-					if input['response'] == 'Y':
-											
-						dummy = 'UPDATE-Response'
-						
-						client_arclink.saveResponse(Address + '/ARC/Resp/' + 'RESP' + '.' + Stas_req_BHZ[i][0] +	'.' + Stas_req_BHZ[i][1] + '.' + \
-							Stas_req_BHZ[i][2] + '.' + 'BHZ', Stas_req_BHZ[i][0], Stas_req_BHZ[i][1], \
-							Stas_req_BHZ[i][2], 'BHZ', t1, t2)
-						
-						
-						sp = Parser(Address + '/ARC/Resp/' + 'RESP' + '.' + Stas_req_BHZ[i][0] +	'.' + Stas_req_BHZ[i][1] + '.' + \
-							Stas_req_BHZ[i][2] + '.' + 'BHZ')
-						
-						sp.writeRESP(Address + '/ARC/Resp')
-						
-						'''
-						pars = Parser()
-							
-						pars.read(Address_events + '/' + events[i]['event_id'] + \
-							'/ARC/Resp/' + 'RESP' + '.' + Stas_req_BHZ[i][0] +	'.' + Stas_req_BHZ[i][1] + '.' + \
-							Stas_req_BHZ[i][2] + '.' + 'BHZ')
-						
-						pars.writeRESP(Address_events + '/' + events[i]['event_id'] + \
-							'/ARC/Resp/' + 'RESP' + '.' + Stas_req_BHZ[i][0] +	'.' + Stas_req_BHZ[i][1] + '.' + \
-							Stas_req_BHZ[i][2] + '.' + 'BHZ')	
-						'''	
-						
-						print "UPDATE - Saving Response for: " + Stas_req_BHZ[i][0] + '.' + Stas_req_BHZ[i][1] + '.' + \
-							Stas_req_BHZ[i][2] + '.' + 'BHZ' + "  ---> DONE"
-							
-						
-					dummy = 'UPDATE-Inventory'
-					
-					inv_BHZ[i] = client_arclink.getInventory(Stas_req_BHZ[i][0], Stas_req_BHZ[i][1], \
-						Stas_req_BHZ[i][2], 'BHZ')
-					
-					dum = Stas_req_BHZ[i][0] + '.' + Stas_req_BHZ[i][1]
-									
-					st = read(Address + '/ARC/BH_RAW/' + Stas_req_BHZ[i][0] +	'.' + Stas_req_BHZ[i][1] + '.' + \
-							Stas_req_BHZ[i][2] + '.' + 'BHZ')
-					st[0].write(Address + '/ARC/BH_RAW/' + Stas_req_BHZ[i][0] +	'.' + Stas_req_BHZ[i][1] + '.' + \
-							Stas_req_BHZ[i][2] + '.' + 'BHZ', 'SAC')
-					st = read(Address + '/ARC/BH_RAW/' + Stas_req_BHZ[i][0] +	'.' + Stas_req_BHZ[i][1] + '.' + \
-							Stas_req_BHZ[i][2] + '.' + 'BHZ')
-					
-					if inv_BHZ[i][dum]['latitude'] != None:
-						st[0].stats['sac']['stla'] = inv_BHZ[i][dum]['latitude']
-					if inv_BHZ[i][dum]['longitude'] != None:
-						st[0].stats['sac']['stlo'] = inv_BHZ[i][dum]['longitude']
-					if inv_BHZ[i][dum]['elevation'] != None:
-						st[0].stats['sac']['stel'] = inv_BHZ[i][dum]['elevation']
-					if inv_BHZ[i][dum]['depth'] != None:
-						st[0].stats['sac']['stdp'] = inv_BHZ[i][dum]['depth']
-						
-					st[0].stats['sac']['evla'] = event_la
-					st[0].stats['sac']['evlo'] = event_lo
-					st[0].stats['sac']['evdp'] = event_dp
-					st[0].stats['sac']['mag'] = event_mag
-					
-					st[0].write(Address + '/ARC/BH_RAW/' + Stas_req_BHZ[i][0] +	'.' + Stas_req_BHZ[i][1] + '.' + \
-							Stas_req_BHZ[i][2] + '.' + 'BHZ', 'SAC')
-					
-					Syn_file = open(Address + '/ARC/info/' + 'iris_BHZ', 'a')
-					syn = Stas_req_BHZ[i][0] + ',' + Stas_req_BHZ[i][1] + ',' + \
-						Stas_req_BHZ[i][2] + ',' + Stas_req_BHZ[i][3] + ',' + str(inv_BHZ[i][dum]['latitude']) + \
-						',' + str(inv_BHZ[i][dum]['longitude']) + ',' + str(inv_BHZ[i][dum]['elevation']) + ',' + \
-						str(inv_BHZ[i][dum]['depth']) + ',' + events[l]['event_id'] + ',' + str(events[l]['latitude']) \
-						 + ',' + str(events[l]['longitude']) + ',' + str(events[l]['depth']) + ',' + '\n'
-					Syn_file.writelines(syn)
-					Syn_file.close()
-					
-					print "UPDATE - Saving Station  for: " + Stas_req_BHZ[i][0] +	'.' + Stas_req_BHZ[i][1] + '.' + \
-						Stas_req_BHZ[i][2] + '.' + 'BHZ' + "  ---> DONE"
-					
-					#client_arclink.close()
-					
-				except Exception, e:	
-					
-					print dummy + '---' + Stas_req_BHZ[i][0] +	'.' + Stas_req_BHZ[i][1] + \
-						'.' +Stas_req_BHZ[i][2] + '.' + 'BHZ'
-					
-					Exception_file = open(Address + '/ARC/Excep_py/' + 'Exception_file_ARC_update', 'a')
-
-					ee = dummy + '---' + str(l) + '-' + str(i) + '---' + Stas_req_BHZ[i][0] + \
-						'.' + Stas_req_BHZ[i][1] + '.' + \
-						Stas_req_BHZ[i][2] + '.' + 'BHZ' + \
-						'---' + str(e) + '\n'
-					
-					Exception_file.writelines(ee)
-					Exception_file.close()
-					print e
-		
-		
-		Station_file = open(Address + '/ARC/info/' + 'Avail_ARC_Stations_BHZ', 'a')
-		pickle.dump(inv_BHZ, Station_file)
-		Station_file.close()
-			
-			
-		Report = open(Address + '/ARC/info/' + 'report_st', 'a')
-		rep1 = 'ArcLink-Saved stations (BHZ) for event' + '-' + str(i) + ': ' + str(len(inv_BHZ)) + '\n'
-		Report.writelines(rep1)
-		Report.close()	
+	if interactive == 'N':
+		Period = input['min_date'] + '_' + input['max_date'] + '_' + str(input['min_mag']) + '_' + str(input['max_mag'])
+		Address_events = input['Address'] + '/' + Period
+	else:
+		address_inter = get_address()
+		Address_events = address_inter
 
 	
-	t_update_2 = datetime.now()
-		
-	t_update = t_update_2 - t_update_1
+	Event_file = open(Address_events + '/EVENT/event_list', 'r')
+	events = pickle.load(Event_file)
 	
-	Report = open(Address + '/ARC/info/' + 'report_st', 'a')
-	Report.writelines('----------------------------------' + '\n')
-	rep1 = 'Time for updating the ARC folder: ' + str(t_update) + '\n'
-	Report.writelines(rep1)
-	Report.writelines('----------------------------------' + '\n')
-	Report.close()	
+	len_events = len(events)
+			
+	all_arc = []
+	saved_arc = []
+	
+	for l in range(0, len_events):
 		
-	print 'Time for Updating: (ARC)'
-	print t_update
+		ls_all_stas = \
+			open(Address_events + '/' + events[l]['event_id'] + '/ARC/info/all_arc_' + channel, 'r')
+		all_arc_tmp = pickle.load(ls_all_stas)
+		ls_all_stas.close()
+				
+		for i in range(0, len(all_arc_tmp)):
+			all_arc_tmp[i] = str(all_arc_tmp[i][0] + '_' + all_arc_tmp[i][1] + '_' +\
+				all_arc_tmp[i][2] + '_' + all_arc_tmp[i][3])	
+		
+		all_arc.append(all_arc_tmp)
+		
+		
+		ls_saved_stas = \
+			open(Address_events + '/' + events[l]['event_id'] + '/ARC/info/arc_' + channel, 'r')
+		saved_stas = ls_saved_stas.readlines()
+		
+		for i in range(0, len(saved_stas)):
+			saved_stas[i] = saved_stas[i].split(',')
+			if saved_stas[i][2] == '  ':
+				saved_stas[i][2] = '--'
+			saved_stas[i] = str(saved_stas[i][0] + '_' + saved_stas[i][1] + '_' + \
+				saved_stas[i][2] + '_' + saved_stas[i][3])
+		
+		saved_arc.append(saved_stas)
+	
+	Stas_req = []
+	for l in range(0, len_events):
+		diff_tmp = set(all_arc[l]).difference(set(saved_arc[l])) 
+		Stas_req.append(list(diff_tmp))
+		
+		for m in range(0, len(Stas_req[l])):
+			Stas_req[l][m] = Stas_req[l][m].split('_')
+		
+		Stas_req[l].sort()
+	
+	return Stas_req
 
 ###################################################### QC_IRIS ######################################################
 
