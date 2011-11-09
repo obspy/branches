@@ -4,7 +4,7 @@ import matplotlib
 matplotlib.use('TkAgg')
 import os
 from obspy.core import read
-from relcalstack import relcalstack
+from obspy.signal.calibration import relcalstack
 import matplotlib.pyplot as plt
 
 cwd = os.getcwd()
