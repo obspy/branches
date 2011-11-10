@@ -202,9 +202,9 @@ def mtinv_gs(st_tr, gl, fmin, fmax, fmax_hardcut_factor=4, S0=1., nsv=1,
     :param gl: list of Streams containing the green's functions, station names
         are numbers starting with 0001, channels are of format '%02d%1d' where
         the first number is the component of the receiver ([0,1,2]) and the
-        second the source ([0,1,...,5]). Should have the same sample rate as
-        st_tr. If no grid search is needed, just put a single stream in the
-        list.
+        second the source ([0,1,...,5] or [0,1,...,8] including single forces).
+        Should have the same sample rate as st_tr. If no grid search is needed,
+        just put a single stream in the list.
     :type fmin: float
     :param fmin: high pass frequency
     :type fmax: float
