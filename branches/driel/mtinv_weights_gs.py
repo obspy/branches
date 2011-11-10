@@ -7,10 +7,11 @@ from obspy.signal import highpass, lowpass, cosTaper
 import pickle
 import os.path
 from scipy.integrate import cumtrapz
+from obspy.signal.invsim import waterlevel
 
 def mtinv(input_set, st_tr, st_g, fmin, fmax, nsv=1, single_force=False,
           stat_subset=[], weighting_type=2, weights=[], cache_path='',
-          force_recalc=False, cache=True):
+          force_recalc=False, cache=True,w_level=50):
     '''
     Not intended for direct use, use mtinv_gs instead!
     '''
@@ -37,6 +38,8 @@ def mtinv(input_set, st_tr, st_g, fmin, fmax, nsv=1, single_force=False,
                                      channel='%02d%1d' % (i,j))[0].data
                     # fill greens matrix in freq space, deconvolve S0
                     gw[k*3 + i,j,:] = np.fft.rfft(g[k*3 + i,j,:], n=nfft)[:nfinv] * dt / S0w
+                    
+
         # write G-matrix to file
         if cache:
             pickle.dump(gw, open(cache_path + 'gw.pickle', 'w'), protocol=2)
@@ -102,8 +105,6 @@ def mtinv(input_set, st_tr, st_g, fmin, fmax, nsv=1, single_force=False,
     for j in np.arange(6 + single_force * 3):
         M_t[j,:] = np.fft.irfft(M[j,:])[:nfft] * df
     
-    # TESTING !!
-    # Lowpass stabilizes inversion in case the greensfcts do not have enough HF content
     M_t = lowpass(M_t, fmax, df, corners=4)
 
     # use principal component analysis for constrained inversion
@@ -175,9 +176,9 @@ def mtinv(input_set, st_tr, st_g, fmin, fmax, nsv=1, single_force=False,
 
 
 
-def mtinv_gs(st_tr, gl, fmin, fmax, fmax_hardcut_factor=2, S0=1., nsv=1,
+def mtinv_gs(st_tr, gl, fmin, fmax, fmax_hardcut_factor=4, S0=1., nsv=1,
           single_force=False, stat_subset=[], weighting_type=2, weights=[],
-          cache_path='', force_recalc=False, cache=True):
+          cache_path='', force_recalc=False, cache=True, w_level=50):
     '''
     Frequency domain moment tensor inversion.
 
@@ -235,6 +236,9 @@ def mtinv_gs(st_tr, gl, fmin, fmax, fmax_hardcut_factor=2, S0=1., nsv=1,
         greensfunctions (are cached in 'cache_path' to speed up inversion).
     :type cache: Bool
     :param cache: cache or not
+    :param w_level: give value of waterlevel in dB under max amplitude in 
+                        spectrum of deconvolved greens function
+    :type w_level: int
 
     returns a tuple containing:
         M_t     - time dependent Momenttensor solution (if nsv > 1 than summed
@@ -274,6 +278,18 @@ def mtinv_gs(st_tr, gl, fmin, fmax, fmax_hardcut_factor=2, S0=1., nsv=1,
     else:
         S0w = np.fft.rfft(S0, n=nfft)[:nfinv] * dt
 
+        # introduce waterlevel to prevent instabilities in deconvolution of greens functions
+        # see obspy.signal.invsim specInv
+        # Calculated waterlevel in the scale of spec
+        swamp = waterlevel(S0w, w_level)
+        # Find length in real fft frequency domain, spec is complex
+        sqrt_len = np.abs(S0w)
+        # Set/scale length to swamp, but leave phase untouched
+        # 0 sqrt_len will transform in np.nans when dividing by it
+        idx = np.where((sqrt_len < swamp) & (sqrt_len > 0.0))
+        S0w[idx] *= swamp / sqrt_len[idx]
+
+
     # setup seismogram matrix in fourier space
     utr = np.zeros((nstat * 3, ndat))
     utrw = np.zeros((nstat * 3, nfft/2+1)) * 0j
@@ -299,7 +315,8 @@ def mtinv_gs(st_tr, gl, fmin, fmax, fmax_hardcut_factor=2, S0=1., nsv=1,
             dt, nstat, ndat, ng, nfft, nfinv), st_tr, st_g, fmin, fmax,
             nsv=nsv, single_force=single_force, stat_subset=stat_subset,
             force_recalc=force_recalc, weighting_type=weighting_type,
-            weights=weights, cache_path=cache_path + ('%06d_' % i), cache=cache)
+            weights=weights, cache_path=cache_path + ('%06d_' % i), cache=cache,
+            w_level=50)
 
         M_tl.append(M_t)
         ml.append(m)
@@ -311,7 +328,7 @@ def mtinv_gs(st_tr, gl, fmin, fmax, fmax_hardcut_factor=2, S0=1., nsv=1,
     misfit = np.array(misfitl)
     argmin = misfit.argmin()
     
-    # TESTING !!! necessary to compensate for filtering (after inversion befor SVD) of inverted stf 
     st_tr.filter('lowpass', freq=fmax, corners=4)
+
     return M_tl[argmin], ml[argmin], xl[argmin], sl[argmin], st_synl[argmin], st_tr, misfit, argmin
     
