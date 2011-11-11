@@ -98,6 +98,10 @@ def ObsPyDMT():
 	if input['get_events'] == 'Y':
 		get_Events(input)
 	
+	# ------------------------Generate desired INPUT-Periods file---------------------------------
+	if input['input_period'] == 'Y':
+		INPUT_Periods_file(input)
+	
 	# ------------------------IRIS------------------------------------------------
 	if input['IRIS'] == 'Y':
 		
@@ -249,6 +253,7 @@ def read_input():
 	input['max_result'] = config.getint('Event_Request', 'max_results')
 	
 	input['get_events'] = config.get('Request', 'get_events')
+	input['input_period'] = config.get('Request', 'input_period')
 	input['IRIS'] = config.get('Request', 'IRIS')
 	input['ArcLink'] = config.get('Request', 'ArcLink')
 	
@@ -395,9 +400,6 @@ def nodes(input):
 
 			tty.close()		
 	
-	
-	Address_data = input['Address']
-	
 	tty = open(input['Address'] + '/tty-info', 'r')
 	tty_str = tty.readlines()
 	
@@ -412,7 +414,12 @@ def nodes(input):
 				input['max_date'] = tty_str[i][2].split('_')[1]
 				input['min_mag'] = tty_str[i][2].split('_')[2]
 				input['max_mag'] = tty_str[i][2].split('_')[3]
-					
+	
+	print input['min_date']
+	print input['max_date']
+	print input['min_mag'] 
+	print input['max_mag']
+	
 	return input
 
 ###################################################### get_Events ######################################################
@@ -531,6 +538,57 @@ def get_Events(input):
 	print 'Time for getting and saving the events:'
 	print t_event
 
+###################################################### INPUT_Periods_file ######################################################
+
+def INPUT_Periods_file(input):
+	
+	"""
+	Generates the INPUT-Periods file based on requested events.
+	"""
+	
+	Period = input['min_date'] + '_' + input['max_date'] + '_' + str(input['min_mag']) + '_' + str(input['max_mag'])
+	Address_events = input['Address'] + '/' + Period
+	
+	Event_file = open(Address_events + '/EVENT/event_list', 'r')
+	events = pickle.load(Event_file)
+	
+	len_events = len(events)
+	
+	input_period = open(os.path.join(os.getcwd(), 'INPUT-Periods'), 'w')
+	'''
+	for i in range(0, len_events):
+		year = str(events[i]['datetime'].year)
+		month = str(events[i]['datetime'].month)
+		day1 = str(events[i]['datetime'].day)
+		day2_pre = events[i]['datetime'] + 24*3600
+		day2 = str(day2_pre.day)
+		
+		if len(month) == 1:
+			month = '0' + month
+		if len(day1) == 1:
+			day1 = '0' + day1
+		if len(day2) == 1:
+			day2 = '0' + day2
+			
+		str_event = year + '-' + month + '-' + day1 + '_' + \
+			year + '-' + month + '-' + day2 + '_' + \
+			str(events[i]['magnitude'] - 0.01) + '_' + str(events[i]['magnitude'] + 0.01) + '\n'
+		input_period.writelines(str_event)
+	'''
+	for i in range(0, len_events):
+			
+		str_event = str(events[i]['datetime']-3600) + '_' + str(events[i]['datetime']+3600) + '_' + \
+			str(events[i]['magnitude'] - 0.01) + '_' + str(events[i]['magnitude'] + 0.01) + '\n'
+		input_period.writelines(str_event)
+	
+	input_period.close()
+	
+	print '***********************************************************************************************************************'	
+	print 'New INPUT-Periods file is generated in your folder. Now, you could run the program again based on your desired event :)'	
+	print '***********************************************************************************************************************'
+	
+	sys.exit()
+	
 ###################################################### IRIS_get_Network ######################################################
 
 def IRIS_get_Network(input):
@@ -662,6 +720,10 @@ def IRIS_Waveform(input, Stas_iris, t):
 
 def IRIS_folder_sta_initialize(input, Stas_iris, channel):
 	
+	"""
+	Initialize folders and required stations for IRIS requests
+	"""
+	
 	Period = input['min_date'] + '_' + input['max_date'] + '_' + str(input['min_mag']) + '_' + str(input['max_mag'])
 	Address_events = input['Address'] + '/' + Period
 	
@@ -710,6 +772,10 @@ def IRIS_folder_sta_initialize(input, Stas_iris, channel):
 ###################################################### IRIS_get_Waveform ######################################################
 
 def IRIS_get_Waveform(input, Sta_req, channel, interactive, type):
+	
+	"""
+	Gets Waveforms, Response files and other information from IRIS based on the requested events...
+	"""
 	
 	t_wave_1 = datetime.now()
 	
@@ -1037,6 +1103,10 @@ def ARC_Waveform(input, Stas_arc, t):
 ###################################################### ARC_folder_sta_initialize ######################################################
 
 def ARC_folder_sta_initialize(input, Stas_arc, channel):
+		
+	"""
+	Initialize folders and required stations for IRIS requests
+	"""
 	
 	Period = input['min_date'] + '_' + input['max_date'] + '_' + str(input['min_mag']) + '_' + str(input['max_mag'])
 	Address_events = input['Address'] + '/' + Period
