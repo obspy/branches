@@ -309,6 +309,8 @@ def mtinv_gs(st_tr, gl, fmin, fmax, fmax_hardcut_factor=4, S0=1., nsv=1,
     st_synl = []
     misfitl = []
 
+    st_tr.filter('lowpass', freq=fmax, corners=4)
+
     for i, st_g in enumerate(gl):
         print i
         M_t, m, x, s, st_syn, misfit = mtinv((utrw, weights_l2.copy(), S0w, df,
@@ -327,7 +329,6 @@ def mtinv_gs(st_tr, gl, fmin, fmax, fmax_hardcut_factor=4, S0=1., nsv=1,
     misfit = np.array(misfitl)
     argmin = misfit.argmin()
     
-    st_tr.filter('lowpass', freq=fmax, corners=4)
 
     return M_tl[argmin], ml[argmin], xl[argmin], sl[argmin], st_synl[argmin], st_tr, misfit, argmin
     
