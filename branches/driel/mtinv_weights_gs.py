@@ -37,7 +37,8 @@ def mtinv(input_set, st_tr, st_g, fmin, fmax, nsv=1, single_force=False,
                     g[k*3 + i,j,:] = st_g.select(station='%04d' % (k + 1),
                                      channel='%02d%1d' % (i,j))[0].data
                     # fill greens matrix in freq space, deconvolve S0
-                    gw[k*3 + i,j,:] = np.fft.rfft(g[k*3 + i,j,:], n=nfft)[:nfinv] * dt / S0w
+                    gw[k*3 + i,j,:] = np.fft.rfft(g[k*3 + i,j,:], n=nfft) \
+                                                    [:nfinv] * dt / S0w
                     
 
         # write G-matrix to file
@@ -54,7 +55,8 @@ def mtinv(input_set, st_tr, st_g, fmin, fmax, nsv=1, single_force=False,
     for i in np.arange(stat_subset.size):
         chan_subset[i*3:(i+1)*3] = stat_subset[i]*3 + np.array([0,1,2])
 
-    # setup weighting matrix (depending on weighting scheme and apriori weighting)
+    # setup weighting matrix (depending on weighting scheme and apriori
+    # weighting)
     
     # a priori weighting   
     if weights == []:
@@ -176,17 +178,17 @@ def mtinv(input_set, st_tr, st_g, fmin, fmax, nsv=1, single_force=False,
 
 
 
-def mtinv_gs(st_tr, gl, fmin, fmax, fmax_hardcut_factor=4, S0=1., nsv=1,
+def mtinv_gs(st_tr, gl, fmin, fmax, fmax_hardcut_factor=4, S0=None, nsv=1,
           single_force=False, stat_subset=[], weighting_type=2, weights=[],
-          cache_path='', force_recalc=False, cache=True, w_level=50):
+          cache_path='', force_recalc=False, cache=False, w_level=50):
     '''
     Frequency domain moment tensor inversion.
 
     Features:
      - grid search for best source location
      - direct inversion for different error measures (see weighting type)
-     - constrain to limited number of mechanisms using principal component
-       analysis
+     - constrain to limited number of source mechanisms/time dependencies using
+       principal component analysis
      - deconvolution of source time function used for Green's function
        simulations
      - caching the Green's matrix in Frequency space for speed up of repeated
@@ -195,10 +197,10 @@ def mtinv_gs(st_tr, gl, fmin, fmax, fmax_hardcut_factor=4, S0=1., nsv=1,
     Theory see Diplomathesis 'The Effect of Tilt on Moment Tensor Inversion in
     the Nearfield of Active Volcanoes' section 2.2
 
-    :type st_tr: obspy Stream object
+    :type st_tr: :class:`~obspy.core.stream.Stream`
     :param st_tr: Stream containing the seismograms, station names are numbers
         starting with 0001, channels are ['u', 'v', 'w']
-    :type gl: list of obspy Stream objects
+    :type gl: list of :class:`~obspy.core.stream.Stream` objects
     :param gl: list of Streams containing the green's functions, station names
         are numbers starting with 0001, channels are of format '%02d%1d' where
         the first number is the component of the receiver ([0,1,2]) and the
@@ -211,9 +213,10 @@ def mtinv_gs(st_tr, gl, fmin, fmax, fmax_hardcut_factor=4, S0=1., nsv=1,
     :param fmax: low pass frequency
     :type fmax_hardcut_factor: int
     :param fmax_hardcut_factor: multiple of fmax where the inversion is stopped
-    :type S0: numpy.ndarray
-    :param S0: source time function used for comupation of the greensfunction
-        to deconvolve. Needs to have same sample rate as st_tr
+    :type S0: :class:`numpy.ndarray`
+    :param S0: source time function used for computation of the Green's
+        function to deconvolve. Is assumed to have same sample rate as st_tr.
+        If S0 is None, no deconvolution is performed.
     :type nsv: int
     :param nsv: number of mechanisms corresponding to the largest singular
         values in the constrained inversion
@@ -221,7 +224,7 @@ def mtinv_gs(st_tr, gl, fmin, fmax, fmax_hardcut_factor=4, S0=1., nsv=1,
     :param single_force: include single force in the inversion (then green's
         functions for single forces are needed in channels ([6,7,8]))
     :type stat_subset: List
-    :param stat_subset: list of stations to use in the inversion
+    :param stat_subset: List of stations to use in the inversion
     :type weighting: int
     :param weighting_type: should be one of [0,1,2], 0: no weighting, 1: use l2
         norm weighting for each trace, 2: use l2 norm weighting for each
@@ -230,15 +233,15 @@ def mtinv_gs(st_tr, gl, fmin, fmax, fmax_hardcut_factor=4, S0=1., nsv=1,
     :param weights: a priori relative weighting of stations, should have length
         nstat or same length as stat_subset
     :type cache_path: string
-    :param cache_path: path to a folder to cache green's matrix
+    :param cache_path: path to a folder to cache Green's matrix
     :type force_recalc: Bool
     :param force_recalc: force reevalution of fourier transform of
-        greensfunctions (are cached in 'cache_path' to speed up inversion).
+        Green's functions (if cached in 'cache_path' to speed up inversion).
     :type cache: Bool
-    :param cache: cache or not
-    :param w_level: give value of waterlevel in dB under max amplitude in 
-                        spectrum of deconvolved greens function
+    :param cache: cache in a file or not
     :type w_level: int
+    :param w_level: value of waterlevel in dB under max amplitude in spectrum
+        of deconvolved Green's function
 
     returns a tuple containing:
         M_t     - time dependent Momenttensor solution (if nsv > 1 than summed
@@ -248,11 +251,18 @@ def mtinv_gs(st_tr, gl, fmin, fmax, fmax_hardcut_factor=4, S0=1., nsv=1,
         s       - singular values of principal components
         st_syn  - synthetic seismograms generated with the inverted source
         st_tr   - input seismograms filtered the same way as the synthetics
+                  (for comparison to synthetic seismograms)
         misfit  - misfit of synthetics, definition depends on weighting
                   (is only mathematically strict minimized for nsv=6  (9 in
                   case of single force), otherwise approximately)
-        argmin  - index of greensfunction in list that minimizes the misfit
+        argmin  - index of Green's function in list that minimizes the misfit
     '''
+    if round(st_tr[0].stats.sampling_rate, 5) != round(gl[0][0].stats.sampling_rate, 5):
+        msg = 'sampling rates of Seismograms and Green\'s function are not the'
+        msg = msg + ' same: %f != %f' % (st_tr[0].stats.sampling_rate,
+                                         gl[0][0].stats.sampling_rate)
+        raise ValueError(msg)
+
     st_tr = st_tr.copy()
     st_tr.filter('lowpass', freq=fmax, corners=4)
     st_tr.filter('highpass', freq=fmin, corners=4)
@@ -273,13 +283,14 @@ def mtinv_gs(st_tr, gl, fmin, fmax, fmax_hardcut_factor=4, S0=1., nsv=1,
     # going to frequency domain
 
     # correction for stf used in green's forward simulation
-    if type(S0).__name__=='float':
-        S0w = S0
+    if S0 is None:
+        S0w = 1.
     else:
         S0w = np.fft.rfft(S0, n=nfft)[:nfinv] * dt
 
-        # introduce waterlevel to prevent instabilities in deconvolution of greens functions
-        # see obspy.signal.invsim specInv
+        # introduce waterlevel to prevent instabilities in deconvolution of
+        # greens functions, see obspy.signal.invsim specInv
+
         # Calculated waterlevel in the scale of spec
         swamp = waterlevel(S0w, w_level)
         # Find length in real fft frequency domain, spec is complex
