@@ -26,13 +26,13 @@ Goal: Management of Large Seismic Datasets
 
 """
 - Import required Modules (Python and Obspy)
+- Main Program
 - Read INPUT file (Parameters)
 - Parallel Requests
 - Getting list of Events
-- IRIS -- Download all waveforms, Response file and other information based on requested events
-- IRIS -- Download single waveform, Response file and other information based on requested events
-- ArcLink -- Download all waveforms, Response file and other information based on requested events
-- ArcLink -- Download single waveform, Response file and other information based on requested events
+- Generate desired INPUT-Periods file
+- IRIS
+- ArcLink
 
 - Updating
 - Quality Control (Gap, Timing Quality, Data Quality)
@@ -43,6 +43,11 @@ Goal: Management of Large Seismic Datasets
 
 
 # ------------------------Import required Modules (Python and Obspy)-------------
+
+"""
+Required Python and Obspy modules will be imported in this part.
+"""
+
 from obspy.core import read
 from obspy.core import UTCDateTime
 from obspy.mseed.libmseed import LibMSEED
@@ -58,6 +63,10 @@ import glob
 import sys
 import os
 
+"""
+Required Clients from Obspy will be imported and initialized here.
+Please note that clients could be initialized other times within the program.
+"""
 
 from obspy.neries import Client as Client_neries
 from obspy.iris import Client as Client_iris
@@ -72,6 +81,13 @@ client_arclink = Client_arclink()
 ####################################################################################################################################
 
 def ObsPyDMT():
+	
+	"""
+	ObsPyDMT: is the function dedicated to the main part of the code.
+	To run this program you have to have the following files already in the same folder as ObsPyDMT:
+	1. INPUT.cfg file
+	2. INPUT-Periods
+	"""
 	
 	t1_pro = datetime.now()
 
@@ -163,44 +179,25 @@ def ObsPyDMT():
 		
 		QC_ARC(input)
 		
-	# ------------------------Email--------------------------------
-	t2_pro = datetime.now()
-	t_pro = t2_pro - t1_pro
-	
+	# ------------------------Email--------------------------------	
 	if input['email'] == 'Y':
 		
-		info = commands.getoutput('hostname') + '_' + commands.getoutput('tty')
-		Period = input['min_date'] + '_' + input['max_date'] + '_' + str(input['min_mag']) + '_' + str(input['max_mag'])
+		print '\n' + '****************************************************************'
+		print 'Sending email to the following email-address:'
+		print input['email_address']
+		print '****************************************************************'
 		
-		i1 = str(info)
-		i2 = str(Period)
-		i3 = str(t1_pro).split(' ')[0] + '_' + str(t1_pro).split(' ')[1]
-		i4 = str(t2_pro).split(' ')[0] + '_' + str(t2_pro).split(' ')[1]
-		i5 = str(t_pro)
-		if len(i5.split(' ')) == 1:
-			i5 = str(t_pro)
-		if len(i5.split(' ')) == 3:
-			i5 = i5.split(' ')[0] + '_' + i5.split(' ')[1][:-1] + '_' + i5.split(' ')[2]
+		send_email(input, t1_pro)
 		
-		i6 = str(str(t1_pro.day) + '_' + str(t1_pro.month) + '_' + commands.getoutput('tty'))
-		i7 = input['email_address']
-		
-		commands.getoutput('./email-obspyDMT.sh' + ' ' + i1 + ' ' + i2 + ' ' + i3 + ' ' + i4 + ' ' + i5 + ' ' + i6 + ' ' + i7)
-	
 	# ------------------------Report--------------------------------	
 	if input['report'] == 'Y':
 		
-		i1 = input['Address']
-		i2 = input['Address'] + '/REPORT'
-	
-		if os.path.exists(i2) == True:
-			shutil.rmtree(i2)
-			os.makedirs(i2)
-			
-		else:
-			os.makedirs(i2)
+		print '\n' + '****************************************************************'
+		print 'Generating Report in the following folder:'
+		print input['Address'] + '/REPORT'
+		print '****************************************************************'
 		
-		commands.getoutput('./REPORT.tcsh' + ' ' + i1 + ' ' + i2)
+		report_DMT(input)
 	
 	# --------------------------------------------------------
 	print '--------------------------------------------------------------------------------'
@@ -216,7 +213,7 @@ def ObsPyDMT():
 
 
 ######################################################################################################################################
-###################################################### Modules are defined here ######################################################
+##################################################### Functions are defined here #####################################################
 ######################################################################################################################################
 
 
@@ -225,8 +222,14 @@ def ObsPyDMT():
 def read_input():	
 	
 	"""
-	Read inputs from INPUT file
-	This module will read the INPUT files which is located in the same folder as NDLB_part_I.py
+	Read inputs from INPUT.cfg file.
+	This module will read the INPUT.cfg file which is located in the same folder as ObsPyDMT.py
+	Please note that if you choose (nodes = Y) then:
+	* min_datetime
+	* max_datetime
+	* min_magnitude
+	* max_magnitude
+	will be selected based on INPUT-Periods file.
 	"""
 	
 	config = ConfigParser.RawConfigParser()
@@ -256,6 +259,8 @@ def read_input():
 	input['input_period'] = config.get('Request', 'input_period')
 	input['IRIS'] = config.get('Request', 'IRIS')
 	input['ArcLink'] = config.get('Request', 'ArcLink')
+	input['time_iris'] = config.get('Request', 'time_iris')
+	input['time_arc'] = config.get('Request', 'time_arc')
 	
 	input['nodes'] = config.get('Parallel', 'nodes')
 
@@ -359,7 +364,8 @@ def nodes(input):
 	"""
 	Downloading in Parallel way
 	Please change the 'INPUT-Periods' file for different requests
-	Suggestion: Do not request more than 10 in parallel...
+	Suggestion: 
+	Do not request more than 5 in parallel...Currently, there are some problems with ArcLink Client.
 	"""
 	
 	f = open(os.path.join(os.getcwd(), 'INPUT-Periods'))
@@ -544,7 +550,11 @@ def INPUT_Periods_file(input):
 	
 	"""
 	Generates the INPUT-Periods file based on requested events.
+	This function makes the list of events tb secs before and ta secs after each event.
 	"""
+	
+	tb = 3600
+	ta = 3600
 	
 	Period = input['min_date'] + '_' + input['max_date'] + '_' + str(input['min_mag']) + '_' + str(input['max_mag'])
 	Address_events = input['Address'] + '/' + Period
@@ -577,7 +587,7 @@ def INPUT_Periods_file(input):
 	'''
 	for i in range(0, len_events):
 			
-		str_event = str(events[i]['datetime']-3600) + '_' + str(events[i]['datetime']+3600) + '_' + \
+		str_event = str(events[i]['datetime']-tb) + '_' + str(events[i]['datetime']+ta) + '_' + \
 			str(events[i]['magnitude'] - 0.01) + '_' + str(events[i]['magnitude'] + 0.01) + '\n'
 		input_period.writelines(str_event)
 	
@@ -594,7 +604,7 @@ def INPUT_Periods_file(input):
 def IRIS_get_Network(input):
 	
 	"""
-	Returns available IRIS stations at the IRIS-DMC for all requested events
+	Returns available IRIS stations from the IRIS-DMC for all requested events
 	"""
 	
 	t_iris_1 = datetime.now()
@@ -693,7 +703,7 @@ def IRIS_get_Network(input):
 def IRIS_Waveform(input, Stas_iris, t):
 	
 	"""
-	Gets Waveforms, Response files and other information from IRIS web-service based on the requested events...
+	Call "IRIS_folder_sta_initialize" and "IRIS_get_Waveform" functions based on your channel request.
 	"""
 	
 	if input['BHE'] == 'Y':
@@ -721,7 +731,7 @@ def IRIS_Waveform(input, Stas_iris, t):
 def IRIS_folder_sta_initialize(input, Stas_iris, channel):
 	
 	"""
-	Initialize folders and required stations for IRIS requests
+	Initialize folders and required stations for IRIS requests.
 	"""
 	
 	Period = input['min_date'] + '_' + input['max_date'] + '_' + str(input['min_mag']) + '_' + str(input['max_mag'])
@@ -766,6 +776,12 @@ def IRIS_folder_sta_initialize(input, Stas_iris, channel):
 		Syn_file = open(Address_events + '/' + events[i]['event_id'] + \
 			'/IRIS/info/' + 'iris_' + channel, 'w')
 		Syn_file.close()
+		
+	if input['time_iris'] == 'Y':
+		for i in range(0, len_events):
+			time_file = open(Address_events + '/' + events[i]['event_id'] + \
+					'/IRIS/info/' + 'iris_time_' + channel, 'w')
+			time_file.close()
 	
 	return Sta_req
 
@@ -822,10 +838,23 @@ def IRIS_get_Waveform(input, Sta_req, channel, interactive, type):
 					
 					dummy = 'Waveform'
 					
+					t11 = datetime.now()
+					
 					client_iris.saveWaveform(Address_events + '/' + events[i]['event_id'] +\
 						'/IRIS/BH_RAW/' + Sta_req[i][j][0] +	'.' + Sta_req[i][j][1] + '.' + \
 						Sta_req[i][j][2] + '.' + channel, Sta_req[i][j][0], Sta_req[i][j][1], \
 						Sta_req[i][j][2], channel, t[i]-input['t_before'], t[i]+input['t_after'])
+										
+					t22 = datetime.now()
+					
+					if input['time_iris'] == 'Y':
+						time_iris = t22 - t11
+						time_file = open(Address_events + '/' + events[i]['event_id'] + \
+							'/IRIS/info/' + 'iris_time_' + channel, 'a')
+						ti = Sta_req[i][j][0] + ',' + Sta_req[i][j][1] + ',' + \
+							Sta_req[i][j][2] + ',' + Sta_req[i][j][3] + ',' + str(time_iris) + ',' + '\n'
+						time_file.writelines(ti)
+						time_file.close()
 					
 					print "Saving Waveform for: " + Sta_req[i][j][0] + '.' + Sta_req[i][j][1] + '.' + \
 						Sta_req[i][j][2] + '.' + channel + "  ---> DONE"  
@@ -979,7 +1008,7 @@ def get_address():
 def ARC_get_Network(input):
 	
 	"""
-	Returns available Arclink stations for all requested events
+	Returns available Arclink stations for all requested events.
 	-----------------
 	Problems:
 	- ['BW', 'WETR', '', 'BH*']
@@ -1077,7 +1106,7 @@ def ARC_get_Network(input):
 def ARC_Waveform(input, Stas_arc, t):
 	
 	"""
-	Gets Waveforms, Response files and other information from ArcLink based on the requested events...
+	Call "ARC_folder_sta_initialize" and "ARC_get_Waveform" functions based on your channel request.
 	"""
 	
 	if input['BHE'] == 'Y':
@@ -1105,7 +1134,7 @@ def ARC_Waveform(input, Stas_arc, t):
 def ARC_folder_sta_initialize(input, Stas_arc, channel):
 		
 	"""
-	Initialize folders and required stations for IRIS requests
+	Initialize folders and required stations for ARC requests
 	"""
 	
 	Period = input['min_date'] + '_' + input['max_date'] + '_' + str(input['min_mag']) + '_' + str(input['max_mag'])
@@ -1150,6 +1179,12 @@ def ARC_folder_sta_initialize(input, Stas_arc, channel):
 		Syn_file = open(Address_events + '/' + events[i]['event_id'] + \
 			'/ARC/info/' + 'arc_' + channel, 'w')
 		Syn_file.close()
+	
+	if input['time_arc'] == 'Y':
+		for i in range(0, len_events):
+			time_file = open(Address_events + '/' + events[i]['event_id'] + \
+					'/ARC/info/' + 'arc_time_' + channel, 'w')
+			time_file.close()
 	
 	return Sta_req
 
@@ -1206,13 +1241,26 @@ def ARC_get_Waveform(input, Sta_req, channel, interactive, type):
 				client_arclink = Client_arclink(timeout=5)
 				
 				if input['waveform'] == 'Y':
-						
+					
 					dummy = 'Waveform'
 					
+					t11 = datetime.now()
+									
 					client_arclink.saveWaveform(Address_events + '/' + events[i]['event_id'] + \
 						'/ARC/BH_RAW/' + Sta_req[i][j][0] +	'.' + Sta_req[i][j][1] + '.' + \
 						Sta_req[i][j][2] + '.' + channel, Sta_req[i][j][0], Sta_req[i][j][1], \
 						Sta_req[i][j][2], channel, t[i]-input['t_before'], t[i]+input['t_after'])
+					
+					t22 = datetime.now()
+					
+					if input['time_arc'] == 'Y':
+						time_arc = t22 - t11
+						time_file = open(Address_events + '/' + events[i]['event_id'] + \
+							'/ARC/info/' + 'arc_time_' + channel, 'a')
+						ti = Sta_req[i][j][0] + ',' + Sta_req[i][j][1] + ',' + \
+							Sta_req[i][j][2] + ',' + Sta_req[i][j][3] + ',' + str(time_arc) + ',' + '\n'
+						time_file.writelines(ti)
+						time_file.close()
 					
 					print "Saving Waveform for: " + Sta_req[i][j][0] + '.' + Sta_req[i][j][1] + '.' + \
 						Sta_req[i][j][2] + '.' + channel + "  ---> DONE"  
@@ -1345,8 +1393,7 @@ def ARC_get_Waveform(input, Sta_req, channel, interactive, type):
 def update_IRIS(input):
 	
 	"""
-	Updating the station folders from IRIS web-service
-	Attention: This module update all station folders for all events in one directory.
+	Call "update_req_sta_IRIS" and "IRIS_get_Waveform" functions based on your channel request.
 	-----------------
 	Problems:
 	- excep_iris_update OR excep_iris?
@@ -1371,6 +1418,10 @@ def update_IRIS(input):
 ###################################################### update_req_sta_IRIS ######################################################
 	
 def update_req_sta_IRIS(input, channel, interactive = 'N'):
+	
+	"""
+	Initialize folders and required stations for IRIS update requests
+	"""
 	
 	t_update_1 = datetime.now()
 	
@@ -1438,8 +1489,7 @@ def update_req_sta_IRIS(input, channel, interactive = 'N'):
 def update_ARC(input):
 	
 	"""
-	Updating the station folders from IRIS web-service
-	Attention: This module update all station folders for all events in one directory.
+	Call "update_req_sta_ARC" and "ARC_get_Waveform" functions based on your channel request.
 	-----------------
 	Problems:
 	- excep_iris_update OR excep_iris?
@@ -1464,6 +1514,10 @@ def update_ARC(input):
 ###################################################### update_req_sta_ARC ######################################################
 	
 def update_req_sta_ARC(input, channel, interactive = 'N'):
+	
+	"""
+	Initialize folders and required stations for ARC update requests
+	"""
 	
 	t_update_1 = datetime.now()
 	
@@ -2470,7 +2524,80 @@ def QC_ARC(input):
 			datafile.writelines('\n')
 			datafile.close()
 
+###################################################### send_email ######################################################
 
+def send_email(input, t1_pro):
+	
+	"""
+	Sending email to "email_address" specified in INPUT.cfg with:
+	subject: starting-time-day_starting-time-month_tty
+	contains:	
+	* hostname_tty
+	* Period: min-datetime_max-datetime_min-magnitude_max-magnitude
+	* starting-time-program_end-time-program
+	* total-time
+	"""	
+	
+	t2_pro = datetime.now()
+	t_pro = t2_pro - t1_pro
+	
+	info = commands.getoutput('hostname') + '_' + commands.getoutput('tty')
+	Period = input['min_date'] + '_' + input['max_date'] + '_' + str(input['min_mag']) + '_' + str(input['max_mag'])
+	
+	i1 = str(info)
+	i2 = str(Period)
+	i3 = str(t1_pro).split(' ')[0] + '_' + str(t1_pro).split(' ')[1]
+	i4 = str(t2_pro).split(' ')[0] + '_' + str(t2_pro).split(' ')[1]
+	i5 = str(t_pro)
+	if len(i5.split(' ')) == 1:
+		i5 = str(t_pro)
+	if len(i5.split(' ')) == 3:
+		i5 = i5.split(' ')[0] + '_' + i5.split(' ')[1][:-1] + '_' + i5.split(' ')[2]
+	
+	i6 = str(str(t1_pro.day) + '_' + str(t1_pro.month) + '_' + commands.getoutput('tty'))
+	i7 = input['email_address']
+	
+	commands.getoutput('./email-obspyDMT.sh' + ' ' + i1 + ' ' + i2 + ' ' + i3 + ' ' + i4 + ' ' + i5 + ' ' + i6 + ' ' + i7)
+
+###################################################### report_DMT ######################################################
+
+def report_DMT(input):
+	
+	"""
+	Generating Report for the request.
+
+	contains:	
+	* report_iris.txt
+	* report_arc.txt
+
+	* excep_iris.txt
+	* excep_arc.txt
+
+	* DQ_iris.txt
+	* DQ_arc.txt
+
+	* TQ_iris.txt
+	* TQ_arc.txt
+
+	* gap_iris.txt
+	* gap_arc.txt
+	"""	
+
+	i1 = input['Address']
+	i2 = input['Address'] + '/REPORT'
+
+	if os.path.exists(i2) == True:
+		shutil.rmtree(i2)
+		os.makedirs(i2)
+		
+	else:
+		os.makedirs(i2)
+	
+	commands.getoutput('./REPORT.tcsh' + ' ' + i1 + ' ' + i2)
+
+#########################################################################################################################
+#########################################################################################################################
+#########################################################################################################################
 
 if __name__ == "__main__":
 	status = ObsPyDMT()
