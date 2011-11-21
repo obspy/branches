@@ -80,7 +80,6 @@ def ObsPyPT():
 	
 	# ------------------------Read INPUT file (Parameters)--------------------
 	(input) = read_input()
-	import ipdb; ipdb.set_trace()
 	add_ress = get_address(input, interactive = input['inter_address'])
 	(net, sta, loc, cha) = get_info(input, interactive = input['inter_address'])
 	add_save = address_save(input, interactive = input['inter_address'])
@@ -115,7 +114,7 @@ def ObsPyPT():
 		plot_ray(input, add_ress, add_save)
 			
 	# ------------------------plot all events--------------------------------
-	
+	"""
 	if input['plot_all_Events'] == 'Y':
 		
 		print '*********************'
@@ -123,7 +122,7 @@ def ObsPyPT():
 		print '*********************'
 		
 		plot_all_events(input)
-		
+	"""	
 	# ---------------------------------------------------------------
 	t2_pro = datetime.now()
 	t_pro = t2_pro - t1_pro
@@ -150,15 +149,18 @@ def ObsPyPT():
 def read_input():	
 	
 	"""
-	Read inputs from INPUT file
-	This module will read the INPUT files which is located in the same folder as ObsPyDMT.py
+	Read inputs from INPUT.cfg file.
+	This module will read the INPUT.cfg file which is located in the same folder as ObsPyDMT.py
+	Please note that if you choose (nodes = Y) then:
+	* min_datetime
+	* max_datetime
+	* min_magnitude
+	* max_magnitude
+	will be selected based on INPUT-Periods file.
 	"""
 	
 	config = ConfigParser.RawConfigParser()
-
-	add = os.getcwd()
-	add += '/INPUT.cfg'
-	config.read('INPUT.cfg')
+	config.read(os.path.join(os.getcwd(), 'INPUT.cfg'))
 
 	input = {}
 	input['Address'] = config.get('Address_info', 'address')
@@ -181,10 +183,12 @@ def read_input():
 	input['max_result'] = config.getint('Event_Request', 'max_results')
 	
 	input['get_events'] = config.get('Request', 'get_events')
+	input['input_period'] = config.get('Request', 'input_period')
 	input['IRIS'] = config.get('Request', 'IRIS')
 	input['ArcLink'] = config.get('Request', 'ArcLink')
+	input['time_iris'] = config.get('Request', 'time_iris')
+	input['time_arc'] = config.get('Request', 'time_arc')
 	
-	input['mass'] = config.get('Parallel', 'mass')
 	input['nodes'] = config.get('Parallel', 'nodes')
 
 	input['waveform'] = config.get('what_to_get', 'waveform')
@@ -252,6 +256,7 @@ def read_input():
 	input['TEST'] = config.get('test', 'TEST')
 	input['TEST_no'] = config.getint('test', 'TEST_no')
 	
+	input['update_interactive'] = config.get('update', 'update_interactive')
 	input['update_iris'] = config.get('update', 'update_iris')
 	input['update_arc'] = config.get('update', 'update_arc')
 	input['No_updating_IRIS'] = config.getint('update', 'num_updating_IRIS')

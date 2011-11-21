@@ -206,8 +206,8 @@ def ObsPyDMT():
 	reset = "\033[0;0m"
 	print '\t\t' + bold + 'ObsPyDMT ' + reset + '(' + bold + 'ObsPy D' + reset + 'ata ' + bold + 'M' + reset + 'anagement ' + bold + 'T' + reset + 'ool)' + reset + '\n'
 
-	print "Total Time:"
-	print t_pro
+	#print "Total Time:"
+	#print t_pro
 	print '--------------------------------------------------------------------------------'
 
 
