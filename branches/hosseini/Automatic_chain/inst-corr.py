@@ -17,9 +17,14 @@ input_file = open(address + 'IRIS/info/iris_BHE')
 '''
 if os.path.exists(address + 'IRIS/eval_kasra') == True:
 	shutil.rmtree(address + 'IRIS/eval_kasra')
-
-os.makedirs(address + 'IRIS/eval_kasra')
 '''
+try:
+	os.makedirs(address + 'IRIS/eval_kasra')
+
+except Exception, e:
+	print e
+
+
 inp = input_file.readlines()
 for i in range(0, len(inp)):
 	inp[i] = inp[i].split(',')
