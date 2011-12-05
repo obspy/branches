@@ -1,60 +1,140 @@
+# ------------------------Import required Modules (Python and Obspy)-------------
+
+"""
+Required Python and Obspy modules will be imported in this part.
+"""
+
 from obspy.core import read, UTCDateTime
 from obspy.signal import seisSim, invsim
 from obspy.iris import Client
 import numpy as np
 import scipy
 import cmath
-import matplotlib.pyplot as plt
 from obspy.taup import taup
 import os
 import shutil
 
-plt.ion()
+####################################################################################################################################
+########################################################### Main Program ###########################################################
+####################################################################################################################################
 
-address = '/home/hosseini/Desktop/usarray/2011-03-01_2011-04-01_9.0_9.6/20110311_0000010/'
+def DMT_inst():
+	
+	t1_pro = datetime.now()
 
-input_file = open(address + 'IRIS/info/iris_BHE')
-'''
-if os.path.exists(address + 'IRIS/eval_kasra') == True:
-	shutil.rmtree(address + 'IRIS/eval_kasra')
-'''
-try:
-	os.makedirs(address + 'IRIS/eval_kasra')
+###################################################### inst_IRIS ######################################################
 
-except Exception, e:
-	print e
+def IRIS(input):
+	
+	"""
+	Call "inst_IRIS" function based on your channel request.
+	"""
 
+	if input['BHE'] == 'Y':
+		inst_IRIS(input, channel = 'BHE', interactive = input['inter_address'])
+	
+	if input['BHN'] == 'Y':
+		inst_IRIS(input, channel = 'BHN', interactive = input['inter_address'])
+	
+	if input['BHZ'] == 'Y':
+		inst_IRIS(input, channel = 'BHZ', interactive = input['inter_address'])
 
-inp = input_file.readlines()
-for i in range(0, len(inp)):
-	inp[i] = inp[i].split(',')
+	print "-------------------------------------------------"
+	print 'IRIS Instrument Correction is DONE'
+	print "-------------------------------------------------"
+	
+###################################################### update_req_sta_IRIS ######################################################
+	
+def inst_IRIS(input, channel, interactive = 'N'):
+	
+	"""
+	
+	"""
+	
+	t_inst_1 = datetime.now()
+	
+	if interactive == 'N':
+		Period = input['min_date'] + '_' + input['max_date'] + '_' + str(input['min_mag']) + '_' + str(input['max_mag'])
+		Address_events = input['Address'] + '/' + Period
+	else:
+		address_inter = get_address()
+		Address_events = address_inter
 
-file = []
-resp_file = []
-
-for i in range(0, len(inp)):
-	if inp[i][2] == '  ':
-		inp[i][2] = '--'
-	file.append(address + 'IRIS/BH_RAW/' + inp[i][0] + '.' + inp[i][1] + '.' + inp[i][2] + '.' + inp[i][3]) 
-
-#import ipdb; ipdb.set_trace()
-'''
-raw_file = read('/home/hosseini/Desktop/30aug-inst/inst-data/iris/GR.GRA1..BHZ.sac')
-sac = read('/home/hosseini/Desktop/30aug-inst/inst-data/iris/GR.GRA1..BHZ.eval')
-resp_file = '/home/hosseini/Desktop/30aug-inst/inst-data/iris/RESP.GR.GRA1..BHZ'
-'''
-
-# ---------------------remove the trend
-for k in range(0, len(file)):
-#for k in range(0, 50):
-	print k, len(file)
-	raw_f = read(file[k])
+	
+	Event_file = open(Address_events + '/EVENT/event_list', 'r')
+	events = pickle.load(Event_file)
+	
+	len_events = len(events)
+	
+	input_file = []
+	
+	for l in range(0, len_events):
 		
-	degree = 2
+		input_file[l].append(open(Address_events + '/' + events[l]['event_id'] + '/IRIS/info/iris_' + channel))
+		
+		try:
+			os.makedirs(Address_events + '/' + events[l]['event_id'] + '/IRIS/BH')
+			
+		except Exception, e:
+			print e
+			print "This folder:"
+			print Address_events + '/' + events[l]['event_id'] + '/IRIS/BH'
+			print "exists in your directory...The program will continue in the same folder!"
+		
+		input_sta = input_file[l].readlines()
+		
+		for i in range(0, len(input_sta)):
+			input_sta[i] = input_sta[i].split(',')
+		
+		BH_raw_file = []
+		resp_file = []
 
-	raw_f[0].stats['starttime']
-	raw_f[0].stats['npts']
-	raw_f[0].stats['sampling_rate']
+		for i in range(0, len(input_sta)):
+			if input_sta[i][2] == '  ':
+				input_sta[i][2] = '--'
+			BH_raw_file.append(address + 'IRIS/BH_RAW/' + input_sta[i][0] + '.' + input_sta[i][1] + '.' + input_sta[i][2] + '.' + input_sta[i][3]) 
+		
+		for k in range(0, len(BH_raw_file)):
+			
+			print '********************************************'
+			print k + '/' + len(BH_raw_file)
+			rt_c = RTR(stream = BH_raw_file[k], , degree = 2)
+			print '********************************************'
+			
+			tr = BH_raw_file[k][0]
+			tr.data = rt_c
+			
+			# Tapering
+			taper = invsim.cosTaper(len(tr.data))
+			tr.data *= taper
+						
+			if tr.stats['location'] == '':
+				location = '--'
+				resp_file = address + 'IRIS/Resp/RESP.' + \
+					tr.stats['network'] + '.' + tr.stats['station'] + '.' + location + '.' + tr.stats['channel']
+			else:
+				resp_file = address + 'IRIS/Resp/RESP.' + \
+					tr.stats['network'] + '.' + tr.stats['station'] + '.' + tr.stats['location'] + '.' + tr.stats['channel']
+			
+			print '--------------------------------------'
+			print 'Response file:'
+			print resp_file
+			print '--------------------------------------'
+			
+			inst_corr(trace = tr, resp_file = resp_file, unit = input['corr_unit'], BP_filter = input['pre_filt']):
+	
+	t_inst_2 = datetime.now()
+	
+	print '*********************************************************************'
+	print 'Time passed for Instrument Correction of ' + channel + ' :'
+	print t_inst_2 - t_inst_1
+	print '*********************************************************************'
+
+###################################################### RTR ######################################################
+
+def RTR(stream, degree = 2):
+	
+	raw_f = read(stream)
 
 	t = []
 	b0 = 0
@@ -66,35 +146,70 @@ for k in range(0, len(file)):
 		inc.append(b0)
 		b0 = b0+1.0/raw_f[0].stats['sampling_rate'] 
 		b0 = round(b0, 4)
-	'''
-		t.append(b)
 		
-		b0 = b0+1.0/raw_f[0].stats['sampling_rate'] 
-		b0 = round(b0, 4)   
-		b = b+1.0/raw_f[0].stats['sampling_rate']
-		
-
-	t_str = []
-
-	for i in range(0,len(t)):
-		t_str.append(str(t[i].hour)+':'+str(t[i].minute)+':'+str(t[i].second))
-		
-	'''
 	A = np.vander(inc, degree)
-
 	(coeffs, residuals, rank, sing_vals) = np.linalg.lstsq(A, raw_f[0].data)
-
-	#print coeffs
-	#print residuals
-	#print rank
-	#print sing_vals
-
-	f = np.poly1d(coeffs)
-
-	y_est = f(inc)
 	
+	print '--------------------'
+	print 'coeffs = ' + str(coeffs)
+	print 'residuals = ' + str(residuals)
+	print 'rank = ' + str(rank)
+	print 'sing_vals = ' + str(sing_vals)
+	print '--------------------'
+	
+	f = np.poly1d(coeffs)
+	y_est = f(inc)
 	rt_c = raw_f[0].data-y_est
 	
+	return rt_c
+
+###################################################### inst_corr ######################################################
+
+def inst_corr(trace, resp_file, unit = 'DIS', BP_filter = (0.008, 0.012, 3.0, 4.0)):
+
+	date = trace.stats['starttime']
+	seedresp = {'filename':resp_file,'date':date,'units':unit}
+	
+	try:
+			
+		trace.data = seisSim(data = trace.data,samp_rate = trace.stats.sampling_rate,paz_remove=None, \
+			paz_simulate = None, remove_sensitivity=False, simulate_sensitivity = False, water_level = 600.0, \
+			zero_mean = True, taper = False, pre_filt=BP_filter, seedresp=seedresp)
+		
+		if trace.stats['location'] == '':
+			location = '--'
+			trace.write(address + 'IRIS/BH/' + \
+				trace.stats['network'] + '.' + trace.stats['station'] + '.' + trace.stats['location'] + \
+				'.' + trace.stats['channel'], format = 'SAC')
+				
+		else:
+			trace.write(address + 'IRIS/BH/' + \
+				trace.stats['network'] + '.' + trace.stats['station'] + '.' + trace.stats['location'] + \
+				'.' + trace.stats['channel'], format = 'SAC')
+		
+	except Exception, e:
+		print e
+
+#########################################################################################################################
+#########################################################################################################################
+#########################################################################################################################
+
+if __name__ == "__main__":
+	status = DMT_inst()
+	sys.exit(status)
+
+
+
+'''
+	#plt.plot(range(0, len(trace.data)), trace.data*1e9)
+	#plt.plot(range(0, len(sac[0].data)), sac[0])
+	#plt.plot(range(0, len(sac[0].data)), sac[0]-trace.data*1e9)
+	
+	#plt.plot(t_inc, trace.data*1e6+delta, color = 'black')
+	#plt.plot(t_inc, aa[0].data/1e3+delta, color = 'red')
+	
+	
+
 	tr = raw_f[0]
 	
 	taper = invsim.cosTaper(len(tr.data))
@@ -139,9 +254,9 @@ for k in range(0, len(file)):
 
 	#???????????????????????
 		"""
-		depth = abs(float(inp[i][11]))
-		delta = taup.locations2degrees(float(inp[i][4]), float(inp[i][5]), float(inp[i][9]), float(inp[i][10]))
-		print float(inp[i][4]), float(inp[i][5]), float(inp[i][9]), float(inp[i][10])
+		depth = abs(float(input_sta[i][11]))
+		delta = taup.locations2degrees(float(input_sta[i][4]), float(input_sta[i][5]), float(input_sta[i][9]), float(input_sta[i][10]))
+		print float(input_sta[i][4]), float(input_sta[i][5]), float(input_sta[i][9]), float(input_sta[i][10])
 		print delta
 		print tr.data[0]
 		print '-----------------------'
@@ -234,3 +349,48 @@ for i in data:
 
 '''
 
+
+
+
+
+
+
+
+
+"""
+address = '/home/hosseini/Desktop/usarray/2011-03-01_2011-04-01_9.0_9.6/20110311_0000010/'
+
+input_file = open(address + 'IRIS/info/iris_BHZ')
+
+'''
+if os.path.exists(address + 'IRIS/eval_kasra') == True:
+	shutil.rmtree(address + 'IRIS/eval_kasra')
+'''
+try:
+	os.makedirs(address + 'IRIS/eval_kasra')
+
+except Exception, e:
+	print e
+
+
+input_sta = input_file.readlines()
+for i in range(0, len(input_sta)):
+	input_sta[i] = input_sta[i].split(',')
+"""
+BH_raw_file = []
+resp_file = []
+
+for i in range(0, len(input_sta)):
+	if input_sta[i][2] == '  ':
+		input_sta[i][2] = '--'
+	BH_raw_file.append(address + 'IRIS/BH_RAW/' + input_sta[i][0] + '.' + input_sta[i][1] + '.' + input_sta[i][2] + '.' + input_sta[i][3]) 
+
+#import ipdb; ipdb.set_trace()
+'''
+raw_file = read('/home/hosseini/Desktop/30aug-inst/inst-data/iris/GR.GRA1..BHZ.sac')
+sac = read('/home/hosseini/Desktop/30aug-inst/inst-data/iris/GR.GRA1..BHZ.eval')
+resp_file = '/home/hosseini/Desktop/30aug-inst/inst-data/iris/RESP.GR.GRA1..BHZ'
+'''
+
+
+'''

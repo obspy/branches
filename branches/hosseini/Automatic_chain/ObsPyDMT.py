@@ -343,6 +343,9 @@ def read_input():
 	
 	input['report'] = config.get('report', 'report')
 	
+	input['corr_unit'] = config.get('instrument_correction', 'corr_unit')
+	input['pre_filt'] = config.get('instrument_correction', 'pre_filter')
+	
 	input['plt_event'] = config.get('ObsPyPT', 'plot_event')
 	input['plt_sta'] = config.get('ObsPyPT', 'plot_sta')
 	input['plt_ray'] = config.get('ObsPyPT', 'plot_ray')
