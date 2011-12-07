@@ -20,7 +20,7 @@ def DMT_TF():
 	(input) = read_input()
 	
 	(trace_all) = IRIS(input)
-	import ipdb; ipdb.set_trace()
+	
 
 
 ###################################################### read_input ######################################################
@@ -244,7 +244,7 @@ def IRIS_select(input, channel, interactive):
 
 		for i in range(0, len(ph_file)):
 
-			if ph_file[i][0] == input['TF_phase'] and float(ph_file[i][1]) >40 and float(ph_file[i][1]) < 97.1:
+			if ph_file[i][0] == input['TF_phase'] and float(ph_file[i][1]) >0 and float(ph_file[i][1]) < 180:
 				
 				st = read(address + 'IRIS/BH/' + ph_file[i][6] + '.' + ph_file[i][7] + '.' + ph_file[i][8] + '.' + ph_file[i][9])
 				#st1 = read(address + 'IRIS/sac_folder/' + ph_file[i][6] + '.' + ph_file[i][7] + '.' + ph_file[i][8] + '.' + ph_file[i][9])
@@ -275,7 +275,7 @@ def IRIS_select(input, channel, interactive):
 				trace.data = trace.data[(int(float(ph_file[i][5]))-np_before):((int(float(ph_file[i][5]))-np_before)+np_all)]
 				trace.stats['starttime'] += (float(ph_file[i][5])-np_before)/trace.stats['sampling_rate']
 				trace_all.append(trace)
-				#import ipdb; ipdb.set_trace()
+				
 				# NICE!
 				#time_plt = np.linspace((float(ph_file[i][4]))/trace.stats['sampling_rate'], ((float(ph_file[i][4]))+1024)/trace.stats['sampling_rate'], trace.stats['npts'])
 				time_plt = np.linspace((float(ph_file[i][5])-float(ph_file[i][4])-np_before)/trace.stats['sampling_rate'], ((float(ph_file[i][5])-float(ph_file[i][4])-np_before)+np_all)/trace.stats['sampling_rate'], trace.stats['npts'])
@@ -284,7 +284,7 @@ def IRIS_select(input, channel, interactive):
 				
 				try:
 					print max(trace.data)
-					if max(trace.data) < 10:
+					if max(trace.data) < 10000:
 						if p2/p1 > input['SNR_limit']:	
 							#import ipdb; ipdb.set_trace()
 							plt.plot(time_plt, trace.data*1e4 + float(ph_file[i][1]), 'black')

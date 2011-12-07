@@ -743,7 +743,7 @@ def ray_path(Address, Period, file_name, events, Ser_name, lon_event, lat_event,
 
 if __name__ == "__main__":
 	status = ObsPyPT()
-	sys.exit(status)
+	#sys.exit(status)
 
 '''
 # ------------------------Plotting the Ray Paths-----------------------------

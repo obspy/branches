@@ -843,11 +843,14 @@ def IRIS_get_Waveform(input, Sta_req, channel, interactive, type):
 					
 					t11 = datetime.now()
 					
+					if Sta_req[i][j][2] == '--':
+						Sta_req[i][j][2] = ''
+					
 					client_iris.saveWaveform(Address_events + '/' + events[i]['event_id'] +\
-						'/IRIS/BH_RAW/' + Sta_req[i][j][0] +	'.' + Sta_req[i][j][1] + '.' + \
+						'/IRIS/BH_RAW/' + Sta_req[i][j][0] + '.' + Sta_req[i][j][1] + '.' + \
 						Sta_req[i][j][2] + '.' + channel, Sta_req[i][j][0], Sta_req[i][j][1], \
 						Sta_req[i][j][2], channel, t[i]-input['t_before'], t[i]+input['t_after'])
-										
+						
 					t22 = datetime.now()
 					
 					if input['time_iris'] == 'Y':
@@ -865,6 +868,9 @@ def IRIS_get_Waveform(input, Sta_req, channel, interactive, type):
 				if input['response'] == 'Y':
 
 					dummy = 'Response'
+					
+					if Sta_req[i][j][2] == '--':
+						Sta_req[i][j][2] = ''
 					
 					client_iris.saveResponse(Address_events + '/' +	events[i]['event_id'] + \
 						'/IRIS/Resp/' + 'RESP' + '.' + Sta_req[i][j][0] +	'.' + Sta_req[i][j][1] + '.' + \
@@ -1464,18 +1470,17 @@ def update_req_sta_IRIS(input, channel, interactive = 'N'):
 		
 		for i in range(0, len(saved_stas)):
 			saved_stas[i] = saved_stas[i].split(',')
-			if saved_stas[i][2] == '  ':
+			if saved_stas[i][2] == '  ' or saved_stas[i][2] == '':
 				saved_stas[i][2] = '--'
 			saved_stas[i] = str(saved_stas[i][0] + '_' + saved_stas[i][1] + '_' + \
 				saved_stas[i][2] + '_' + saved_stas[i][3])
 		
 		saved_iris.append(saved_stas)
-	
+		
 	Stas_req = []
 	for l in range(0, len_events):
 		diff_tmp = set(all_iris[l]).difference(set(saved_iris[l])) 
 		Stas_req.append(list(diff_tmp))
-		
 		for m in range(0, len(Stas_req[l])):
 			Stas_req[l][m] = Stas_req[l][m].split('_')
 		
@@ -1560,8 +1565,6 @@ def update_req_sta_ARC(input, channel, interactive = 'N'):
 		
 		for i in range(0, len(saved_stas)):
 			saved_stas[i] = saved_stas[i].split(',')
-			if saved_stas[i][2] == '  ':
-				saved_stas[i][2] = '--'
 			saved_stas[i] = str(saved_stas[i][0] + '_' + saved_stas[i][1] + '_' + \
 				saved_stas[i][2] + '_' + saved_stas[i][3])
 		
@@ -1571,7 +1574,6 @@ def update_req_sta_ARC(input, channel, interactive = 'N'):
 	for l in range(0, len_events):
 		diff_tmp = set(all_arc[l]).difference(set(saved_arc[l])) 
 		Stas_req.append(list(diff_tmp))
-		
 		for m in range(0, len(Stas_req[l])):
 			Stas_req[l][m] = Stas_req[l][m].split('_')
 		
@@ -2598,10 +2600,28 @@ def report_DMT(input):
 	
 	commands.getoutput('./REPORT.tcsh' + ' ' + i1 + ' ' + i2)
 
+###################################################### getFolderSize ######################################################
+
+def getFolderSize(folder):
+	"""
+	Returns the size of a folder in bytes.
+	"""
+	total_size = os.path.getsize(folder)
+	for item in os.listdir(folder):
+		itempath = os.path.join(folder, item)
+		if os.path.isfile(itempath):
+			total_size += os.path.getsize(itempath)
+		elif os.path.isdir(itempath):
+			total_size += getFolderSize(itempath)
+	return total_size
+
 #########################################################################################################################
 #########################################################################################################################
 #########################################################################################################################
 
 if __name__ == "__main__":
 	status = ObsPyDMT()
-	sys.exit(status)
+	#size = getFolderSize(input['Address'])
+	#print "This folder: " + input['Address'] + "is:"
+	#print str(size) + " bytes"
+	#sys.exit(status)

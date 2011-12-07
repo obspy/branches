@@ -238,6 +238,8 @@ def IRIS_select(input, channel, interactive):
 
 		for i in range(0, len(inp)):
 			inp[i] = inp[i].split(',')
+			if inp[i][2] == '  ':
+				inp[i][2] = ''
 
 		file = []
 
@@ -258,8 +260,6 @@ def IRIS_select(input, channel, interactive):
 			for k in range(0, len(tt)):
 				if tt[k]['phase_name'] in phase:
 					try:
-						if inp[i][2] == '  ':
-							inp[i][2] = '--'
 						
 						print 'This station has ' + tt[k]['phase_name'] + ' phase...'
 						
@@ -295,4 +295,4 @@ def IRIS_select(input, channel, interactive):
 
 if __name__ == "__main__":
 	status = DMT_select()
-	sys.exit(status)
+	#sys.exit(status)
