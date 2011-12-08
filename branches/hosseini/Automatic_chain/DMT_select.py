@@ -270,7 +270,7 @@ def IRIS_select(input, channel, interactive):
 							print inp[i][1]
 							print st[0].stats['sampling_rate']
 							print '------------------------------------------'
-						
+					
 						num_evt = round((events[0]['datetime'] - st[0].stats['starttime'])*st[0].stats['sampling_rate'])
 						num_pha = num_evt + round(tt[k]['time']*st[0].stats['sampling_rate'])
 						

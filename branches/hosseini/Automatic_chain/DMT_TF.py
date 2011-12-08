@@ -201,7 +201,7 @@ def IRIS(input):
 	
 
 def IRIS_select(input, channel, interactive):
-	
+	plt.clf()
 	plt.ion()
 	
 	phase = input['phase']
@@ -244,7 +244,7 @@ def IRIS_select(input, channel, interactive):
 
 		for i in range(0, len(ph_file)):
 
-			if ph_file[i][0] == input['TF_phase'] and float(ph_file[i][1]) >0 and float(ph_file[i][1]) < 180:
+			if ph_file[i][0] == input['TF_phase'] and float(ph_file[i][1]) >90 and float(ph_file[i][1]) < 115:
 				
 				st = read(address + 'IRIS/BH/' + ph_file[i][6] + '.' + ph_file[i][7] + '.' + ph_file[i][8] + '.' + ph_file[i][9])
 				#st1 = read(address + 'IRIS/sac_folder/' + ph_file[i][6] + '.' + ph_file[i][7] + '.' + ph_file[i][8] + '.' + ph_file[i][9])
@@ -284,14 +284,21 @@ def IRIS_select(input, channel, interactive):
 				
 				try:
 					print max(trace.data)
-					if max(trace.data) < 10000:
+					if max(trace.data) < 200:
 						if p2/p1 > input['SNR_limit']:	
-							#import ipdb; ipdb.set_trace()
-							plt.plot(time_plt, trace.data*1e4 + float(ph_file[i][1]), 'black')
+							print 'zero:'
+							print trace.data[0]
+							trace.detrend(type='simple')
+							plt.plot(time_plt, (trace.data - trace.data[0]) * 5 + trace.data[0] + float(ph_file[i][1]), 'black')
 							#plt.plot(trig_all[i][0][0]/trace.stats['sampling_rate'], float(ph_file[i][1]), 'o')
 				except Exception, e:
 					print e
-	return trace_all
+	
+	trace_file = open('/home/kasra/Desktop/trace_all', 'w')
+	pickle.dump(trace_all, trace_file)
+	trace_file.close()
+	
+	plt.savefig('/home/kasra/Desktop/pic.pdf')
 #########################################################################################################################
 #########################################################################################################################
 #########################################################################################################################
