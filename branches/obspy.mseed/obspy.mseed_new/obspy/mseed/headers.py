@@ -51,6 +51,10 @@ elif hasattr(C.pythonapi, 'Py_InitModule4_64'):
 else:
     raise TypeError("Cannot determine type of Py_ssize_t")
 
+# Valid control headers in ASCII numbers.
+SEED_CONTROL_HEADERS = [ord('V'), ord('A'), ord('S'), ord('T')]
+MINI_SEED_CONTROL_HEADERS = [ord('D'), ord('R'), ord('Q'), ord('M')]
+VALID_CONTROL_HEADERS = SEED_CONTROL_HEADERS + MINI_SEED_CONTROL_HEADERS
 
 # expected data types for libmseed id: (numpy, ctypes)
 DATATYPES = {"a": C.c_char, "i": C.c_int32, "f": C.c_float, "d": C.c_double}

@@ -368,8 +368,7 @@ class MSEEDTestCase(unittest.TestCase):
                            'gaps.mseed', 'qualityflags.mseed', 'test.mseed',
                            'timingquality.mseed']
         # Non Mini-SEED filenames.
-        non_mseed_filenames = ['test_libmseed.py', '__init__.py',
-                               'test_core.py']
+        non_mseed_filenames = ['test_mseed.py', '__init__.py']
         # Loop over Mini-SEED files
         for _i in mseed_filenames:
             filename = os.path.join(self.path, 'data', _i)
@@ -1190,18 +1189,12 @@ class MSEEDTestCase(unittest.TestCase):
         # fullseed starting with blockette 010
         file = os.path.join(self.path, 'data', 'fullseed.mseed')
         self.assertTrue(isMSEED(file))
-        st = read(file)
-        self.assertEqual(len(st), 3)
         # fullseed starting with blockette 008
         file = os.path.join(self.path, 'data', 'blockette008.mseed')
         self.assertTrue(isMSEED(file))
-        st = read(file)
-        self.assertEqual(len(st), 1)
         # fullseed not starting with blockette 010 or 008
         file = os.path.join(self.path, 'data', 'fullseed.mseed')
         self.assertTrue(isMSEED(file))
-        st = read(file)
-        self.assertEqual(len(st), 3)
 
     def test_bizarreFiles(self):
         """
@@ -1235,7 +1228,7 @@ class MSEEDTestCase(unittest.TestCase):
         tr_one = read(file)[0]
         tr_two = read(file, headonly=True)[0]
         ms = "AttribDict({'dataquality': 'D', 'record_length': 512, " + \
-             "'encoding': 'STEIM1', 'byteorder': '>'})"
+             "'byteorder': '>', 'encoding': 'STEIM1'})"
         for tr in tr_one, tr_two:
             self.assertEqual('BW.RJOB..EHZ', tr.id)
             self.assertEqual(ms, repr(tr.stats.mseed))

@@ -9,7 +9,8 @@ from obspy.core import Stream, Trace, UTCDateTime
 from obspy.core.util import NATIVE_BYTEORDER
 from headers import clibmseed, ENCODINGS, HPTMODULUS, \
         SAMPLETYPE, DATATYPES, SAMPLESIZES, VALID_RECORD_LENGTHS, \
-        HPTERROR, SelectTime, Selections, blkt_1001_s
+        HPTERROR, SelectTime, Selections, blkt_1001_s,  \
+        VALID_CONTROL_HEADERS, SEED_CONTROL_HEADERS, MINI_SEED_CONTROL_HEADERS
 import util
 
 
@@ -35,7 +36,7 @@ def isMSEED(filename):
     # File has less than 7 characters
     if len(header) != 7:
         return False
-    # Sequence number must contains a single number or be empty 
+    # Sequence number must contains a single number or be empty
     seqnr = header[0:6].replace('\x00', ' ').strip()
     if not seqnr.isdigit() and seqnr != '':
         return False
@@ -110,7 +111,7 @@ def readMSEED(mseed_object, starttime=None, endtime=None, sourcename=None,
         read the headers.
     :param reclen: If it is None, it will be automatically determined for every
         record. If it is known, just set it to the record length in bytes which
-        will increase the reading speed slighlty.
+        will increase the reading speed slightly.
 
     Example usage
     =============
@@ -167,12 +168,37 @@ def readMSEED(mseed_object, starttime=None, endtime=None, sourcename=None,
             readMSInfo = False
 
     # If its a filename just read it.
-    if type(mseed_object) is str or type(mseed_object) is unicode:
+    if isinstance(mseed_object,  basestring):
         # Read to numpy array which is used as a buffer.
         buffer = np.fromfile(mseed_object, dtype='b')
     elif hasattr(mseed_object, 'read'):
         buffer = np.fromstring(mseed_object.read(), dtype='b')
 
+    # Get the record length
+    try:
+        record_length = pow(2, int(''.join([chr(_i) for _i in buffer[19:21]])))
+    except ValueError:
+        record_length = 4096
+
+    # Search for data records and pass only the data part to the underlying C
+    # routine.
+    offset = 0
+    # 0 to 9 are defined in a row in the ASCII charset.
+    min_ascii = ord('0')
+    # Small function to check whether an array of ASCII values contains only
+    # digits.
+    isdigit = lambda x: True if (x - min_ascii).max() <= 9 else False
+    while True:
+        # This should never happen
+        if (isdigit(buffer[offset:offset + 6]) is False) or \
+            (buffer[offset+6] not in VALID_CONTROL_HEADERS):
+            msg = 'Not a valid (Mini-)SEED file'
+            raise Exception(msg)
+        elif buffer[offset+6] in SEED_CONTROL_HEADERS:
+            offset += record_length
+            continue
+        break
+    buffer = buffer[offset:]
     buflen = len(buffer)
 
     # If no selection is given pass None to the C function.
@@ -218,6 +244,7 @@ def readMSEED(mseed_object, starttime=None, endtime=None, sourcename=None,
         data = np.empty(samplecount, dtype=DATATYPES[sampletype])
         all_data.append(data)
         return data.ctypes.data
+    # XXX: Do this properly!
     # Define Python callback function for use in C function. Return a long so
     # it hopefully works on 32 and 64 bit systems.
     allocData = C.CFUNCTYPE(C.c_long, C.c_int, C.c_char)(allocate_data)
@@ -532,7 +559,7 @@ def writeMSEED(stream, filename, encoding=None, reclen=None, byteorder=None,
                                  C.c_void_p)(record_handler)
 
         # Fill up msr record structure, this is already contained in
-        # mstg, however if blk1001 is set we need it anyway 
+        # mstg, however if blk1001 is set we need it anyway
         msr = clibmseed.msr_init(None)
         msr.contents.network = trace.stats.network
         msr.contents.station = trace.stats.station
