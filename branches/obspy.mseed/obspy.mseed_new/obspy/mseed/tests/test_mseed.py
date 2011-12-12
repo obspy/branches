@@ -12,7 +12,6 @@ from obspy.mseed.headers import MSRecord, HPTMODULUS
 
 import os
 import ctypes as C
-import cStringIO
 import copy
 import random
 import numpy as np
@@ -80,7 +79,7 @@ class MSEEDTestCase(unittest.TestCase):
         self.assertEqual(stream[0].stats['station'], 'HGN')
         self.assertEqual(str(stream[0].data), '[]')
         # This is controlled by the stream[0].data attribute.
-        self.assertEqual(stream[0].stats.npts, 0)
+        self.assertEqual(stream[0].stats.npts, 11947)
         gapfile = os.path.join(self.path, 'data', 'gaps.mseed')
         # without given format -> autodetect using extension
         stream = read(gapfile, headonly=True)
@@ -1046,42 +1045,46 @@ class MSEEDTestCase(unittest.TestCase):
                             'float32_Float32_bigEndian.mseed')
         self.assertRaises(Exception, read, file, reclen=4096)
 
+    def test_readQualityInformationWarns(self):
+        """
+        Reading the quality information while reading the data files is no more
+        supported in newer obspy.mseed versions. Check that a warning is
+        raised.
+        """
+        timingqual = os.path.join(self.path, 'data', 'timingquality.mseed')
+        warnings.simplefilter('error', DeprecationWarning)
+        # This should not raise a warning.
+        st = read(timingqual)
+        # This should warn.
+        self.assertRaises(DeprecationWarning, read, timingqual, quality=True)
+        warnings.filters.pop(0)
+
     def test_readQualityInformation(self):
         """
-        Tests the reading of the quality informations if the flag is set.
+        Tests the reading of the quality informations with the util functions.
         """
-        # Two files. One with timing quality information and one with set
-        # quality flags.
+        # Test reading the timing quality.
         timingqual = os.path.join(self.path, 'data', 'timingquality.mseed')
-        qualityflags = os.path.join(self.path, 'data', 'qualityflags.mseed')
-        t_st = read(timingqual, quality=True)
-        q_st = read(qualityflags, quality=True)
+        timing_qual = util.getTimingQuality(timingqual, first_record=True)
         # The timingquality contains values from 0 to 100 in random order.
-        qual = np.arange(101, dtype='float32')
-        read_qual = t_st[0].stats.mseed.timing_quality
-        read_qual = sorted(read_qual)
-        np.testing.assert_array_equal(qual, read_qual)
-        # Check for quality flags.
+        qual = {'min': 0.0,  'max': 100.0,  'average': 50.0,  'median': 50.0,
+                'upper_quantile': 75.0,  'lower_quantile': 25.0}
+        self.assertEqual(timing_qual,  qual)
+
+        # Check the quality flags.
+        qualityflags = os.path.join(self.path, 'data', 'qualityflags.mseed')
+        q_st = read(qualityflags)
+        data_qual = util.getDataQualityFlagsCount(qualityflags)
         # The test file contains 18 records. The first record has no set bit,
         # bit 0 of the second record is set, bit 1 of the third, ..., bit 7 of
         # the 9th record is set. The last nine records have 0 to 8 set bits,
-        # starting with 0 bits, bit 0 is set, bits 0 and 1 are set...
-        # Altogether the file contains 44 set bits.
+        # starting with no set bits, then bit 0 is set, then bits 0 and 1 are
+        # set...  Altogether the file contains 44 set bits.
         self.assertEqual(len(q_st), 18)
-        self.assertEqual(q_st[0].stats.mseed.data_quality_flags_count,
-                         [0] * 8)
-        for _i in xrange(8):
-            dummy = [0] * 8
-            dummy[_i] = 1
-            self.assertEqual(q_st[_i + 1].stats.mseed.data_quality_flags_count,
-                             dummy)
-        dummy = [0] * 8
-        self.assertEqual(q_st[9].stats.mseed.data_quality_flags_count,
-                         [0] * 8)
-        for _i in xrange(8):
-            dummy[_i] = 1
-            self.assertEqual(
-                q_st[_i + 10].stats.mseed.data_quality_flags_count, dummy)
+        self.assertEqual(sum(data_qual), 44)
+
+        self.assertEqual(data_qual,  [9, 8, 7, 6, 5, 4, 3, 2])
+
 
     def test_writingMicroseconds(self):
         """

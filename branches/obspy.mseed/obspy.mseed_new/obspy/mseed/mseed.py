@@ -140,7 +140,7 @@ def readMSEED(mseed_object, starttime=None, endtime=None, sourcename=None,
         reclen = int(log(reclen, 2))
 
     # The quality flag is no more supported. Raise a warning.
-    if hasattr(kwargs, 'quality'):
+    if 'quality' in kwargs:
         msg = 'The quality flag is no more supported in this version of ' + \
         'obspy.mseed. obspy.mseed.util has some functions with similar ' + \
         'behaviour.'
@@ -281,10 +281,11 @@ def readMSEED(mseed_object, starttime=None, endtime=None, sourcename=None,
             if headonly is False:
                 # The data always will be in sequential order.
                 data = all_data.pop(0)
+                header['npts'] = len(data)
             else:
                 data = np.array([])
+                header['npts'] = currentSegment.samplecnt
             # Make sure to init the number of samples.
-            header['npts'] = len(data)
             trace = Trace(header=header, data=data)
             # Append information if necessary.
             if readMSInfo:
