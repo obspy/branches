@@ -381,6 +381,9 @@ def writeMSEED(stream, filename, encoding=None, reclen=None, byteorder=None,
 
     trace_attributes = []
     use_blkt_1001 = 0
+    # The data might need to be modified. To not modifiy the input data keep
+    # references of which data to finally write.
+    trace_data = []
     # Loop over every trace and figure out the correct settings.
     for _i, trace in enumerate(stream):
         # Create temporary dict for storing information while writing.
@@ -519,9 +522,12 @@ def writeMSEED(stream, filename, encoding=None, reclen=None, byteorder=None,
                     (trace.data.dtype, _i)
                 raise Exception(msg)
 
-        # INT16 needs INT32 data type
+        # Convert data if necessary, otherwise store references in list.
         if trace_attr['encoding'] == 1:
-            trace.data = np.require(trace.data, 'int32')
+            # INT16 needs INT32 data type
+            trace_data.append(trace.data.copy().astype(np.int32))
+        else:
+            trace_data.append(trace.data)
 
     # Do some final sanity checks and raise a warning if a file will be written
     # with more than one different encoding, record length or byteorder.
@@ -545,9 +551,9 @@ def writeMSEED(stream, filename, encoding=None, reclen=None, byteorder=None,
         f = filename
 
     # Loop over every trace and finally write it to the filehandler.
-    for trace, trace_attr in izip(stream, trace_attributes):
+    for trace, data, trace_attr in izip(stream, trace_data, trace_attributes):
         # Create C struct MSTraceGroup.
-        mstg = MSTG(trace, dataquality=trace_attr['dataquality'],
+        mstg = MSTG(trace, data, dataquality=trace_attr['dataquality'],
                     byteorder=trace_attr['byteorder'])
         # Initialize packedsamples pointer for the mst_pack function
         packedsamples = C.c_int()
@@ -608,7 +614,7 @@ class MSTG(object):
 
     The class is mainly used to achieve a clean memory management.
     """
-    def __init__(self, trace, dataquality, byteorder):
+    def __init__(self, trace, data, dataquality, byteorder):
         """
         The init function requires a ObsPy Trace object which will be used to
         fill self.mstg.
@@ -623,7 +629,7 @@ class MSTG(object):
         chain = mstg.contents.traces
 
         # Figure out the datatypes.
-        sampletype = SAMPLETYPE[trace.data.dtype.type]
+        sampletype = SAMPLETYPE[data.dtype.type]
         c_dtype = DATATYPES[sampletype]
 
         # Set the header values.
@@ -655,10 +661,10 @@ class MSTG(object):
         chain.contents.datasamples = C.cast(C.pointer(tempdatpoint),
                                             C.c_void_p)
         # Swap if wrong byte order because libmseed expects native byteorder.
-        if trace.data.dtype.byteorder != "=":
-            trace.data = trace.data.byteswap()
+        if data.dtype.byteorder != "=":
+            data = data.byteswap()
         # Pointer to the NumPy data buffer.
-        datptr = trace.data.ctypes.get_data()
+        datptr = data.ctypes.get_data()
         # Manually move the contents of the NumPy data buffer to the
         # address of the previously created memory area.
         C.memmove(chain.contents.datasamples, datptr, datasize)

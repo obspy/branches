@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-#from copy import deepcopy
 from obspy.core import UTCDateTime, Stream, Trace, read, AttribDict
 from obspy.core.util import NamedTemporaryFile
 
@@ -21,6 +20,18 @@ import platform
 import sys
 import unittest
 import warnings
+try:
+    from unittest import skipIf
+except ImportError:
+    from obspy.core.util import skipIf
+
+
+# some Python version don't support negative timestamps
+NO_NEGATIVE_TIMESTAMPS = False
+try:
+    UTCDateTime(-50000)
+except:
+    NO_NEGATIVE_TIMESTAMPS = True
 
 
 class MSEEDTestCase(unittest.TestCase):
@@ -696,6 +707,7 @@ class MSEEDTestCase(unittest.TestCase):
         stream.verify()
         np.testing.assert_array_equal(stream[0].data, data)
 
+    @skipIf(NO_NEGATIVE_TIMESTAMPS, 'times before 1970 are not supported')
     def test_writeWithDateTimeBefore1970(self):
         """
         Write an stream via libmseed with a datetime before 1970.
@@ -955,7 +967,7 @@ class MSEEDTestCase(unittest.TestCase):
         self.assertEqual(st[0].stats.mseed.encoding, 'STEIM1')
         warnings.simplefilter('error', UserWarning)
         self.assertRaises(UserWarning, st.write, tempfile, format="MSEED")
-        warnings.filters.pop(0)
+        warnings.filters.pop()
         os.remove(tempfile)
 
     def test_enforceSteim2WithSteim1asEncoding(self):
@@ -1050,6 +1062,7 @@ class MSEEDTestCase(unittest.TestCase):
         Reading the quality information while reading the data files is no more
         supported in newer obspy.mseed versions. Check that a warning is
         raised.
+        Similar functions are included in obspy.mseed.util.
         """
         timingqual = os.path.join(self.path, 'data', 'timingquality.mseed')
         warnings.simplefilter('error', DeprecationWarning)
@@ -1057,33 +1070,7 @@ class MSEEDTestCase(unittest.TestCase):
         st = read(timingqual)
         # This should warn.
         self.assertRaises(DeprecationWarning, read, timingqual, quality=True)
-        warnings.filters.pop(0)
-
-    def test_readQualityInformation(self):
-        """
-        Tests the reading of the quality informations with the util functions.
-        """
-        # Test reading the timing quality.
-        timingqual = os.path.join(self.path, 'data', 'timingquality.mseed')
-        timing_qual = util.getTimingQuality(timingqual, first_record=True)
-        # The timingquality contains values from 0 to 100 in random order.
-        qual = {'min': 0.0,  'max': 100.0,  'average': 50.0,  'median': 50.0,
-                'upper_quantile': 75.0,  'lower_quantile': 25.0}
-        self.assertEqual(timing_qual,  qual)
-
-        # Check the quality flags.
-        qualityflags = os.path.join(self.path, 'data', 'qualityflags.mseed')
-        q_st = read(qualityflags)
-        data_qual = util.getDataQualityFlagsCount(qualityflags)
-        # The test file contains 18 records. The first record has no set bit,
-        # bit 0 of the second record is set, bit 1 of the third, ..., bit 7 of
-        # the 9th record is set. The last nine records have 0 to 8 set bits,
-        # starting with no set bits, then bit 0 is set, then bits 0 and 1 are
-        # set...  Altogether the file contains 44 set bits.
-        self.assertEqual(len(q_st), 18)
-        self.assertEqual(sum(data_qual), 44)
-
-        self.assertEqual(data_qual,  [9, 8, 7, 6, 5, 4, 3, 2])
+        warnings.filters.pop()
 
 
     def test_writingMicroseconds(self):
@@ -1254,6 +1241,211 @@ class MSEEDTestCase(unittest.TestCase):
         self.assertEqual(932, tr.stats.npts)
         self.assertEqual(UTCDateTime(2007, 5, 31, 22, 45, 46, 720000),
                          tr.stats.endtime)
+
+    def test_issue296(self):
+        """
+        Test for issue #296
+        """
+        tempfile = NamedTemporaryFile().name
+        # 1 - transform to np.float64 values
+        st = read()
+        for tr in st:
+            tr.data = tr.data.astype('float64')
+        # write a single trace automatically detecting encoding
+        st[0].write(tempfile, format="MSEED")
+        # write a single trace automatically detecting encoding
+        st.write(tempfile, format="MSEED")
+        # write a single trace with encoding 5
+        st[0].write(tempfile, format="MSEED", encoding=5)
+        # write a single trace with encoding 5
+        st.write(tempfile, format="MSEED", encoding=5)
+        # 2 - transform to np.float32 values
+        st = read()
+        for tr in st:
+            tr.data = tr.data.astype('float32')
+        # write a single trace automatically detecting encoding
+        st[0].write(tempfile, format="MSEED")
+        # write a single trace automatically detecting encoding
+        st.write(tempfile, format="MSEED")
+        # write a single trace with encoding 4
+        st[0].write(tempfile, format="MSEED", encoding=4)
+        # write a single trace with encoding 4
+        st.write(tempfile, format="MSEED", encoding=4)
+        # 3 - transform to np.int32 values
+        st = read()
+        for tr in st:
+            tr.data = tr.data.astype('int32')
+        # write a single trace automatically detecting encoding
+        st[0].write(tempfile, format="MSEED")
+        # write a single trace automatically detecting encoding
+        st.write(tempfile, format="MSEED")
+        # write a single trace with encoding 3
+        st[0].write(tempfile, format="MSEED", encoding=3)
+        # write the whole stream with encoding 3
+        st.write(tempfile, format="MSEED", encoding=3)
+        # write a single trace with encoding 10
+        st[0].write(tempfile, format="MSEED", encoding=10)
+        # write the whole stream with encoding 10
+        st.write(tempfile, format="MSEED", encoding=10)
+        # write a single trace with encoding 11
+        st[0].write(tempfile, format="MSEED", encoding=11)
+        # write the whole stream with encoding 11
+        st.write(tempfile, format="MSEED", encoding=11)
+        # 4 - transform to np.int16 values
+        st = read()
+        for tr in st:
+            tr.data = tr.data.astype('int16')
+        # write a single trace automatically detecting encoding
+        st[0].write(tempfile, format="MSEED")
+        # write a single trace automatically detecting encoding
+        st.write(tempfile, format="MSEED")
+        # write a single trace with encoding 1
+        st[0].write(tempfile, format="MSEED", encoding=1)
+        # write the whole stream with encoding 1
+        st.write(tempfile, format="MSEED", encoding=1)
+        # 5 - transform to ASCII values
+        st = read()
+        for tr in st:
+            tr.data = tr.data.astype('|S1')
+        # write a single trace automatically detecting encoding
+        st[0].write(tempfile, format="MSEED")
+        # write a single trace automatically detecting encoding
+        st.write(tempfile, format="MSEED")
+        # write a single trace with encoding 0
+        st[0].write(tempfile, format="MSEED", encoding=0)
+        # write the whole stream with encoding 0
+        st.write(tempfile, format="MSEED", encoding=0)
+        # cleanup
+        os.remove(tempfile)
+
+    def test_issue289(self):
+        """
+        Reading using start-/endtime outside of data.
+        """
+        # 1
+        file = os.path.join(self.path, 'data', 'steim2.mseed')
+        st = read(file, starttime=UTCDateTime() - 10, endtime=UTCDateTime())
+        self.assertEqual(len(st), 0)
+        # 2
+        file = os.path.join(self.path, 'data', 'fullseed.mseed')
+        st = read(file, starttime=UTCDateTime() - 10, endtime=UTCDateTime())
+        self.assertEqual(len(st), 0)
+
+    def test_writeAndReadDifferentEncodings(self):
+        """
+        Writes and read a file with different encoding via the obspy.core
+        methods.
+        """
+        npts = 1000
+        np.random.seed(815)  # make test reproducable
+        data = np.random.randn(npts).astype('float64') * 1e3 + .5
+        st = Stream([Trace(data=data)])
+        # Loop over some record lengths.
+        for encoding, value in ENCODINGS.iteritems():
+            seed_dtype = value[2]
+            tempfile = NamedTemporaryFile().name
+            # Write it once with the encoding key and once with the value.
+            st[0].data = data.astype(seed_dtype)
+            st.verify()
+            st.write(tempfile, format="MSEED", encoding=encoding)
+            st2 = read(tempfile)
+            del st2[0].stats.mseed
+            np.testing.assert_array_equal(st[0].data, st2[0].data)
+            del st2
+            ms = _MSStruct(tempfile)
+            ms.read(-1, 1, 1, 0)
+            self.assertEqual(ms.msr.contents.encoding, encoding)
+            del ms  # for valgrind
+            os.remove(tempfile)
+
+    def test_writeAndReadDifferentRecordLengths(self):
+        """
+        Tests Mini-SEED writing and record lengths.
+        """
+        # libmseed instance.
+        npts = 6000
+        np.random.seed(815)  # make test reproducable
+        data = np.random.randint(-1000, 1000, npts).astype('int32')
+        st = Stream([Trace(data=data)])
+        record_lengths = [256, 512, 1024, 2048, 4096, 8192]
+        # Loop over some record lengths.
+        for rec_len in record_lengths:
+            # Write it.
+            tempfile = NamedTemporaryFile().name
+            st.write(tempfile, format="MSEED", reclen=rec_len)
+            # Open the file.
+            file = open(tempfile, 'rb')
+            info = util._getMSFileInfo(file, tempfile)
+            file.close()
+            # Test reading the two files.
+            temp_st = read(tempfile)
+            np.testing.assert_array_equal(data, temp_st[0].data)
+            del temp_st
+            os.remove(tempfile)
+            # Check record length.
+            self.assertEqual(info['record_length'], rec_len)
+            # Check if filesize is a multiple of the record length.
+            self.assertEqual(info['filesize'] % rec_len, 0)
+
+    def test_blkt_link_field(self):
+        """
+        Tests issue #312.
+        """
+        filename = os.path.join(self.path, 'data', 
+                                'BW.BGLD.__.EHE.D.2008.001.first_10_records')
+        # start and endtime
+        ms = _MSStruct(filename)
+        ms.read(-1, 0, 1, 0)
+        blkt_link = ms.msr.contents.blkts.contents
+        # The first blockette usually begins after 48 bytes. In the test file
+        # it does.
+        self.assertEqual(blkt_link.blktoffset, 48)
+        # The first blockette is blockette 1000 in this file.
+        self.assertEqual(blkt_link.blkt_type, 1000)
+        # Only one blockette.
+        self.assertEqual(blkt_link.next_blkt, 0)
+        # Blockette data is 8 bytes - 4 bytes for the blockette header.
+        self.assertEqual(blkt_link.blktdatalen, 4)
+        del ms
+
+    def test_readMSTracesViaRecords_MultipleIds(self):
+        """
+        Tests a critical issue when the LibMSEED.readMSTracesViaRecords method
+        is used (e.g. on Windows systems) and a start/endtime is set and the
+        file has multiple ids.
+
+        This is due to the face that the readMSTraceViaRecords method uses the
+        first and the last records of a file to take an educated guess about
+        which records to actually read. This of course only works if all
+        records have the same id and are chronologically ordered.
+
+        I don't think there is an easy solution for it.
+        """
+        # The used file has ten records in successive order and then the first
+        # record again with a different record id:
+        # 2 Trace(s) in Stream:
+        #     BW.BGLD..EHE | 2007-12-31T23:59:59.915000Z -
+        #     2008-01-01T00:00:20.510000Z | 200.0 Hz, 4120 samples
+        #     OB.BGLD..EHE | 2007-12-31T23:59:59.915000Z -
+        #     2008-01-01T00:00:01.970000Z | 200.0 Hz, 412 samples
+        #
+        # Thus reading a small time window in between should contain at least
+        # some samples.
+        starttime = UTCDateTime(2008, 1, 1, 0, 0, 10)
+        endtime = starttime + 5
+        file = os.path.join(self.path, 'data', 
+                            'constructedFileToTestReadViaRecords.mseed')
+        # Some samples should be in the time window.
+        st = read(file, starttime=starttime, endtime=endtime)
+        self.assertEqual(len(st), 1)
+        samplecount = st[0].stats.npts
+        # 5 seconds are 5s * 200Hz + 1 samples.
+        self.assertEqual(samplecount, 1001)
+        # Choose time outside of frame.
+        st = read(file,
+                starttime=UTCDateTime() - 10, endtime=UTCDateTime())
+        # Should just result in an empty stream.
+        self.assertEqual(len(st), 0)
 
 
 def suite():

@@ -301,19 +301,17 @@ class blkt_2000_s(C.Structure):
         ('payload', C.c_char * 1),
     ]
 
-
 # Blockette chain link, generic linkable blockette index
 class blkt_link_s(C.Structure):
     pass
 
-# incomplete type has to be defined this way 
 blkt_link_s._fields_ = [
-    ('blkt_type', C.c_ushort), # Blockette type
-    ('next_blkt', C.c_ushort), # Offset to next blockette
-    ('blktdata', C.POINTER(None)), # Blockette data
-    ('blktdatalen', C.c_ushort), # Length of blockette data in bytes
-    ('next', C.POINTER(blkt_link_s)),
-]
+    ('blktoffset', C.c_ushort),  # Blockette offset
+    ('blkt_type', C.c_ushort),  # Blockette type
+    ('next_blkt', C.c_ushort),  # Offset to next blockette
+    ('blktdata', C.POINTER(None)),  # Blockette data
+    ('blktdatalen', C.c_ushort),  # Length of blockette data in bytes
+    ('next', C.POINTER(blkt_link_s))]
 BlktLink = blkt_link_s
 
 class StreamState_s(C.Structure):
