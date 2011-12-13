@@ -31,7 +31,7 @@ typedef struct ContinuousSegment_s {
     double samprate;                        // Sample rate
     char sampletype;                        // Sampletype
     hptime_t hpdelta;                       // High precission sample period
-    long samplecnt;                         // Total sample count
+    int64_t samplecnt;                         // Total sample count
     void *datasamples;                      // Actual data samples
     struct LinkedRecordList_s *firstRecord; // First item
     struct LinkedRecordList_s *lastRecord;  // Last item
