@@ -10,6 +10,7 @@ from obspy.core.util import scoreatpercentile
 from headers import HPTMODULUS, clibmseed, FRAME, SAMPLESIZES
 from msstruct import _MSStruct
 
+
 def unpack_steim1(data_string, npts, swapflag=0, verbose=0):
     """
     Unpack steim1 compressed data given as string.
@@ -33,6 +34,7 @@ def unpack_steim1(data_string, npts, swapflag=0, verbose=0):
     if nsamples != npts:
         raise Exception("Error in unpack_steim1")
     return datasamples
+
 
 def unpack_steim2(data_string, npts, swapflag=0, verbose=0):
     """
@@ -312,6 +314,7 @@ def getDataQualityFlagsCount(filename):
                 quality_count[_j] += 1
     mseedfile.close()
     return quality_count
+
 
 def _convertMSRToDict(m):
     h = {}

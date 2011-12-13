@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import ctypes as C
 from itertools import izip
 from math import log
