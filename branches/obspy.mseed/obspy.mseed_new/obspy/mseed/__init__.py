@@ -47,7 +47,7 @@ This attribute contains all Mini-SEED specific attributes.
            calib: 1.0
          _format: MSEED
            mseed: AttribDict({'dataquality': 'R', 'record_length': 4096,
-                              'encoding': 'STEIM2', 'byteorder': '>'})
+                              'byteorder': '>', 'encoding': 'STEIM2'})
 
 The actual data is stored as :class:`~numpy.ndarray` in the ``data`` attribute
 of each trace.

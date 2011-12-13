@@ -13,8 +13,8 @@
 #include <time.h>
 #include <ctype.h>
 
-#include "libmseed.h"
-#include "unpackdata.h"
+#include "libmseed/libmseed.h"
+#include "libmseed/unpackdata.h"
 
 // Linkable container of MSRecords
 typedef struct LinkedRecordList_s {

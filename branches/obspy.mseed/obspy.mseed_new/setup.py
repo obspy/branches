@@ -61,12 +61,12 @@ KEYWORDS = ['ObsPy', 'seismology', 'MSEED', 'MiniSEED', 'waveform',
 INSTALL_REQUIRES = ['obspy.core']
 ENTRY_POINTS = {
     'obspy.plugin.waveform': [
-        'MSEED = obspy.mseed.core',
+        'MSEED = obspy.mseed.mseed',
     ],
     'obspy.plugin.waveform.MSEED': [
-        'isFormat = obspy.mseed.core:isMSEED',
-        'readFormat = obspy.mseed.core:readMSEED',
-        'writeFormat = obspy.mseed.core:writeMSEED',
+        'isFormat = obspy.mseed.mseed:isMSEED',
+        'readFormat = obspy.mseed.mseed:readMSEED',
+        'writeFormat = obspy.mseed.mseed:writeMSEED',
     ],
 }
 
@@ -123,8 +123,9 @@ def setupLibMSEED():
                                src + 'traceutils.c', src + 'tracelist.c',
                                src + 'unpack.c', src + 'unpackdata.c',
                                src + 'selection.c', src + 'logging.c',
-                               src + 'obspy-readbuffer.c',
-                               src + 'parseutils.c'],
+                               src + 'parseutils.c',
+                               os.path.join('obspy', 'mseed', 'src',
+                                            'obspy-readbuffer.c')],
                       export_symbols=symbols,
                       extra_link_args=extra_link_args,
                       extra_compile_args=extra_compile_args)
