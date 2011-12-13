@@ -74,7 +74,7 @@ class MSEEDReadingAndWritingTestCase(unittest.TestCase):
             self.assertEqual('EHE', trace.stats.channel)
             self.assertEqual(200, trace.stats.sampling_rate)
             self.assertEqual(starttime[i],
-                             util._convertDatetimeToMSTime(trace.stats.starttime))
+                util._convertDatetimeToMSTime(trace.stats.starttime))
             self.assertEqual(datalist[i], trace.data[0:9].tolist())
             i += 1
         del stream
@@ -108,8 +108,8 @@ class MSEEDReadingAndWritingTestCase(unittest.TestCase):
         stream = readMSEED(mseed_file)
         # Define test ranges
         record_length_values = [2 ** i for i in range(8, 21)]
-        encoding_values = {"ASCII": "|S1", "INT16": "int16",
-                           "INT32": "int32", "FLOAT32": "float32", "FLOAT64": "float64",
+        encoding_values = {"ASCII": "|S1", "INT16": "int16", "INT32": "int32",
+                           "FLOAT32": "float32", "FLOAT64": "float64",
                            "STEIM1": "int32", "STEIM2": "int32"}
         byteorder_values = ['>', '<']
         # Loop over every combination.
@@ -117,8 +117,9 @@ class MSEEDReadingAndWritingTestCase(unittest.TestCase):
             for byteorder in byteorder_values:
                 for encoding in encoding_values.keys():
                     this_stream = copy.deepcopy(stream)
-                    this_stream[0].data = np.require(this_stream[0].data,
-                                                     dtype=encoding_values[encoding])
+                    this_stream[0].data = \
+                        np.require(this_stream[0].data,
+                                   dtype=encoding_values[encoding])
                     temp_file = NamedTemporaryFile().name
 
                     writeMSEED(this_stream, temp_file, encoding=encoding,
@@ -163,8 +164,7 @@ class MSEEDReadingAndWritingTestCase(unittest.TestCase):
                  'int32_Steim2_bigEndian.mseed',
                  'int32_Steim2_littleEndian.mseed']
         for file in files:
-            info = util.getFileformatInformation(os.path.join(path,
-                                                                      file))
+            info = util.getFileformatInformation(os.path.join(path, file))
             if not 'ASCII' in file:
                 encoding = file.split('_')[1].upper()
                 byteorder = file.split('_')[2].split('.')[0]
@@ -182,10 +182,10 @@ class MSEEDReadingAndWritingTestCase(unittest.TestCase):
         # No really good test files for the record length so just two files
         # with known record lengths are tested.
         info = util.getFileformatInformation(os.path.join(self.path, 'data',
-                                                      'timingquality.mseed'))
+                                             'timingquality.mseed'))
         self.assertEqual(info['reclen'], 512)
         info = util.getFileformatInformation(os.path.join(self.path, 'data',
-                                                      'steim2.mseed'))
+                                             'steim2.mseed'))
         self.assertEqual(info['reclen'], 4096)
 
     def test_readAndWriteFileWithGaps(self):
@@ -655,26 +655,26 @@ class MSEEDReadingAndWritingTestCase(unittest.TestCase):
         # sampletype, encoding, content
         def_content = np.arange(1, 51, dtype='int32')
         files = {
-            os.path.join(path, "smallASCII.mseed") : ('|S1', 'a', 0,
-                        np.fromstring('ABCDEFGH', dtype='|S1')),
+            os.path.join(path, "smallASCII.mseed"):
+                ('|S1', 'a', 0, np.fromstring('ABCDEFGH', dtype='|S1')),
             # Tests all ASCII letters.
-            os.path.join(path, "fullASCII.mseed") : ('|S1', 'a', 0,
-               np.fromstring(
-               """ !"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUV""" + \
-               """WXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~""", dtype='|S1')),
+            os.path.join(path, "fullASCII.mseed"):
+                ('|S1', 'a', 0, np.fromstring(""" !"#$%&'()*+,-./""" + \
+                   """0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`""" + \
+                   """abcdefghijklmnopqrstuvwxyz{|}~""", dtype='|S1')),
             # Note: int16 array will also be returned as int32.
-            os.path.join(path, "int16_INT16.mseed") : ('int32', 'i', 1,
-                                                    def_content.astype('int16')),
-            os.path.join(path, "int32_INT32.mseed") : ('int32', 'i', 3,
-                                                    def_content),
-            os.path.join(path, "int32_Steim1.mseed") : ('int32', 'i', 10,
-                                                    def_content),
-            os.path.join(path, "int32_Steim2.mseed") : ('int32', 'i', 11,
-                                                    def_content),
-            os.path.join(path, "float32_Float32.mseed") : ('float32', 'f', 4,
-                                                def_content.astype('float32')),
-            os.path.join(path, "float64_Float64.mseed") : ('float64', 'd', 5,
-                                                def_content.astype('float64'))
+            os.path.join(path, "int16_INT16.mseed"):
+                ('int32', 'i', 1, def_content.astype('int16')),
+            os.path.join(path, "int32_INT32.mseed"):
+                ('int32', 'i', 3, def_content),
+            os.path.join(path, "int32_Steim1.mseed"):
+                ('int32', 'i', 10, def_content),
+            os.path.join(path, "int32_Steim2.mseed"):
+                ('int32', 'i', 11, def_content),
+            os.path.join(path, "float32_Float32.mseed"):
+                ('float32', 'f', 4, def_content.astype('float32')),
+            os.path.join(path, "float64_Float64.mseed"):
+                ('float64', 'd', 5, def_content.astype('float64'))
         }
         # Loop over all files and read them.
         for file in files.keys():
@@ -707,7 +707,6 @@ class MSEEDReadingAndWritingTestCase(unittest.TestCase):
                     self.assertEqual(getattr(ms.msr.contents, 'byteorder'), 1)
                 # Deallocate for debugging with valrgind
                 del ms
-
 
     def test_writingMicroseconds(self):
         """
@@ -871,11 +870,6 @@ class MSEEDReadingAndWritingTestCase(unittest.TestCase):
             self.assertEqual(ms.msr.contents.encoding, encoding)
             del ms  # for valgrind
             os.remove(tempfile)
-
-
-
-
-
 
 
 def suite():

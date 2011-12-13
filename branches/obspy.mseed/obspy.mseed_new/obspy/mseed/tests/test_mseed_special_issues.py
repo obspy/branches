@@ -42,8 +42,6 @@ class MSEEDSpecialIssueTestCase(unittest.TestCase):
         else:
             self.swap = 0
 
-
-
     def test_invalidRecordLength(self):
         """
         An invalid record length should raise an exception.
@@ -163,7 +161,8 @@ class MSEEDSpecialIssueTestCase(unittest.TestCase):
         # test results
         np.testing.assert_array_equal(data, st2[0].data)
 
-    @skipIf(NO_NEGATIVE_TIMESTAMPS, 'times before 1970 are not supported')
+    @skipIf(NO_NEGATIVE_TIMESTAMPS,
+            'times before 1970 are not supported on this operation system')
     def test_writeWithDateTimeBefore1970(self):
         """
         Write an stream via libmseed with a datetime before 1970.

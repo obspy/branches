@@ -345,12 +345,12 @@ MSRecord_s._fields_ = [
     ('dataquality', C.c_char), # Data quality indicator
     ('starttime', C.c_longlong), # Record start time, corrected (first sample)
     ('samprate', C.c_double), # Nominal sample rate (Hz)
-    ('samplecnt', C.c_long), # Number of samples in record
+    ('samplecnt', C.c_int64), # Number of samples in record
     ('encoding', C.c_byte), # Data encoding format
     ('byteorder', C.c_byte), # Byte order of record
     # Data sample fields
     ('datasamples', C.c_void_p), # Data samples, 'numsamples' of type 'sampletype'
-    ('numsamples', C.c_long), # Number of data samples in datasamples
+    ('numsamples', C.c_int64), # Number of data samples in datasamples
     ('sampletype', C.c_char), # Sample type code: a, i, f, d
     # Stream oriented state information
     ('ststate', C.POINTER(StreamState)), # Stream processing state information
@@ -371,9 +371,9 @@ MSTrace_s._fields_ = [
     ('starttime', C.c_longlong), # Time of first sample
     ('endtime', C.c_longlong), # Time of last sample
     ('samprate', C.c_double), # Nominal sample rate (Hz)
-    ('samplecnt', C.c_long), # Number of samples in trace coverage
+    ('samplecnt', C.c_int64), # Number of samples in trace coverage
     ('datasamples', C.c_void_p), # Data samples, 'numsamples' of type 'sampletype'
-    ('numsamples', C.c_long), # Number of data samples in datasamples
+    ('numsamples', C.c_int64), # Number of data samples in datasamples
     ('sampletype', C.c_char), # Sample type code: a, i, f, d 
     ('prvtptr', C.c_void_p), # Private pointer for general use
     ('ststate', C.POINTER(StreamState)), # Stream processing state information
@@ -524,9 +524,9 @@ MSTraceSeg._fields_ = [
     ('starttime', C.c_longlong),      # Time of first sample
     ('endtime', C.c_longlong),        # Time of last sample
     ('samprate', C.c_double),         # Nominal sample rate (Hz)
-    ('samplecnt', C.c_long),           # Number of samples in trace coverage
+    ('samplecnt', C.c_int64),           # Number of samples in trace coverage
     ('datasamples', C.c_void_p),      # Data samples, 'numsamples' of type 'sampletype'
-    ('numsamples', C.c_long),          # Number of data samples in datasamples
+    ('numsamples', C.c_int64),          # Number of data samples in datasamples
     ('sampletype', C.c_char),         # Sample type code: a, i, f, d
     ('prvtptr', C.c_void_p),          # Private pointer for general use, unused by libmseed
     ('prev', C.POINTER(MSTraceSeg)),  # Pointer to previous segment
@@ -594,7 +594,7 @@ ContinuousSegment._fields_ = [
     ('samprate', C.c_double),
     ('sampletype', C.c_char),
     ('hpdelta', C.c_longlong),
-    ('samplecnt', C.c_int),
+    ('samplecnt', C.c_int64),
     ('datasamples', C.c_void_p),      # Data samples, 'numsamples' of type 'sampletype'
     ('firstRecord', C.c_void_p),
     ('lastRecord', C.c_void_p),
