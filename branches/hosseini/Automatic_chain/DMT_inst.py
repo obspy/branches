@@ -206,14 +206,14 @@ def inst_IRIS(input, channel, interactive = 'N'):
 		input_file.append(open(Address_events + '/' + events[l]['event_id'] + '/IRIS/info/iris_' + channel))
 		
 		try:
-			os.makedirs(Address_events + '/' + events[l]['event_id'] + '/IRIS/BH')
+			os.makedirs(Address_events + '/' + events[l]['event_id'] + '/IRIS/BH_' + input['corr_unit'])
 			
 		except Exception, e:
 			print '********************************************'
 			print e
 			print '********************************************'
 			print "This folder:"
-			print Address_events + '/' + events[l]['event_id'] + '/IRIS/BH'
+			print Address_events + '/' + events[l]['event_id'] + '/IRIS/BH_' + input['corr_unit']
 			print "exists in your directory..."
 			print 'The program will continue in the same folder!'
 			
@@ -258,7 +258,7 @@ def inst_IRIS(input, channel, interactive = 'N'):
 			print 'Response file:'
 			print resp_file
 			
-			inst_corr(trace = tr, resp_file = resp_file, Address = Address_events + '/' + events[l]['event_id'] + '/IRIS/BH/', \
+			inst_corr(trace = tr, resp_file = resp_file, Address = Address_events + '/' + events[l]['event_id'] + '/IRIS/BH_' + input['corr_unit'] + '/', \
 				unit = input['corr_unit'], BP_filter = input['pre_filt'])
 	
 	t_inst_2 = datetime.now()
@@ -325,14 +325,14 @@ def inst_ARC(input, channel, interactive = 'N'):
 		input_file.append(open(Address_events + '/' + events[l]['event_id'] + '/ARC/info/arc_' + channel))
 		
 		try:
-			os.makedirs(Address_events + '/' + events[l]['event_id'] + '/ARC/BH')
+			os.makedirs(Address_events + '/' + events[l]['event_id'] + '/ARC/BH_' + input['corr_unit'])
 			
 		except Exception, e:
 			print '********************************************'
 			print e
 			print '********************************************'
 			print "This folder:"
-			print Address_events + '/' + events[l]['event_id'] + '/ARC/BH'
+			print Address_events + '/' + events[l]['event_id'] + '/ARC/BH_' + input['corr_unit']
 			print "exists in your directory..."
 			print 'The program will continue in the same folder!'
 			
@@ -377,7 +377,7 @@ def inst_ARC(input, channel, interactive = 'N'):
 			print 'Response file:'
 			print resp_file
 			
-			inst_corr(trace = tr, resp_file = resp_file, Address = Address_events + '/' + events[l]['event_id'] + '/ARC/BH/', \
+			inst_corr(trace = tr, resp_file = resp_file, Address = Address_events + '/' + events[l]['event_id'] + '/ARC/BH_' + input['corr_unit'] + '/', \
 				unit = input['corr_unit'], BP_filter = input['pre_filt'])
 	
 	t_inst_2 = datetime.now()
