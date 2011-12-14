@@ -74,7 +74,7 @@ from obspy.arclink import Client as Client_arclink
 
 client_neries = Client_neries()
 client_iris = Client_iris()
-client_arclink = Client_arclink()
+#client_arclink = Client_arclink()
 
 ####################################################################################################################################
 ########################################################### Main Program ###########################################################

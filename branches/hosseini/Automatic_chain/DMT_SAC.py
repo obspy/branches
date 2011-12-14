@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 #-------------------------------------------------------------------
-#   Filename:  DMT_inst.py
+#   Filename:  DMT_SAC.py
 #   Author:    S. Kasra Hosseini zad
 #   Email:     hosseini@geophysik.uni-muenchen.de
 #
@@ -11,9 +11,9 @@
 
 
 """
-DMT_inst (Data Management Tool - Instrument Correction)
+DMT_SAC (Data Management Tool - SAC [Instrument Correction])
 
-Goal: Instrument Correction of Large Seismic Datasets
+Goal: Instrument Correction of Large Seismic Datasets using SAC
 
 :copyright:
     The ObsPy Development Team (devs@obspy.org)
@@ -31,30 +31,30 @@ Goal: Instrument Correction of Large Seismic Datasets
 Required Python and Obspy modules will be imported in this part.
 """
 
-from obspy.signal import seisSim, invsim
 from obspy.core import read
 
 from datetime import datetime
-import numpy as np
 import os
 import sys
 import ConfigParser
 import pickle
+import commands
+import glob
 
 ####################################################################################################################################
 ########################################################### Main Program ###########################################################
 ####################################################################################################################################
 
-def DMT_inst():
+def DMT_SAC():
 	
 	t1_pro = datetime.now()
 	
 	print '--------------------------------------------------------------------------------'
 	bold = "\033[1m"
 	reset = "\033[0;0m"
-	print '\t\t' + bold + 'DMT_inst ' + reset + '(' + bold + 'D' + reset + 'ata ' + bold + 'M' + reset + 'anagement ' + bold + 'T' \
-		+ reset + 'ool' + '-' + bold + 'I' + reset + 'nstrument' + bold + 'C' + reset + 'orrection)' + reset + '\n'
-	print '\t' + 'Instrument Correction of Large Seismic Datasets' + '\n'
+	print '\t\t' + bold + 'DMT_SAC ' + reset + '(' + bold + 'D' + reset + 'ata ' + bold + 'M' + reset + 'anagement ' + bold + 'T' \
+		+ reset + 'ool' + '-' + bold + 'SAC' + reset + ')' + reset + '\n'
+	print '\t' + 'Instrument Correction of Large Seismic Datasets using SAC' + '\n'
 	print ':copyright:'
 	print 'The ObsPy Development Team (devs@obspy.org)' + '\n'
 	print ':license:'
@@ -88,8 +88,8 @@ def DMT_inst():
 	print 'Thanks for using:' + '\n' 
 	bold = "\033[1m"
 	reset = "\033[0;0m"
-	print '\t\t' + bold + 'DMT_inst ' + reset + '(' + bold + 'D' + reset + 'ata ' + bold + 'M' + reset + 'anagement ' + bold + 'T' \
-		+ reset + 'ool' + '-' + bold + 'I' + reset + 'nstrument' + bold + 'C' + reset + 'orrection)' + reset + '\n'
+	print '\t\t' + bold + 'DMT_SAC ' + reset + '(' + bold + 'D' + reset + 'ata ' + bold + 'M' + reset + 'anagement ' + bold + 'T' \
+		+ reset + 'ool' + '-' + bold + 'SAC' + reset + ')' + reset + '\n'
 	
 	print "Total Time:"
 	print datetime.now() - t1_pro 
@@ -135,7 +135,7 @@ def read_input():
 	
 	input['TEST'] = config.get('test', 'TEST')
 	input['TEST_no'] = config.getint('test', 'TEST_no')
-
+	
 	input['email'] = config.get('email', 'email')
 	input['email_address'] = config.get('email', 'email_address')
 	
@@ -146,7 +146,7 @@ def read_input():
 	input['corr_unit'] = config.get('instrument_correction', 'corr_unit')
 	input['pre_filt'] = config.get('instrument_correction', 'pre_filter')
 	input['pre_filt'] = tuple(float(s) for s in input['pre_filt'][1:-1].split(','))
-			
+	
 	return input
 
 ###################################################### inst_IRIS ######################################################
@@ -169,19 +169,15 @@ def IRIS(input):
 	print "-------------------------------------------------"
 	print 'IRIS Instrument Correction is DONE'
 	print "-------------------------------------------------"
-	
+
 ###################################################### inst_IRIS ######################################################
 	
 def inst_IRIS(input, channel, interactive = 'N'):
 	
 	"""
 	Apply Instrument Coorection on all available stations in the folder
-	This scrips uses 'seisSim' from obspy.signal for this reason
-	
-	Instrument Correction has three main steps:
-		1) RTR: remove the trend
-		2) tapering
-		3) pre-filtering and deconvolution of Resp file from Raw counts
+	This scrips loads "SAC" program for this reason
+	Please refer to DMT_SAC.sh for more info
 	"""
 	
 	t_inst_1 = datetime.now()
@@ -206,14 +202,14 @@ def inst_IRIS(input, channel, interactive = 'N'):
 		input_file.append(open(Address_events + '/' + events[l]['event_id'] + '/IRIS/info/iris_' + channel))
 		
 		try:
-			os.makedirs(Address_events + '/' + events[l]['event_id'] + '/IRIS/BH')
+			os.makedirs(Address_events + '/' + events[l]['event_id'] + '/IRIS/BH_SAC')
 			
 		except Exception, e:
 			print '********************************************'
 			print e
 			print '********************************************'
 			print "This folder:"
-			print Address_events + '/' + events[l]['event_id'] + '/IRIS/BH'
+			print Address_events + '/' + events[l]['event_id'] + '/IRIS/BH_SAC'
 			print "exists in your directory..."
 			print 'The program will continue in the same folder!'
 			
@@ -236,30 +232,29 @@ def inst_IRIS(input, channel, interactive = 'N'):
 			print '********************************************'
 			print str(k+1) + '/' + str(len(BH_raw_file))
 			
-			rt_c = RTR(stream = BH_raw_file[k], degree = 2)
-			
 			tr_tmp = read(BH_raw_file[k])
 			tr = tr_tmp[0]
-			tr.data = rt_c
-			
-			# Tapering
-			taper = invsim.cosTaper(len(tr.data))
-			tr.data *= taper
-			'''		
-			if tr.stats['location'] == '':
-				location = '--'
-				resp_file = Address_events + '/' + events[l]['event_id'] + '/IRIS/Resp/RESP.' + \
-					tr.stats['network'] + '.' + tr.stats['station'] + '.' + location + '.' + tr.stats['channel']
-			else:
-			'''
+	
 			resp_file = Address_events + '/' + events[l]['event_id'] + '/IRIS/Resp/RESP.' + \
 					tr.stats['network'] + '.' + tr.stats['station'] + '.' + tr.stats['location'] + '.' + tr.stats['channel']
 			
 			print 'Response file:'
 			print resp_file
 			
-			inst_corr(trace = tr, resp_file = resp_file, Address = Address_events + '/' + events[l]['event_id'] + '/IRIS/BH/', \
-				unit = input['corr_unit'], BP_filter = input['pre_filt'])
+			i1 = BH_raw_file[k][0]
+			i2 = resp_file
+			i3 = Address_events + '/' + events[l]['event_id']
+			i4 = BH_raw_file[k][0] + '.' + BH_raw_file[k][1] + '.' + BH_raw_file[k][2] + '.' + BH_raw_file[k][3]
+			commands.getoutput('./DMT_SAC.sh' + ' ' + i1 + ' ' + i2 + ' ' + i3 + ' ' + i4)
+			'''
+			check this out:
+			i5 = 0.008
+			i6 = 0.012
+			i7 = 3.0
+			i8 = 4.0
+			commands.getoutput('./sac.sh' + ' ' + i1 + ' ' + i2 + ' ' + i3 + ' ' + i4 + ' ' + i5\
+				+ ' ' + i6 + ' ' + i7 + ' ' + i8)
+			'''
 	
 	t_inst_2 = datetime.now()
 	
@@ -268,7 +263,7 @@ def inst_IRIS(input, channel, interactive = 'N'):
 	print t_inst_2 - t_inst_1
 	print '*********************************************************************'
 
-###################################################### inst_ARC ######################################################
+###################################################### inst_IRIS ######################################################
 
 def ARC(input):
 	
@@ -288,19 +283,15 @@ def ARC(input):
 	print "-------------------------------------------------"
 	print 'ARC Instrument Correction is DONE'
 	print "-------------------------------------------------"
-	
+
 ###################################################### inst_ARC ######################################################
 	
 def inst_ARC(input, channel, interactive = 'N'):
 		
 	"""
 	Apply Instrument Coorection on all available stations in the folder
-	This scrips uses 'seisSim' from obspy.signal for this reason
-	
-	Instrument Correction has three main steps:
-		1) RTR: remove the trend
-		2) tapering
-		3) pre-filtering and deconvolution of Resp file from Raw counts
+	This scrips loads "SAC" program for this reason
+	Please refer to DMT_SAC.sh for more info
 	"""
 	
 	t_inst_1 = datetime.now()
@@ -325,14 +316,14 @@ def inst_ARC(input, channel, interactive = 'N'):
 		input_file.append(open(Address_events + '/' + events[l]['event_id'] + '/ARC/info/arc_' + channel))
 		
 		try:
-			os.makedirs(Address_events + '/' + events[l]['event_id'] + '/ARC/BH')
+			os.makedirs(Address_events + '/' + events[l]['event_id'] + '/ARC/BH_SAC')
 			
 		except Exception, e:
 			print '********************************************'
 			print e
 			print '********************************************'
 			print "This folder:"
-			print Address_events + '/' + events[l]['event_id'] + '/ARC/BH'
+			print Address_events + '/' + events[l]['event_id'] + '/ARC/BH_SAC'
 			print "exists in your directory..."
 			print 'The program will continue in the same folder!'
 			
@@ -342,7 +333,7 @@ def inst_ARC(input, channel, interactive = 'N'):
 			input_sta[i] = input_sta[i].split(',')
 			if input_sta[i][2] == '  ':
 				input_sta[i][2] = ''
-							
+				
 		BH_raw_file = []
 		resp_file = []
 
@@ -355,30 +346,29 @@ def inst_ARC(input, channel, interactive = 'N'):
 			print '********************************************'
 			print str(k+1) + '/' + str(len(BH_raw_file))
 			
-			rt_c = RTR(stream = BH_raw_file[k], degree = 2)
-			
 			tr_tmp = read(BH_raw_file[k])
 			tr = tr_tmp[0]
-			tr.data = rt_c
-			
-			# Tapering
-			taper = invsim.cosTaper(len(tr.data))
-			tr.data *= taper
-			'''		
-			if tr.stats['location'] == '--':
-				location = ''
-				resp_file = Address_events + '/' + events[l]['event_id'] + '/ARC/Resp/RESP.' + \
-					tr.stats['network'] + '.' + tr.stats['station'] + '.' + location + '.' + tr.stats['channel']
-			else:
-			'''
+	
 			resp_file = Address_events + '/' + events[l]['event_id'] + '/ARC/Resp/RESP.' + \
 					tr.stats['network'] + '.' + tr.stats['station'] + '.' + tr.stats['location'] + '.' + tr.stats['channel']
 			
 			print 'Response file:'
 			print resp_file
 			
-			inst_corr(trace = tr, resp_file = resp_file, Address = Address_events + '/' + events[l]['event_id'] + '/ARC/BH/', \
-				unit = input['corr_unit'], BP_filter = input['pre_filt'])
+			i1 = BH_raw_file[k][0]
+			i2 = resp_file
+			i3 = Address_events + '/' + events[l]['event_id']
+			i4 = BH_raw_file[k][0] + '.' + BH_raw_file[k][1] + '.' + BH_raw_file[k][2] + '.' + BH_raw_file[k][3]
+			commands.getoutput('./DMT_SAC.sh' + ' ' + i1 + ' ' + i2 + ' ' + i3 + ' ' + i4)
+			'''
+			check this out:
+			i5 = 0.008
+			i6 = 0.012
+			i7 = 3.0
+			i8 = 4.0
+			commands.getoutput('./sac.sh' + ' ' + i1 + ' ' + i2 + ' ' + i3 + ' ' + i4 + ' ' + i5\
+				+ ' ' + i6 + ' ' + i7 + ' ' + i8)
+			'''
 	
 	t_inst_2 = datetime.now()
 	
@@ -386,80 +376,11 @@ def inst_ARC(input, channel, interactive = 'N'):
 	print 'Time passed for Instrument Correction of ' + channel + ' :'
 	print t_inst_2 - t_inst_1
 	print '*********************************************************************'
-	
-###################################################### RTR ######################################################
-
-def RTR(stream, degree = 2):
-	
-	"""
-	Remove the trend by	Fitting a linear function to the trace with least squares and subtracting it
-	"""
-	
-	raw_f = read(stream)
-
-	t = []
-	b0 = 0
-	inc = []
-	
-	b = raw_f[0].stats['starttime']
-
-	for i in range(0, raw_f[0].stats['npts']):
-		inc.append(b0)
-		b0 = b0+1.0/raw_f[0].stats['sampling_rate'] 
-		b0 = round(b0, 4)
-		
-	A = np.vander(inc, degree)
-	(coeffs, residuals, rank, sing_vals) = np.linalg.lstsq(A, raw_f[0].data)
-	'''
-	print '--------------------'
-	print 'coeffs = ' + str(coeffs)
-	print 'residuals = ' + str(residuals)
-	print 'rank = ' + str(rank)
-	print 'sing_vals = ' + str(sing_vals)
-	print '--------------------'
-	'''
-	f = np.poly1d(coeffs)
-	y_est = f(inc)
-	rt_c = raw_f[0].data-y_est
-	
-	return rt_c
-
-###################################################### inst_corr ######################################################
-
-def inst_corr(trace, resp_file, Address, unit = 'DIS', BP_filter = (0.008, 0.012, 3.0, 4.0)):
-
-	date = trace.stats['starttime']
-	seedresp = {'filename':resp_file,'date':date,'units':unit}
-	
-	try:
-		
-		trace.data = seisSim(data = trace.data,samp_rate = trace.stats.sampling_rate,paz_remove=None, \
-			paz_simulate = None, remove_sensitivity=False, simulate_sensitivity = False, water_level = 600.0, \
-			zero_mean = True, taper = False, pre_filt=BP_filter, seedresp=seedresp)
-		'''
-		if trace.stats['location'] == '':
-			location = '--'
-			trace.write(Address + \
-				trace.stats['network'] + '.' + trace.stats['station'] + '.' + location + \
-				'.' + trace.stats['channel'], format = 'SAC')
-				
-		else:
-		'''
-		trace.write(Address + \
-				trace.stats['network'] + '.' + trace.stats['station'] + '.' + trace.stats['location'] + \
-				'.' + trace.stats['channel'], format = 'SAC')
-		
-		print '-----------------------'
-		print 'Instrument Correction for ' + trace.stats['network'] + '.' + trace.stats['station'] + '.' + trace.stats['location'] + \
-				'.' + trace.stats['channel'] + ' is done!'
-		
-	except Exception, e:
-		print e
 
 #########################################################################################################################
 #########################################################################################################################
 #########################################################################################################################
 
 if __name__ == "__main__":
-	status = DMT_inst()
+	status = DMT_SAC()
 	#sys.exit(status)
