@@ -1,20 +1,19 @@
 # -*- coding: utf-8 -*-
 
+from StringIO import StringIO
 from obspy.core import UTCDateTime
-
 from obspy.mseed import util
 from obspy.mseed.mseed import readMSEED
-
+import numpy as np
 import os
 import random
-import numpy as np
-from StringIO import StringIO
 import sys
 import unittest
 
 
 class MSEEDUtilTestCase(unittest.TestCase):
     """
+    Tests suite for util module of obspy.mseed.
     """
     def setUp(self):
         # Directory where the test files are located
@@ -32,13 +31,13 @@ class MSEEDUtilTestCase(unittest.TestCase):
         # These values are created using the Linux "date -u -d @TIMESTRING"
         # command. These values are assumed to be correct.
         timesdict = {
-            1234567890 : UTCDateTime(2009, 2, 13, 23, 31, 30),
-            1111111111 : UTCDateTime(2005, 3, 18, 1, 58, 31),
-            1212121212 : UTCDateTime(2008, 5, 30, 4, 20, 12),
-            1313131313 : UTCDateTime(2011, 8, 12, 6, 41, 53),
-            100000 : UTCDateTime(1970, 1, 2, 3, 46, 40),
-            100000.111112 : UTCDateTime(1970, 1, 2, 3, 46, 40, 111112),
-            200000000 : UTCDateTime(1976, 5, 3, 19, 33, 20)
+            1234567890: UTCDateTime(2009, 2, 13, 23, 31, 30),
+            1111111111: UTCDateTime(2005, 3, 18, 1, 58, 31),
+            1212121212: UTCDateTime(2008, 5, 30, 4, 20, 12),
+            1313131313: UTCDateTime(2011, 8, 12, 6, 41, 53),
+            100000: UTCDateTime(1970, 1, 2, 3, 46, 40),
+            100000.111112: UTCDateTime(1970, 1, 2, 3, 46, 40, 111112),
+            200000000: UTCDateTime(1976, 5, 3, 19, 33, 20)
         }
         # Loop over timesdict.
         for ts, dt in timesdict.iteritems():
@@ -46,11 +45,11 @@ class MSEEDUtilTestCase(unittest.TestCase):
             self.assertEqual(ts * 1000000L, util._convertDatetimeToMSTime(dt))
         # Additional sanity tests.
         # Today.
-        now = UTCDateTime.now()
+        now = UTCDateTime()
         self.assertEqual(now, util._convertMSTimeToDatetime(
                               util._convertDatetimeToMSTime(now)))
         # Some random date.
-        random.seed(815) # make test reproducable
+        random.seed(815)  # make test reproducable
         timestring = random.randint(0, 2000000) * 1e6
         self.assertEqual(timestring, util._convertDatetimeToMSTime(
                         util._convertMSTimeToDatetime(timestring)))

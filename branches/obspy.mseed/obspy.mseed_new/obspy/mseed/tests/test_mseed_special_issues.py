@@ -2,16 +2,14 @@
 
 from obspy.core import UTCDateTime, Stream, Trace, read
 from obspy.core.util import NamedTemporaryFile
-
 from obspy.mseed import util
-from obspy.mseed.msstruct import _MSStruct
-from obspy.mseed.mseed import readMSEED, writeMSEED
 from obspy.mseed.headers import clibmseed, PyFile_FromFile
-
-import os
+from obspy.mseed.mseed import readMSEED, writeMSEED
+from obspy.mseed.msstruct import _MSStruct
+from struct import unpack
 import ctypes as C
 import numpy as np
-from struct import unpack
+import os
 import platform
 import sys
 import unittest
@@ -48,7 +46,7 @@ class MSEEDSpecialIssueTestCase(unittest.TestCase):
         """
         npts = 6000
         tempfile = NamedTemporaryFile().name
-        np.random.seed(815) # make test reproducable
+        np.random.seed(815)  # make test reproducable
         data = np.random.randint(-1000, 1000, npts).astype('int32')
         st = Stream([Trace(data=data)])
         # Writing should fail with invalid record lengths.
@@ -69,7 +67,7 @@ class MSEEDSpecialIssueTestCase(unittest.TestCase):
         """
         npts = 6000
         tempfile = NamedTemporaryFile().name
-        np.random.seed(815) # make test reproducable
+        np.random.seed(815)  # make test reproducable
         data = np.random.randint(-1000, 1000, npts).astype('int32')
         st = Stream([Trace(data=data)])
         # Writing should fail with invalid record lengths.
@@ -80,7 +78,6 @@ class MSEEDSpecialIssueTestCase(unittest.TestCase):
         self.assertRaises(ValueError, writeMSEED, st, tempfile, format="MSEED",
                           encoding='FLOAT_64')
         os.remove(tempfile)
-
 
     def test_ctypesArgtypes(self):
         """
@@ -96,9 +93,9 @@ class MSEEDSpecialIssueTestCase(unittest.TestCase):
         self.assertRaises(ArgumentError, cl.mst_printtracelist, *args[:5])
         self.assertRaises(ArgumentError, PyFile_FromFile, *args[:5])
         self.assertRaises(ArgumentError, cl.ms_detect, *args[:4])
-        args.append(1) # 10 argument function
+        args.append(1)  # 10 argument function
         self.assertRaises(ArgumentError, cl.mst_packgroup, *args)
-        args = ['hallo'] # one argument functions
+        args = ['hallo']  # one argument functions
         self.assertRaises(ArgumentError, cl.msr_starttime, *args)
         self.assertRaises(ArgumentError, cl.msr_endtime, *args)
         self.assertRaises(ArgumentError, cl.mst_init, *args)
@@ -114,7 +111,7 @@ class MSEEDSpecialIssueTestCase(unittest.TestCase):
         """
         file = os.path.join(self.path, "data", "brokenlastrecord.mseed")
         # independent reading of the data
-        data_string = open(file, 'rb').read()[128:] #128 Bytes header
+        data_string = open(file, 'rb').read()[128:]  # 128 Bytes header
         data = util.unpack_steim2(data_string, 5980, swapflag=self.swap,
                                    verbose=0)
         # test readMSTraces
@@ -190,7 +187,7 @@ class MSEEDSpecialIssueTestCase(unittest.TestCase):
         """
         npts = 6000
         tempfile = NamedTemporaryFile().name
-        np.random.seed(815) # make test reproducable
+        np.random.seed(815)  # make test reproducable
         # int64
         data = np.random.randint(-1000, 1000, npts).astype('int64')
         st = Stream([Trace(data=data)])

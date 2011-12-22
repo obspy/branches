@@ -2,16 +2,13 @@
 
 from obspy.core import UTCDateTime, Stream, Trace, read, AttribDict
 from obspy.core.util import NamedTemporaryFile
-
 from obspy.mseed import util
-from obspy.mseed.msstruct import _MSStruct
-from obspy.mseed.mseed import readMSEED, writeMSEED, isMSEED
 from obspy.mseed.headers import clibmseed, ENCODINGS
-
-import os
+from obspy.mseed.mseed import readMSEED, writeMSEED, isMSEED
+from obspy.mseed.msstruct import _MSStruct
 import copy
 import numpy as np
-import sys
+import os
 import unittest
 
 
@@ -125,7 +122,6 @@ class MSEEDReadingAndWritingTestCase(unittest.TestCase):
                     writeMSEED(this_stream, temp_file, encoding=encoding,
                                byteorder=byteorder, reclen=reclen)
                     new_stream = readMSEED(temp_file)
-
                     # Assert the new stream still has the chosen attributes.
                     # This should mean that writing as well as reading them
                     # works.
@@ -252,7 +248,7 @@ class MSEEDReadingAndWritingTestCase(unittest.TestCase):
         ms.offset = ms.filePosFromRecNum(-1)
         ms.read(-1, 0, 1, 0)
         self.assertEqual(end, clibmseed.msr_endtime(ms.msr))
-        del ms # for valgrind
+        del ms  # for valgrind
 
     def test_readFileViaMSEED(self):
         """
@@ -319,7 +315,6 @@ class MSEEDReadingAndWritingTestCase(unittest.TestCase):
         object.
         """
         starttime = UTCDateTime('2003-05-29T02:13:22.043400Z')
-        endtime = UTCDateTime('2003-05-29T02:18:20.693400Z')
         testfile = os.path.join(self.path, 'data', 'test.mseed')
         stream = readMSEED(testfile, starttime=starttime - 1E6,
                            endtime=starttime - 1E6 + 1)
@@ -361,7 +356,7 @@ class MSEEDReadingAndWritingTestCase(unittest.TestCase):
         tempfile = NamedTemporaryFile().name
         npts = 1000
         # data array of integers - float won't work!
-        np.random.seed(815) # make test reproducable
+        np.random.seed(815)  # make test reproducable
         data = np.random.randint(-1000, 1000, npts).astype('int32')
         st = Stream([Trace(data=data)])
         # write
@@ -378,7 +373,7 @@ class MSEEDReadingAndWritingTestCase(unittest.TestCase):
         is used (e.g. on Windows systems) and a start/endtime is set and the
         file has multiple ids.
 
-        This is due to the face that the readMSTraceViaRecords method uses the
+        This is due to the fact that the readMSTraceViaRecords method uses the
         first and the last records of a file to take an educated guess about
         which records to actually read. This of course only works if all
         records have the same id and are chronologically ordered.
@@ -411,7 +406,6 @@ class MSEEDReadingAndWritingTestCase(unittest.TestCase):
         # Should just result in an empty stream.
         self.assertEqual(len(st), 0)
 
-
     def test_writeAndReadDifferentRecordLengths(self):
         """
         Tests Mini-SEED writing and record lengths.
@@ -441,7 +435,6 @@ class MSEEDReadingAndWritingTestCase(unittest.TestCase):
             # Check if filesize is a multiple of the record length.
             self.assertEqual(info['filesize'] % rec_len, 0)
 
-
     def test_readFullSEED(self):
         """
         Reads a full SEED volume.
@@ -469,12 +462,12 @@ class MSEEDReadingAndWritingTestCase(unittest.TestCase):
         Tests whether the header is correctly written and read.
         """
         tempfile = NamedTemporaryFile().name
-        np.random.seed(815) # make test reproducable
+        np.random.seed(815)  # make test reproducable
         data = np.random.randint(-1000, 1000, 50).astype('int32')
-        stats = {'network': 'BW', 'station': 'TEST', 'location':'A',
+        stats = {'network': 'BW', 'station': 'TEST', 'location': 'A',
                  'channel': 'EHE', 'npts': len(data), 'sampling_rate': 200.0,
-                 'mseed' : {'dataquality' : 'D', 'record_length' : 512,
-                            'encoding' : 'STEIM2', 'byteorder' : '>'}}
+                 'mseed': {'dataquality': 'D', 'record_length': 512,
+                           'encoding': 'STEIM2', 'byteorder': '>'}}
         stats['starttime'] = UTCDateTime(2000, 1, 1)
         st = Stream([Trace(data=data, header=stats)])
         # Write it.
@@ -495,7 +488,7 @@ class MSEEDReadingAndWritingTestCase(unittest.TestCase):
         trace.stats.mseed.
         """
         npts = 6000
-        np.random.seed(815) # make test reproducable
+        np.random.seed(815)  # make test reproducable
         data = np.random.randint(-1000, 1000, npts).astype('int32')
         # Test all possible combinations of record length, encoding and
         # byteorder.
@@ -582,7 +575,7 @@ class MSEEDReadingAndWritingTestCase(unittest.TestCase):
         data_copy = st[0].data.copy()
         # Float64, Float32, Int32, Int24, Int16, Char
         encodings = {5: "f8", 4: "f4", 3: "i4", 0: "S1", 1: "i2"}
-        byteorders = {0:'<', 1:'>'}
+        byteorders = {0: '<', 1: '>'}
         for byteorder, btype in byteorders.iteritems():
             for encoding, dtype in encodings.iteritems():
                 # Convert data to floats and write them again
@@ -737,12 +730,12 @@ class MSEEDReadingAndWritingTestCase(unittest.TestCase):
         write it in here.
         """
         tempfile = NamedTemporaryFile().name
-        np.random.seed(800) # make test reproducable
+        np.random.seed(800)  # make test reproducable
         data = np.random.randint(-1000, 1000, 50).astype('int32')
         # Create 4 different traces with 4 different dataqualities.
-        stats1 = {'network': 'BW', 'station': 'TEST', 'location':'A',
+        stats1 = {'network': 'BW', 'station': 'TEST', 'location': 'A',
                  'channel': 'EHE', 'npts': len(data), 'sampling_rate': 200.0,
-                 'mseed' : {'dataquality' : 'D'}}
+                 'mseed': {'dataquality': 'D'}}
         stats1['starttime'] = UTCDateTime(2000, 1, 1)
         stats2 = copy.deepcopy(stats1)
         stats2['mseed']['dataquality'] = 'R'
@@ -778,9 +771,9 @@ class MSEEDReadingAndWritingTestCase(unittest.TestCase):
         tempfile = NamedTemporaryFile().name
         data = np.zeros(10)
         # Create 4 different traces with 4 different dataqualities.
-        stats1 = {'network': 'BW', 'station': 'TEST', 'location':'A',
+        stats1 = {'network': 'BW', 'station': 'TEST', 'location': 'A',
                  'channel': 'EHE', 'npts': len(data), 'sampling_rate': 200.0,
-                 'mseed' : {'dataquality' : 'X'}}
+                 'mseed': {'dataquality': 'X'}}
         st = Stream([Trace(data=data, header=stats1)])
         # Write it.
         self.assertRaises(ValueError, st.write, tempfile, format="MSEED")
@@ -842,7 +835,6 @@ class MSEEDReadingAndWritingTestCase(unittest.TestCase):
                              UTCDateTime("2003-05-29T02:18:20.693400Z"))
             self.assertEqual(st[0].stats.npts, 11947)
             self.assertEqual(list(st[0].data[0:3]), [2787, 2776, 2774])
-
 
     def test_writeAndReadDifferentEncodings(self):
         """

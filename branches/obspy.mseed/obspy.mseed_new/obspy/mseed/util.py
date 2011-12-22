@@ -1,14 +1,13 @@
 # -*- coding: utf-8 -*-
 
+from headers import HPTMODULUS, clibmseed, FRAME, SAMPLESIZES
+from msstruct import _MSStruct
+from obspy.core import UTCDateTime
+from obspy.core.util import scoreatpercentile
+from struct import unpack
 import ctypes as C
 import numpy as np
 import os
-from struct import unpack
-
-from obspy.core import UTCDateTime
-from obspy.core.util import scoreatpercentile
-from headers import HPTMODULUS, clibmseed, FRAME, SAMPLESIZES
-from msstruct import _MSStruct
 
 
 def unpack_steim1(data_string, npts, swapflag=0, verbose=0):
@@ -23,8 +22,8 @@ def unpack_steim1(data_string, npts, swapflag=0, verbose=0):
     dbuf = data_string
     datasize = len(dbuf)
     samplecnt = npts
-    datasamples = np.empty(npts , dtype='int32')
-    diffbuff = np.empty(npts , dtype='int32')
+    datasamples = np.empty(npts, dtype='int32')
+    diffbuff = np.empty(npts, dtype='int32')
     x0 = C.c_int32()
     xn = C.c_int32()
     nsamples = clibmseed.msr_unpack_steim1(\
@@ -48,8 +47,8 @@ def unpack_steim2(data_string, npts, swapflag=0, verbose=0):
     dbuf = data_string
     datasize = len(dbuf)
     samplecnt = npts
-    datasamples = np.empty(npts , dtype='int32')
-    diffbuff = np.empty(npts , dtype='int32')
+    datasamples = np.empty(npts, dtype='int32')
+    diffbuff = np.empty(npts, dtype='int32')
     x0 = C.c_int32()
     xn = C.c_int32()
     nsamples = clibmseed.msr_unpack_steim2(\
@@ -89,9 +88,9 @@ def _ctypesArray2NumpyArray(buffer, buffer_elements, sampletype):
     """
     Takes a Ctypes array and its length and type and returns it as a
     NumPy array.
-    
+
     This works by reference and no data is copied.
-    
+
     :param buffer: Ctypes c_void_p pointer to buffer.
     :param buffer_elements: length of the whole buffer
     :param sampletype: type of sample, on of "a", "i", "f", "d"
@@ -108,7 +107,7 @@ def _ctypesArray2NumpyArray(buffer, buffer_elements, sampletype):
 def _convertDatetimeToMSTime(dt):
     """
     Takes obspy.util.UTCDateTime object and returns an epoch time in ms.
-    
+
     :param dt: obspy.util.UTCDateTime object.
     """
     return int(dt.timestamp * HPTMODULUS)
@@ -183,14 +182,13 @@ def getStartAndEndTime(filename):
     ms = _MSStruct(filename)
     starttime = ms.getStart()
     # Get the endtime
-    ms.offset = ms.filePosFromRecNum(record_number= -1)
+    ms.offset = ms.filePosFromRecNum(record_number=-1)
     endtime = ms.getEnd()
-    del ms # for valgrind
+    del ms  # for valgrind
     return starttime, endtime
 
 
-def getTimingQuality(filename, first_record=True,
-                     rl_autodetection= -1):
+def getTimingQuality(filename, first_record=True, rl_autodetection=-1):
     """
     Reads timing quality and returns a dictionary containing statistics
     about it.

@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+
 import ctypes as C
 from itertools import izip
 from math import log
@@ -10,8 +11,8 @@ from obspy.core import Stream, Trace, UTCDateTime
 from obspy.core.util import NATIVE_BYTEORDER
 from headers import clibmseed, ENCODINGS, HPTMODULUS, \
         SAMPLETYPE, DATATYPES, SAMPLESIZES, VALID_RECORD_LENGTHS, \
-        HPTERROR, SelectTime, Selections, blkt_1001_s,  \
-        VALID_CONTROL_HEADERS, SEED_CONTROL_HEADERS, MINI_SEED_CONTROL_HEADERS
+        HPTERROR, SelectTime, Selections, blkt_1001_s, \
+        VALID_CONTROL_HEADERS, SEED_CONTROL_HEADERS
 import util
 
 
@@ -170,7 +171,7 @@ def readMSEED(mseed_object, starttime=None, endtime=None, sourcename=None,
 
     # If its a filename just read it.
     if isinstance(mseed_object,  basestring):
-        # Read to numpy array which is used as a buffer.
+        # Read to NumPy array which is used as a buffer.
         buffer = np.fromfile(mseed_object, dtype='b')
     elif hasattr(mseed_object, 'read'):
         buffer = np.fromstring(mseed_object.read(), dtype='b')
@@ -192,10 +193,10 @@ def readMSEED(mseed_object, starttime=None, endtime=None, sourcename=None,
     while True:
         # This should never happen
         if (isdigit(buffer[offset:offset + 6]) is False) or \
-            (buffer[offset+6] not in VALID_CONTROL_HEADERS):
+            (buffer[offset + 6] not in VALID_CONTROL_HEADERS):
             msg = 'Not a valid (Mini-)SEED file'
             raise Exception(msg)
-        elif buffer[offset+6] in SEED_CONTROL_HEADERS:
+        elif buffer[offset + 6] in SEED_CONTROL_HEADERS:
             offset += record_length
             continue
         break
@@ -231,7 +232,7 @@ def readMSEED(mseed_object, starttime=None, endtime=None, sourcename=None,
             if type(sourcename) != str:
                 msg = 'sourcename needs to be a string'
                 raise ValueError(msg)
-            # libmseed uses underscores as seperators and allows filtering
+            # libmseed uses underscores as separators and allows filtering
             # after the dataquality which is disabled here to not confuse
             # users.
             selections.srcname = sourcename.replace('.', '_') + '_D'
@@ -239,6 +240,7 @@ def readMSEED(mseed_object, starttime=None, endtime=None, sourcename=None,
             selections.srcname = '*'
 
     all_data = []
+
     # Use a callback function to allocate the memory and keep track of the
     # data.
     def allocate_data(samplecount, sampletype):
@@ -249,7 +251,6 @@ def readMSEED(mseed_object, starttime=None, endtime=None, sourcename=None,
     # Define Python callback function for use in C function. Return a long so
     # it hopefully works on 32 and 64 bit systems.
     allocData = C.CFUNCTYPE(C.c_long, C.c_int, C.c_char)(allocate_data)
-
 
     lil = clibmseed.readMSEEDBuffer(buffer, buflen, selections, unpack_data,
                               reclen, 0, allocData)
@@ -278,7 +279,8 @@ def readMSEED(mseed_object, starttime=None, endtime=None, sourcename=None,
             break
         while True:
             header['sampling_rate'] = currentSegment.samprate
-            header['starttime'] = util._convertMSTimeToDatetime(currentSegment.starttime)
+            header['starttime'] = \
+                util._convertMSTimeToDatetime(currentSegment.starttime)
             if headonly is False:
                 # The data always will be in sequential order.
                 data = all_data.pop(0)
@@ -367,7 +369,7 @@ def writeMSEED(stream, filename, encoding=None, reclen=None, byteorder=None,
             raise ValueError(msg)
 
     # Check if encoding kwarg is set and catch invalid encodings.
-    # XXX: Currently INT24 is not working due to lacking numpy support.
+    # XXX: Currently INT24 is not working due to lacking NumPy support.
     encoding_strings = dict([(v[0], k) for (k, v) in ENCODINGS.iteritems()])
 
     if encoding is not None:
@@ -382,7 +384,7 @@ def writeMSEED(stream, filename, encoding=None, reclen=None, byteorder=None,
 
     trace_attributes = []
     use_blkt_1001 = 0
-    # The data might need to be modified. To not modifiy the input data keep
+    # The data might need to be modified. To not modify the input data keep
     # references of which data to finally write.
     trace_data = []
     # Loop over every trace and figure out the correct settings.
@@ -404,7 +406,8 @@ def writeMSEED(stream, filename, encoding=None, reclen=None, byteorder=None,
 
         # Set data quality to indeterminate (= D) if it is not already set.
         try:
-            trace_attr['dataquality'] = trace.stats['mseed']['dataquality'].upper()
+            trace_attr['dataquality'] = \
+                trace.stats['mseed']['dataquality'].upper()
         except:
             trace_attr['dataquality'] = 'D'
         # Sanity check for the dataquality to get a nice Python exception
@@ -482,30 +485,31 @@ def writeMSEED(stream, filename, encoding=None, reclen=None, byteorder=None,
                 msg = """
                     Wrong dtype for Stream[%i].data for encoding %s.
                     Please change the dtype of your data or use an appropriate
-                    encoding. See the obspy.mseed documentation for more information.
+                    encoding. See the obspy.mseed documentation for more
+                    information.
                     """ % (_i, id)
                 raise Exception(msg)
             trace_attr['encoding'] = encoding
-        elif hasattr(trace.stats, 'mseed') and \
-                    hasattr(trace.stats.mseed, 'encoding'):
-                mseed_encoding = stats.mseed.encoding
-                # Check if the encoding is valid.
-                if isinstance(mseed_encoding, int) and mseed_encoding in ENCODINGS:
-                    trace_attr['encoding'] = mseed_encoding
-                elif isinstance(mseed_encoding, basestring) and \
-                        mseed_encoding in encoding_strings:
-                    trace_attr['encoding'] = encoding_strings[mseed_encoding]
-                else:
-                    msg = 'Invalid encoding %s in ' + \
-                          'Stream[%i].stats.mseed.encoding. Valid encodings: %s'
-                    raise ValueError(msg % (mseed_encoding, _i, encoding_strings))
-                # Check if the encoding matches the data's dtype.
-                if trace.data.dtype.type != ENCODINGS[trace_attr['encoding']][2]:
-                    msg = 'The encoding specified in ' + \
-                          'trace.stats.mseed.encoding does not match the ' + \
-                          'dtype of the data.\nA suitable encoding will ' + \
-                          'be chosen.'
-                    warnings.warn(msg, UserWarning)
+        elif hasattr(trace.stats, 'mseed') and hasattr(trace.stats.mseed,
+                                                       'encoding'):
+            mseed_encoding = stats.mseed.encoding
+            # Check if the encoding is valid.
+            if isinstance(mseed_encoding, int) and mseed_encoding in ENCODINGS:
+                trace_attr['encoding'] = mseed_encoding
+            elif isinstance(mseed_encoding, basestring) and \
+                    mseed_encoding in encoding_strings:
+                trace_attr['encoding'] = encoding_strings[mseed_encoding]
+            else:
+                msg = 'Invalid encoding %s in ' + \
+                      'Stream[%i].stats.mseed.encoding. Valid encodings: %s'
+                raise ValueError(msg % (mseed_encoding, _i, encoding_strings))
+            # Check if the encoding matches the data's dtype.
+            if trace.data.dtype.type != ENCODINGS[trace_attr['encoding']][2]:
+                msg = 'The encoding specified in ' + \
+                      'trace.stats.mseed.encoding does not match the ' + \
+                      'dtype of the data.\nA suitable encoding will ' + \
+                      'be chosen.'
+                warnings.warn(msg, UserWarning)
         else:
             # automatically detect encoding if no encoding is given.
             if trace.data.dtype.type == np.dtype("int32"):
@@ -545,7 +549,7 @@ def writeMSEED(stream, filename, encoding=None, reclen=None, byteorder=None,
     if len(byteorders) != 1:
         warnings.warn(msg % 'byteorders')
 
-    # Open filehandler or use an exising file like object.
+    # Open filehandler or use an existing file like object.
     if not hasattr(filename, 'write'):
         f = open(filename, 'wb')
     else:
@@ -593,8 +597,8 @@ def writeMSEED(stream, filename, encoding=None, reclen=None, byteorder=None,
         # write method.
         errcode = clibmseed.mst_packgroup(mstg.getMstg(), recHandler, None,
                           trace_attr['reclen'], trace_attr['encoding'],
-                          trace_attr['byteorder'], C.byref(packedsamples), flush,
-                          verbose, msr)
+                          trace_attr['byteorder'], C.byref(packedsamples),
+                          flush, verbose, msr)
         if errcode == -1:
             raise Exception('Error in mst_packgroup')
         # Deallocating msr is not necessary because no data is allocated. The
