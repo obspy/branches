@@ -61,12 +61,12 @@ KEYWORDS = ['ObsPy', 'seismology', 'MSEED', 'MiniSEED', 'waveform',
 INSTALL_REQUIRES = ['obspy.core']
 ENTRY_POINTS = {
     'obspy.plugin.waveform': [
-        'MSEED = obspy.mseed.mseed',
+        'MSEED = obspy.mseed.core',
     ],
     'obspy.plugin.waveform.MSEED': [
-        'isFormat = obspy.mseed.mseed:isMSEED',
-        'readFormat = obspy.mseed.mseed:readMSEED',
-        'writeFormat = obspy.mseed.mseed:writeMSEED',
+        'isFormat = obspy.mseed.core:isMSEED',
+        'readFormat = obspy.mseed.core:readMSEED',
+        'writeFormat = obspy.mseed.core:writeMSEED',
     ],
 }
 
@@ -87,10 +87,14 @@ def setupLibMSEED():
     macros = []
     extra_link_args = []
     extra_compile_args = []
-    src = os.path.join('obspy', 'mseed', 'src', 'libmseed') + os.sep
-    symbols = [s.strip()
-               for s in open(src + 'libmseed.def', 'r').readlines()[2:]
-               if s.strip() != '']
+    src_obspy = os.path.join('obspy', 'mseed', 'src') + os.sep
+    src =  os.path.join('obspy', 'mseed', 'src', 'libmseed') + os.sep
+    # get symbols for libmseed
+    lines = open(src + 'libmseed.def', 'r').readlines()[2:]
+    symbols = [s.strip() for s in lines if s.strip() != '']
+    # get symbols for obspy-readbuffer.c
+    lines = open(src_obspy + 'obspy-readbuffer.def', 'r').readlines()[2:]
+    symbols += [s.strip() for s in lines if s.strip() != '']
 
     # system specific settings
     if platform.system() == "Windows":
@@ -124,8 +128,7 @@ def setupLibMSEED():
                                src + 'unpack.c', src + 'unpackdata.c',
                                src + 'selection.c', src + 'logging.c',
                                src + 'parseutils.c',
-                               os.path.join('obspy', 'mseed', 'src',
-                                            'obspy-readbuffer.c')],
+                               src_obspy + 'obspy-readbuffer.c'],
                       export_symbols=symbols,
                       extra_link_args=extra_link_args,
                       extra_compile_args=extra_compile_args)

@@ -3,7 +3,7 @@
 from StringIO import StringIO
 from obspy.core import UTCDateTime
 from obspy.mseed import util
-from obspy.mseed.mseed import readMSEED
+from obspy.mseed.core import readMSEED
 import numpy as np
 import os
 import random
@@ -174,7 +174,7 @@ class MSEEDUtilTestCase(unittest.TestCase):
                                    'BW.BGLD.__.EHE.D.2008.001.first_record')
         # 64 Bytes header.
         data_string = open(steim1_file, 'rb').read()[64:]
-        data = util.unpack_steim1(data_string, 412, swapflag=self.swap,
+        data = util._unpackSteim1(data_string, 412, swapflag=self.swap,
                                    verbose=0)
         data_record = readMSEED(steim1_file)[0].data
         np.testing.assert_array_equal(data, data_record)
@@ -187,7 +187,7 @@ class MSEEDUtilTestCase(unittest.TestCase):
         steim2_file = os.path.join(self.path, 'data', 'steim2.mseed')
         # 128 Bytes header.
         data_string = open(steim2_file, 'rb').read()[128:]
-        data = util.unpack_steim2(data_string, 5980, swapflag=self.swap,
+        data = util._unpackSteim2(data_string, 5980, swapflag=self.swap,
                                    verbose=0)
         data_record = readMSEED(steim2_file)[0].data
         np.testing.assert_array_equal(data, data_record)

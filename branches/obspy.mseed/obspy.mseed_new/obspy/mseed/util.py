@@ -10,7 +10,7 @@ import numpy as np
 import os
 
 
-def unpack_steim1(data_string, npts, swapflag=0, verbose=0):
+def _unpackSteim1(data_string, npts, swapflag=0, verbose=0):
     """
     Unpack steim1 compressed data given as string.
 
@@ -35,7 +35,7 @@ def unpack_steim1(data_string, npts, swapflag=0, verbose=0):
     return datasamples
 
 
-def unpack_steim2(data_string, npts, swapflag=0, verbose=0):
+def _unpackSteim2(data_string, npts, swapflag=0, verbose=0):
     """
     Unpack steim2 compressed data given as string.
 
@@ -124,8 +124,20 @@ def _convertMSTimeToDatetime(timestring):
 
 def getFileformatInformation(filename):
     """
-    Reads the first record and returns all information about the Mini-SEED
-    file format is can find.
+    Reads the first record and returns information about the Mini-SEED file.
+
+    :type filename: str
+    :param filename: MiniSEED file name.
+    :return: Dictionary containing record length (``reclen``), ``encoding`` and
+        ``byteorder`` of the first record of given Mini-SEED file.
+
+    .. rubric:: Example
+
+    >>> from obspy.core.util import getExampleFile  # needed to get the \
+absolute path of test file
+    >>> filename = getExampleFile("test.mseed")
+    >>> getFileformatInformation(filename)  # doctest: +NORMALIZE_WHITESPACE
+    {'reclen': 4096, 'encoding': 11, 'byteorder': 1}
     """
     # Create _MSStruct instance to read the file.
     ms = _MSStruct(filename)
@@ -165,18 +177,28 @@ def _getMSFileInfo(f, real_name):
 
 def getStartAndEndTime(filename):
     """
-    Returns the start- and endtime of a MiniSEED file as a tuple
-    containing two datetime objects.
-    Method using ms_readmsr_r
+    Returns the start- and endtime of a MiniSEED file.
 
-    This method only reads the first and the last record. Thus it will only
-    work correctly for files containing only one trace with all records
-    in the correct order.
+    :type filename: str
+    :param filename: MiniSEED file name.
+    :return: tuple (start time of first record, end time of last record)
+
+    This method returns the start- and endtime of a MiniSEED file as a tuple
+    containing two datetime objects. It only reads the first and the last
+    record. Thus it will only work correctly for files containing only one
+    trace with all records in the correct order.
 
     The returned endtime is the time of the last datasample and not the
     time that the last sample covers.
 
-    :param filename: MiniSEED file string.
+    .. rubric:: Example
+
+    >>> from obspy.core.util import getExampleFile  # needed to get the \
+absolute path of test file
+    >>> filename = getExampleFile("BW.BGLD.__.EHE.D.2008.001.first_10_records")
+    >>> getStartAndEndTime(filename)  # doctest: +NORMALIZE_WHITESPACE
+    (UTCDateTime(2007, 12, 31, 23, 59, 59, 915000), \
+UTCDateTime(2008, 1, 1, 0, 0, 20, 510000))
     """
     # Get the starttime
     ms = _MSStruct(filename)
@@ -190,8 +212,22 @@ def getStartAndEndTime(filename):
 
 def getTimingQuality(filename, first_record=True, rl_autodetection=-1):
     """
-    Reads timing quality and returns a dictionary containing statistics
-    about it.
+    Reads timing quality and returns statistics about it.
+
+    :type filename: str
+    :param filename: MiniSEED file name.
+    :param first_record: Determines whether all records are assumed to
+        either have a timing quality in Blockette 1001 or not depending on
+        whether the first records has one. If True and the first records
+        does not have a timing quality it will not parse the whole file. If
+        False is will parse the whole file anyway and search for a timing
+        quality in each record. Defaults to True.
+    :param rl_autodetection: Determines the auto-detection of the record
+        lengths in the file. If 0 only the length of the first record is
+        detected automatically. All subsequent records are then assumed
+        to have the same record length. If -1 the length of each record
+        is automatically detected. Defaults to -1.
+    :return: Dictionary of quality statistics.
 
     This method will read the timing quality in Blockette 1001 for each
     record in the file if available and return the following statistics:
@@ -209,18 +245,14 @@ def getTimingQuality(filename, first_record=True, rl_autodetection=-1):
     The median is calculating by either taking the middle value or, with an
     even numbers of values, the average between the two middle values.
 
-    :param filename: Mini-SEED file to be parsed.
-    :param first_record: Determines whether all records are assumed to
-        either have a timing quality in Blockette 1001 or not depending on
-        whether the first records has one. If True and the first records
-        does not have a timing quality it will not parse the whole file. If
-        False is will parse the whole file anyway and search for a timing
-        quality in each record. Defaults to True.
-    :param rl_autodetection: Determines the auto-detection of the record
-        lengths in the file. If 0 only the length of the first record is
-        detected automatically. All subsequent records are then assumed
-        to have the same record length. If -1 the length of each record
-        is automatically detected. Defaults to -1.
+    .. rubric:: Example
+
+    >>> from obspy.core.util import getExampleFile  # needed to get the \
+absolute path of test file
+    >>> filename = getExampleFile("timingquality.mseed")
+    >>> getTimingQuality(filename)  # doctest: +NORMALIZE_WHITESPACE
+    {'min': 0.0, 'max': 100.0, 'average': 50.0, 'median': 50.0, \
+'upper_quantile': 75.0, 'lower_quantile': 25.0}
     """
     # Get some information about the file.
     fp = open(filename, 'rb')
@@ -265,27 +297,39 @@ def getTimingQuality(filename, first_record=True, rl_autodetection=-1):
 
 def getDataQualityFlagsCount(filename):
     """
-    Counts all data quality flags of the given MiniSEED file.
+    Counts all data quality flags of the given Mini-SEED file.
 
-    This method will count all set data quality flag bits in the fixed
-    section of the data header in a MiniSEED file and returns the total
-    count for each flag type.
-
-    Data quality flags
-     - [Bit 0] Amplifier saturation detected (station dependent)
-     - [Bit 1] Digitizer clipping detected
-     - [Bit 2] Spikes detected
-     - [Bit 3] Glitches detected
-     - [Bit 4] Missing/padded data present
-     - [Bit 5] Telemetry synchronization error
-     - [Bit 6] A digital filter may be charging
-     - [Bit 7] Time tag is questionable
-
-    This will only work correctly if each record in the file has the same
-    record length.
-
+    :type filename: str
     :param filename: MiniSEED file name.
     :return: List of all flag counts.
+
+    This method will count all set data quality flag bits in the fixed section
+    of the data header in a Mini-SEED file and returns the total count for each
+    flag type. This will only work correctly if each record in the file has the
+    same record length.
+
+    .. rubric:: Data quality flags
+
+    ========  =================================================
+    Bit       Description
+    ========  =================================================
+    [Bit 0]   Amplifier saturation detected (station dependent)
+    [Bit 1]   Digitizer clipping detected
+    [Bit 2]   Spikes detected
+    [Bit 3]   Glitches detected
+    [Bit 4]   Missing/padded data present
+    [Bit 5]   Telemetry synchronization error
+    [Bit 6]   A digital filter may be charging
+    [Bit 7]   Time tag is questionable
+    ========  =================================================
+
+    .. rubric:: Example
+
+    >>> from obspy.core.util import getExampleFile  # needed to get the \
+absolute path of test file
+    >>> filename = getExampleFile("qualityflags.mseed")
+    >>> getDataQualityFlagsCount(filename)
+    [9, 8, 7, 6, 5, 4, 3, 2]
     """
     # Open the file.
     mseedfile = open(filename, 'rb')
@@ -323,3 +367,8 @@ def _convertMSRToDict(m):
     for _i in attributes:
         h[_i] = getattr(m, _i)
     return h
+
+
+if __name__ == '__main__':
+    import doctest
+    doctest.testmod(exclude_empty=True)

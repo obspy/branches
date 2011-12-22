@@ -1,26 +1,27 @@
 # -*- coding: utf-8 -*-
 
-import ctypes as C
+from headers import clibmseed, ENCODINGS, HPTMODULUS, SAMPLETYPE, DATATYPES, \
+    SAMPLESIZES, VALID_RECORD_LENGTHS, HPTERROR, SelectTime, Selections, \
+    blkt_1001_s, VALID_CONTROL_HEADERS, SEED_CONTROL_HEADERS
 from itertools import izip
 from math import log
-import numpy as np
-import os
-import warnings
-
 from obspy.core import Stream, Trace, UTCDateTime
 from obspy.core.util import NATIVE_BYTEORDER
-from headers import clibmseed, ENCODINGS, HPTMODULUS, \
-        SAMPLETYPE, DATATYPES, SAMPLESIZES, VALID_RECORD_LENGTHS, \
-        HPTERROR, SelectTime, Selections, blkt_1001_s, \
-        VALID_CONTROL_HEADERS, SEED_CONTROL_HEADERS
+import ctypes as C
+import numpy as np
+import os
 import util
+import warnings
 
 
 def isMSEED(filename):
     """
-    Tests whether a file is a MiniSEED file or not.
+    Checks whether a file is Mini-SEED/full SEED or not.
 
-    Returns True on success or False otherwise.
+    :type filename: string
+    :param filename: Mini-SEED/full SEED file to be checked.
+    :rtype: bool
+    :return: ``True`` if a Mini-SEED file.
 
     This method only reads the first seven bytes of the file and checks
     whether its a MiniSEED or fullSEED file.
@@ -30,8 +31,6 @@ def isMSEED(filename):
     checks if it has a data part and returns False otherwise.
 
     Thus it cannot be used to validate a MiniSEED or SEED file.
-
-    :param filename: MiniSEED file.
     """
     fp = open(filename, 'rb')
     header = fp.read(7)
@@ -89,8 +88,11 @@ def isMSEED(filename):
 def readMSEED(mseed_object, starttime=None, endtime=None, sourcename=None,
               readMSInfo=True, headonly=False, reclen=None, **kwargs):
     """
-    Takes a file like object that contains binary MiniSEED data and returns an
-    obspy.core.Stream object.
+    Reads a Mini-SEED file and returns a Stream object.
+
+    .. warning::
+        This function should NOT be called directly, it registers via the
+        ObsPy :func:`~obspy.core.stream.read` function, call this instead.
 
     :param mseed_object: Filename or open file like object that contains the
         binary MiniSEED data. Any object that provides a read() method will be
@@ -115,8 +117,11 @@ def readMSEED(mseed_object, starttime=None, endtime=None, sourcename=None,
         record. If it is known, just set it to the record length in bytes which
         will increase the reading speed slightly.
 
-    Example usage
-    =============
+    .. rubric:: Example
+
+    >>> from obspy.core import read
+    >>> st = read("/path/to/test.mseed")
+
     The following example will read all EHZ channels from the BW network from
     the binary data in mseed_data. Only the first hour of 2010 will be read.
 
@@ -315,12 +320,10 @@ def writeMSEED(stream, filename, encoding=None, reclen=None, byteorder=None,
     """
     Write Mini-SEED file from a Stream object.
 
-    The reclen, encoding and byteorder keyword arguments can be set in the
-    trace.stats.mseed AttribDict as well as as kwargs. If both are set the
-    kwargs will be used.
+    .. warning::
+        This function should NOT be called directly, it registers via the
+        the :meth:`~obspy.core.stream.Stream.write` method of an
 
-    Parameters
-    ----------
     stream_object : :class:`~obspy.core.stream.Stream`
         A Stream object. Data in stream object must be of type int32.
         NOTE: They are automatically adapted if necessary
@@ -349,6 +352,17 @@ def writeMSEED(stream, filename, encoding=None, reclen=None, byteorder=None,
     verbose : int, optional
         Controls verbosity, a value of zero will result in no diagnostic
         output.
+
+    .. note::
+        The reclen, encoding and byteorder keyword arguments can be set
+        in the trace.stats.mseed AttribDict as well as as kwargs. If both are
+        set the kwargs will be used.
+
+    .. rubric:: Example
+
+    >>> from obspy.core import read
+    >>> st = read()
+    >>> st.write('filename.mseed', format='MSEED') #doctest: +SKIP
     """
     # Some sanity checks for the keyword arguments.
     if reclen is not None and reclen not in VALID_RECORD_LENGTHS:
@@ -687,3 +701,8 @@ class MSTG(object):
         Simply returns the mstg.
         """
         return self.mstg
+
+
+if __name__ == '__main__':
+    import doctest
+    doctest.testmod(exclude_empty=True)

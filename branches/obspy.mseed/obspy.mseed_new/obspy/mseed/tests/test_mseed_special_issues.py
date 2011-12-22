@@ -4,7 +4,7 @@ from obspy.core import UTCDateTime, Stream, Trace, read
 from obspy.core.util import NamedTemporaryFile
 from obspy.mseed import util
 from obspy.mseed.headers import clibmseed, PyFile_FromFile
-from obspy.mseed.mseed import readMSEED, writeMSEED
+from obspy.mseed.core import readMSEED, writeMSEED
 from obspy.mseed.msstruct import _MSStruct
 from struct import unpack
 import ctypes as C
@@ -112,8 +112,8 @@ class MSEEDSpecialIssueTestCase(unittest.TestCase):
         file = os.path.join(self.path, "data", "brokenlastrecord.mseed")
         # independent reading of the data
         data_string = open(file, 'rb').read()[128:]  # 128 Bytes header
-        data = util.unpack_steim2(data_string, 5980, swapflag=self.swap,
-                                   verbose=0)
+        data = util._unpackSteim2(data_string, 5980, swapflag=self.swap,
+                                  verbose=0)
         # test readMSTraces
         data_record = readMSEED(file)[0].data
         np.testing.assert_array_equal(data, data_record)
