@@ -1,4 +1,7 @@
 # -*- coding: utf-8 -*-
+"""
+MSEED bindings to ObsPy core module.
+"""
 
 from headers import clibmseed, ENCODINGS, HPTMODULUS, SAMPLETYPE, DATATYPES, \
     SAMPLESIZES, VALID_RECORD_LENGTHS, HPTERROR, SelectTime, Selections, \

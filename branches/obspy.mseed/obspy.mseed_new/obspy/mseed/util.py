@@ -1,4 +1,7 @@
 # -*- coding: utf-8 -*-
+"""
+Mini-SEED specific utilities.
+"""
 
 from headers import HPTMODULUS, clibmseed, FRAME, SAMPLESIZES
 from msstruct import _MSStruct
