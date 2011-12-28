@@ -13,6 +13,7 @@ from glob import glob, iglob, has_magic
 from obspy.core.utcdatetime import UTCDateTime
 from obspy.core.util import NamedTemporaryFile, getExampleFile, uncompressFile
 from obspy.core.util.attribdict import AttribDict
+import StringIO
 import os
 import urllib2
 try:
@@ -73,89 +74,145 @@ def readQuakeML(pathname_or_url=None):
     return cat
 
 
+def _readSeisHubEventXML(filename):
+    """
+    Reads a single SeisHub event XML file and returns a ObsPy Catalog object.
+    """
+    # XXX: very ugly way to add new root tags
+    lines = open(filename, 'rt').readlines()
+    lines.insert(2, '<quakeml xmlns="http://quakeml.org/xmlns/quakeml/1.0">\n')
+    lines.insert(3, '  <eventParameters>')
+    lines.append('  </eventParameters>\n')
+    lines.append('</quakeml>\n')
+    temp = StringIO.StringIO(''.join(lines))
+    return _readQuakeML(temp)
+
+
 @uncompressFile
 def _readQuakeML(filename):
     """
     Reads a single QuakeML file and returns a ObsPy Catalog object.
     """
     xml_doc = etree.parse(filename)
+    xml_root = xml_doc.getroot()
     catalog = Catalog()
-    for event_xml in __xml2obj(xml_doc.getroot(), 'eventParameters/event'):
+    # check for namespace
+    for namespace in ['http://quakeml.org/xmlns/quakeml/1.0',
+                      'http://quakeml.org/xmlns/bed/1.2', '']:
+        obj = __xml2obj(xml_root, 'eventParameters', namespace=namespace)
+        if obj:
+            break
+    if not namespace:
+        raise Exception("Not a QuakeML compatible file: %s." % filename)
+    for event_xml in __xml2obj(xml_root, 'eventParameters/event',
+                               namespace=namespace):
         # create new Event object
         event = Event()
         # preferred items
-        preferred_origin = __xml2obj(event_xml, 'preferredOriginID', str)
-        preferred_magnitude = __xml2obj(event_xml, 'preferredMagnitudeID', str)
+        preferred_origin = __xml2obj(event_xml, 'preferredOriginID', str,
+                                     namespace=namespace)
+        preferred_magnitude = __xml2obj(event_xml, 'preferredMagnitudeID', str,
+                                        namespace=namespace)
         preferred_focal_mechanism = \
-            __xml2obj(event_xml, 'preferredFocalMechanismID', str)
+            __xml2obj(event_xml, 'preferredFocalMechanismID', str,
+                      namespace=namespace)
         # event type
-        event.type = __xml2obj(event_xml, 'type', str)
+        event.type = __xml2obj(event_xml, 'type', str, namespace=namespace)
         # creation info
         event.creation_info = AttribDict()
         event.creation_info.agency_uri = \
-            __xml2obj(event_xml, 'creationInfo/agencyURI', str)
+            __xml2obj(event_xml, 'creationInfo/agencyURI', str,
+                      namespace=namespace)
         event.creation_info.author_uri = \
-            __xml2obj(event_xml, 'creationInfo/authorURI', str)
+            __xml2obj(event_xml, 'creationInfo/authorURI', str,
+                      namespace=namespace)
         event.creation_info.creation_time = \
-            __xml2obj(event_xml, 'creationInfo/creationTime', UTCDateTime)
+            __xml2obj(event_xml, 'creationInfo/creationTime', UTCDateTime,
+                      namespace=namespace)
         event.creation_info.version = \
-            __xml2obj(event_xml, 'creationInfo/version', str)
+            __xml2obj(event_xml, 'creationInfo/version', str,
+                      namespace=namespace)
         # description
         event.description = AttribDict()
-        event.description.type = __xml2obj(event_xml, 'description/type', str)
-        event.description.text = __xml2obj(event_xml, 'description/text', str)
+        event.description.type = __xml2obj(event_xml, 'description/type', str,
+                                           namespace=namespace)
+        event.description.text = __xml2obj(event_xml, 'description/text', str,
+                                           namespace=namespace)
         # origins
         event.origins = []
-        for origin_xml in __xml2obj(event_xml, 'origin'):
+        for origin_xml in __xml2obj(event_xml, 'origin', namespace=namespace):
             origin = Origin()
             origin.public_id = origin_xml.get('publicID')
-            origin.time = __xml2obj(origin_xml, 'time/value', UTCDateTime)
+            origin.time = __xml2obj(origin_xml, 'time/value', UTCDateTime,
+                                    namespace=namespace)
             origin.time_uncertainty = \
-                __xml2obj(origin_xml, 'time/uncertainty', float)
-            origin.latitude = __xml2obj(origin_xml, 'latitude/value', float)
+                __xml2obj(origin_xml, 'time/uncertainty', float,
+                          namespace=namespace)
+            origin.latitude = __xml2obj(origin_xml, 'latitude/value', float,
+                                        namespace=namespace)
             origin.latitude_uncertainty = \
-                __xml2obj(origin_xml, 'latitude/uncertainty', float)
-            origin.longitude = __xml2obj(origin_xml, 'longitude/value', float)
+                __xml2obj(origin_xml, 'latitude/uncertainty', float,
+                          namespace=namespace)
+            origin.longitude = __xml2obj(origin_xml, 'longitude/value', float,
+                                         namespace=namespace)
             origin.longitude_uncertainty = \
-                __xml2obj(origin_xml, 'longitude/uncertainty', float)
-            origin.depth = __xml2obj(origin_xml, 'depth/value', float)
+                __xml2obj(origin_xml, 'longitude/uncertainty', float,
+                          namespace=namespace)
+            origin.depth = __xml2obj(origin_xml, 'depth/value', float,
+                                     namespace=namespace)
             origin.depth_uncertainty = \
-                __xml2obj(origin_xml, 'depth/uncertainty', float)
-            origin.depth_type = __xml2obj(origin_xml, 'depthType', str)
-            origin.method_id = __xml2obj(origin_xml, 'depthType', str)
+                __xml2obj(origin_xml, 'depth/uncertainty', float,
+                          namespace=namespace)
+            origin.depth_type = __xml2obj(origin_xml, 'depthType', str,
+                                          namespace=namespace)
+            origin.method_id = __xml2obj(origin_xml, 'depthType', str,
+                                         namespace=namespace)
             # quality
             origin.quality.used_station_count = \
-                __xml2obj(origin_xml, 'quality/usedStationCount', int)
+                __xml2obj(origin_xml, 'quality/usedStationCount', int,
+                          namespace=namespace)
             origin.quality.standard_error = \
-                __xml2obj(origin_xml, 'quality/standardError', float)
+                __xml2obj(origin_xml, 'quality/standardError', float,
+                          namespace=namespace)
             origin.quality.azimuthal_gap = \
-                __xml2obj(origin_xml, 'quality/azimuthalGap', float)
+                __xml2obj(origin_xml, 'quality/azimuthalGap', float,
+                          namespace=namespace)
             origin.quality.maximum_distance = \
-                __xml2obj(origin_xml, 'quality/maximumDistance', float)
+                __xml2obj(origin_xml, 'quality/maximumDistance', float,
+                          namespace=namespace)
             origin.quality.minimum_distance = \
-                __xml2obj(origin_xml, 'quality/minimumDistance', float)
-            origin.type = __xml2obj(origin_xml, 'type', str)
+                __xml2obj(origin_xml, 'quality/minimumDistance', float,
+                          namespace=namespace)
+            origin.type = __xml2obj(origin_xml, 'type', str,
+                                    namespace=namespace)
             origin.evaluation_mode = \
-                __xml2obj(origin_xml, 'evaluationMode', str)
+                __xml2obj(origin_xml, 'evaluationMode', str,
+                          namespace=namespace)
             origin.evaluation_status = \
-                __xml2obj(origin_xml, 'evaluationStatus', str)
-            origin.comment = __xml2obj(origin_xml, 'comment', str)
+                __xml2obj(origin_xml, 'evaluationStatus', str,
+                          namespace=namespace)
+            origin.comment = __xml2obj(origin_xml, 'comment', str,
+                                       namespace=namespace)
             # creationInfo
             origin.creation_info.agency_uri = \
-                __xml2obj(origin_xml, 'creationInfo/agencyURI', str)
+                __xml2obj(origin_xml, 'creationInfo/agencyURI', str,
+                          namespace=namespace)
             origin.creation_info.author_uri = \
-                __xml2obj(origin_xml, 'creationInfo/authorURI', str)
+                __xml2obj(origin_xml, 'creationInfo/authorURI', str,
+                          namespace=namespace)
             # originUncertainty
             origin.origin_uncertainty.min_horizontal_uncertainty = \
                 __xml2obj(origin_xml,
-                          'originUncertainty/minHorizontalUncertainty', float)
+                          'originUncertainty/minHorizontalUncertainty', float,
+                          namespace=namespace)
             origin.origin_uncertainty.max_horizontal_uncertainty = \
                 __xml2obj(origin_xml,
-                          'originUncertainty/maxHorizontalUncertainty', float)
+                          'originUncertainty/maxHorizontalUncertainty', float,
+                          namespace=namespace)
             origin.origin_uncertainty.azimuth_max_horizontal_uncertainty = \
                 __xml2obj(origin_xml,
                           'originUncertainty/azimuthMaxHorizontalUncertainty',
-                          float)
+                          float, namespace=namespace)
             # add preferred origin to front
             if origin.public_id == preferred_origin:
                 event.origins.insert(0, origin)
@@ -163,20 +220,27 @@ def _readQuakeML(filename):
                 event.origins.append(origin)
         # magnitudes
         event.magnitudes = []
-        for mag_xml in __xml2obj(event_xml, 'magnitude'):
+        for mag_xml in __xml2obj(event_xml, 'magnitude', namespace=namespace):
             magnitude = Origin()
             magnitude.public_id = mag_xml.get('publicID')
-            magnitude.magnitude = __xml2obj(mag_xml, 'mag/value', float)
+            magnitude.magnitude = __xml2obj(mag_xml, 'mag/value', float,
+                                            namespace=namespace)
             magnitude.magnitude_uncertainty = \
-                __xml2obj(mag_xml, 'mag/uncertainty', float)
-            magnitude.type = __xml2obj(mag_xml, 'type', str)
-            magnitude.origin_id = __xml2obj(mag_xml, 'originID', str)
-            magnitude.station_count = __xml2obj(mag_xml, 'stationCount', int)
+                __xml2obj(mag_xml, 'mag/uncertainty', float,
+                          namespace=namespace)
+            magnitude.type = __xml2obj(mag_xml, 'type', str,
+                                       namespace=namespace)
+            magnitude.origin_id = __xml2obj(mag_xml, 'originID', str,
+                                            namespace=namespace)
+            magnitude.station_count = __xml2obj(mag_xml, 'stationCount', int,
+                                                namespace=namespace)
             # creationInfo
             magnitude.creation_info.agency_uri = \
-                __xml2obj(origin_xml, 'creationInfo/agencyURI', str)
+                __xml2obj(origin_xml, 'creationInfo/agencyURI', str,
+                          namespace=namespace)
             magnitude.creation_info.author_uri = \
-                __xml2obj(origin_xml, 'creationInfo/authorURI', str)
+                __xml2obj(origin_xml, 'creationInfo/authorURI', str,
+                          namespace=namespace)
             # add preferred magnitude to front
             if magnitude.public_id == preferred_magnitude:
                 event.magnitudes.insert(0, magnitude)
@@ -194,8 +258,7 @@ def writeQuakeML(catalog):
     raise NotImplementedError
 
 
-def __xml2obj(xml_doc, xpath, convert_to=None,
-              namespace='http://quakeml.org/xmlns/quakeml/1.0'):
+def __xml2obj(xml_doc, xpath, convert_to=None, namespace=''):
     """
     """
     parts = xpath.split('/')
@@ -267,14 +330,14 @@ class Event(AttribDict):
     type = None
 
     def __str__(self):
-        out = '%s (%.3f, %.3f)' % (self.preferred_origin.time,
+        out = '%s | %+7.3f, %+8.3f' % (self.preferred_origin.time,
                                    self.preferred_origin.latitude,
                                    self.preferred_origin.longitude)
         if self.preferred_magnitude:
-            out += ' - %s %s' % (self.preferred_magnitude.magnitude,
+            out += ' | %s %s' % (self.preferred_magnitude.magnitude,
                                  self.preferred_magnitude.type)
         if self.preferred_origin.evaluation_mode:
-            out += ' - %s' % (self.preferred_origin.evaluation_mode)
+            out += ' | %s' % (self.preferred_origin.evaluation_mode)
         return out
 
     def getPreferredMagnitude(self):
@@ -318,6 +381,36 @@ class Event(AttribDict):
         return None
 
     preferred_focal_mechanism_id = property(getPreferredFocalMechanismID)
+
+    def getTime(self):
+        return self.preferred_origin.time
+
+    time = property(getTime)
+    datetime = time
+
+    def getLatitude(self):
+        return self.preferred_origin.latitude
+
+    latitude = property(getLatitude)
+    lat = latitude
+
+    def getLongitude(self):
+        return self.preferred_origin.longitude
+
+    longitude = property(getLongitude)
+    lon = longitude
+
+    def getMagnitude(self):
+        return self.preferred_magnitude.magnitude
+
+    magnitude = property(getMagnitude)
+    mag = magnitude
+
+    def getMagnitudeType(self):
+        return self.preferred_magnitude.type
+
+    magnitude_type = property(getMagnitudeType)
+    mag_type = magnitude_type
 
 
 class Catalog(object):
@@ -465,10 +558,11 @@ class Catalog(object):
 
 
 if __name__ == '__main__':
-    import StringIO
-    from obspy.neries import Client
-    data = Client(user='test@obspy.org').getLatestEvents(20)
-    cat = _readQuakeML(StringIO.StringIO(data))
-    #cat = readQuakeML('quakeml.xml')
+#    import StringIO
+#    from obspy.neries import Client
+#    data = Client(user='test@obspy.org').getLatestEvents(20)
+#    cat = _readQuakeML(StringIO.StringIO(data))
+#    import pdb;pdb.set_trace()
+    cat = _readSeisHubEventXML('obspyck.xml')
     print cat
     cat.plot()
