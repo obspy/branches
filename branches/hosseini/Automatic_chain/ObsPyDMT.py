@@ -74,7 +74,7 @@ from obspy.arclink import Client as Client_arclink
 
 client_neries = Client_neries()
 client_iris = Client_iris()
-#client_arclink = Client_arclink()
+client_arclink = Client_arclink()
 
 ####################################################################################################################################
 ########################################################### Main Program ###########################################################
@@ -90,7 +90,7 @@ def ObsPyDMT():
 	"""
 	
 	t1_pro = datetime.now()
-
+	
 	print '--------------------------------------------------------------------------------'
 	bold = "\033[1m"
 	reset = "\033[0;0m"
@@ -179,6 +179,14 @@ def ObsPyDMT():
 		
 		QC_ARC(input)
 		
+	# ------------------------getFolderSize--------------------------------	
+	size = getFolderSize(input['Address']) 
+	
+	print '\n' + '****************************************************************'
+	print 'Folder size:'
+	print str(size/1.e6) + ' MB'
+	print '****************************************************************'
+	
 	# ------------------------Email--------------------------------	
 	if input['email'] == 'Y':
 		
@@ -205,9 +213,12 @@ def ObsPyDMT():
 	bold = "\033[1m"
 	reset = "\033[0;0m"
 	print '\t\t' + bold + 'ObsPyDMT ' + reset + '(' + bold + 'ObsPy D' + reset + 'ata ' + bold + 'M' + reset + 'anagement ' + bold + 'T' + reset + 'ool)' + reset + '\n'
-
-	#print "Total Time:"
-	#print t_pro
+	
+	t2_pro = datetime.now()
+	t_pro = t2_pro - t1_pro
+		
+	print "Total Time:"
+	print t_pro
 	print '--------------------------------------------------------------------------------'
 
 
@@ -915,40 +926,19 @@ def IRIS_get_Waveform(input, Sta_req, channel, interactive, type):
 				#'Start_time': Sta_Start_time, 'End_time': Sta_End_time, \
 				#'Latitude': Sta_Lat, 'Longitude': Sta_Lon, 'Elevation': Sta_Elevation, \
 				#'Location_code': Sta_loc_code, 'Channel_code': Sta_chan_code}
-				dic[j] ={'Info': Sta_net_code + '.' + Sta_sta_code + '.' + Sta_loc_code + '.' + Sta_chan_code, 'Network': Sta_net_code, \
-					'Station': Sta_sta_code, 'Latitude': Sta_Lat, 'Longitude': Sta_Lon, \
-					'Location': Sta_loc_code, 'Channel': Sta_chan_code, 'Elevation': Sta_Elevation}
+				dic[j] ={'info': Sta_net_code + '.' + Sta_sta_code + '.' + Sta_loc_code + '.' + Sta_chan_code, 'net': Sta_net_code, \
+					'sta': Sta_sta_code, 'latitude': Sta_Lat, 'longitude': Sta_Lon, \
+					'loc': Sta_loc_code, 'cha': Sta_chan_code, 'elevation': Sta_Elevation, 'depth': 0}
 				
 				if input['SAC'] == 'Y':
+					writesac(address_st = Address_events + '/' + events[i]['event_id'] +\
+							'/IRIS/BH_RAW/' + Sta_req[i][j][0] + '.' + Sta_req[i][j][1] + '.' + \
+							Sta_req[i][j][2] + '.' + channel, sta_info = dic[j], ev_info = events[i])
 					
-					st = read(Address_events + '/' + events[i]['event_id'] +\
-							'/IRIS/BH_RAW/' + Sta_req[i][j][0] +	'.' + Sta_req[i][j][1] + '.' + \
-							Sta_req[i][j][2] + '.' + channel)
-					st[0].write(Address_events + '/' + events[i]['event_id'] +\
-							'/IRIS/BH_RAW/' + Sta_req[i][j][0] +	'.' + Sta_req[i][j][1] + '.' + \
-							Sta_req[i][j][2] + '.' + channel, 'SAC')
-					st = read(Address_events + '/' + events[i]['event_id'] +\
-							'/IRIS/BH_RAW/' + Sta_req[i][j][0] +	'.' + Sta_req[i][j][1] + '.' + \
-							Sta_req[i][j][2] + '.' + channel)
-					
-					st[0].stats['sac']['stla'] = dic[j]['Latitude']
-					st[0].stats['sac']['stlo'] = dic[j]['Longitude']
-					st[0].stats['sac']['stel'] = dic[j]['Elevation']
-					
-					st[0].stats['sac']['evla'] = events[i]['latitude']
-					st[0].stats['sac']['evlo'] = events[i]['longitude']
-					st[0].stats['sac']['evdp'] = events[i]['depth']
-					st[0].stats['sac']['mag'] = events[i]['magnitude']
-					
-					st[0].write(Address_events + '/' + events[i]['event_id'] +\
-							'/IRIS/BH_RAW/' + Sta_req[i][j][0] +	'.' + Sta_req[i][j][1] + '.' + \
-							Sta_req[i][j][2] + '.' + channel, 'SAC')
-
 				Syn_file = open(Address_events + '/' + events[i]['event_id'] + \
 					'/IRIS/info/' + 'iris_' + channel, 'a')
-				syn = dic[j]['Network'] + ',' + dic[j]['Station'] + ',' + \
-					dic[j]['Location'] + ',' + dic[j]['Channel'] + ',' + dic[j]['Latitude'] + \
-					',' + dic[j]['Longitude'] + ',' + dic[j]['Elevation'] + ',' + '0' + ',' + events[i]['event_id'] + ',' + str(events[i]['latitude']) \
+				syn = dic[j]['net'] + ',' + dic[j]['sta'] + ',' + dic[j]['loc'] + ',' + dic[j]['cha'] + ',' + dic[j]['latitude'] + \
+					',' + dic[j]['longitude'] + ',' + dic[j]['elevation'] + ',' + '0' + ',' + events[i]['event_id'] + ',' + str(events[i]['latitude']) \
 					 + ',' + str(events[i]['longitude']) + ',' + str(events[i]['depth']) + ',' + str(events[i]['magnitude']) + ',' + '\n'
 				Syn_file.writelines(syn)
 				Syn_file.close()
@@ -1314,35 +1304,12 @@ def ARC_get_Waveform(input, Sta_req, channel, interactive, type):
 				dum = Sta_req[i][j][0] + '.' + Sta_req[i][j][1]
 				
 				if input['SAC'] == 'Y':
-							
-					st = read(Address_events + '/' + events[i]['event_id'] + \
-							'/ARC/BH_RAW/' + Sta_req[i][j][0] +	'.' + Sta_req[i][j][1] + '.' + \
-							Sta_req[i][j][2] + '.' + channel)
-					st[0].write(Address_events + '/' + events[i]['event_id'] + \
-							'/ARC/BH_RAW/' + Sta_req[i][j][0] +	'.' + Sta_req[i][j][1] + '.' + \
-							Sta_req[i][j][2] + '.' + channel, 'SAC')
-					st = read(Address_events + '/' + events[i]['event_id'] + \
-							'/ARC/BH_RAW/' + Sta_req[i][j][0] +	'.' + Sta_req[i][j][1] + '.' + \
-							Sta_req[i][j][2] + '.' + channel)
 					
-					if inv[j][dum]['latitude'] != None:
-						st[0].stats['sac']['stla'] = inv[j][dum]['latitude']
-					if inv[j][dum]['longitude'] != None:
-						st[0].stats['sac']['stlo'] = inv[j][dum]['longitude']
-					if inv[j][dum]['elevation'] != None:
-						st[0].stats['sac']['stel'] = inv[j][dum]['elevation']
-					if inv[j][dum]['depth'] != None:
-						st[0].stats['sac']['stdp'] = inv[j][dum]['depth']
-					
-					st[0].stats['sac']['evla'] = events[i]['latitude']
-					st[0].stats['sac']['evlo'] = events[i]['longitude']
-					st[0].stats['sac']['evdp'] = events[i]['depth']
-					st[0].stats['sac']['mag'] = events[i]['magnitude']
-					
-					st[0].write(Address_events + '/' + events[i]['event_id'] + \
+					writesac(address_st = Address_events + '/' + events[i]['event_id'] + \
 							'/ARC/BH_RAW/' + Sta_req[i][j][0] +	'.' + Sta_req[i][j][1] + '.' + \
-							Sta_req[i][j][2] + '.' + channel, 'SAC')
-
+							Sta_req[i][j][2] + '.' + channel, sta_info = inv[j][dum], ev_info = events[i])
+					
+					
 				Syn_file = open(Address_events + '/' + events[i]['event_id'] + \
 					'/ARC/info/' + 'arc_' + channel, 'a')
 				syn = Sta_req[i][j][0] + ',' + Sta_req[i][j][1] + ',' + \
@@ -2603,9 +2570,11 @@ def report_DMT(input):
 ###################################################### getFolderSize ######################################################
 
 def getFolderSize(folder):
+
 	"""
 	Returns the size of a folder in bytes.
 	"""
+
 	total_size = os.path.getsize(folder)
 	for item in os.listdir(folder):
 		itempath = os.path.join(folder, item)
@@ -2615,13 +2584,39 @@ def getFolderSize(folder):
 			total_size += getFolderSize(itempath)
 	return total_size
 
+###################################################### writesac ######################################################
+
+def writesac(address_st, sta_info, ev_info):
+	
+	st = read(address_st)
+	st[0].write(address_st, 'SAC')
+	st = read(address_st)
+	
+	if sta_info['latitude'] != None:
+		st[0].stats['sac']['stla'] = sta_info['latitude']
+	if sta_info['longitude'] != None:
+		st[0].stats['sac']['stlo'] = sta_info['longitude']
+	if sta_info['elevation'] != None:
+		st[0].stats['sac']['stel'] = sta_info['elevation']
+	if sta_info['depth'] != None:
+		st[0].stats['sac']['stdp'] = sta_info['depth']
+	
+	if ev_info['latitude'] != None:
+		st[0].stats['sac']['evla'] = ev_info['latitude']	
+	if ev_info['longitude'] != None:
+		st[0].stats['sac']['evlo'] = ev_info['longitude']	
+	if ev_info['depth'] != None:
+		st[0].stats['sac']['evdp'] = ev_info['depth']
+	if ev_info['magnitude'] != None:
+		st[0].stats['sac']['mag'] = ev_info['magnitude']
+	
+		
+	st[0].write(address_st, 'SAC')
+
 #########################################################################################################################
 #########################################################################################################################
 #########################################################################################################################
 
 if __name__ == "__main__":
 	status = ObsPyDMT()
-	#size = getFolderSize(input['Address'])
-	#print "This folder: " + input['Address'] + "is:"
-	#print str(size) + " bytes"
 	#sys.exit(status)

@@ -3,11 +3,11 @@
 set add = $1
 
 
-set rep_IRIS = "$add/*/*/IRIS/STATION/report_st"
-set rep_ARC = "$add/*/*/ARC/STATION/report_st"
+set rep_IRIS = "$add/*/*/IRIS/info/report_st"
+set rep_ARC = "$add/*/*/ARC/info/report_st"
 
-set exc_IRIS = "$add/*/*/IRIS/EXCEP/excep_iris"
-set exc_ARC = "$add/*/*/ARC/EXCEP/excep_arc"
+set exc_IRIS = "$add/*/*/IRIS/Excep_py/excep_iris"
+set exc_ARC = "$add/*/*/ARC/Excep_py/excep_arc"
 
 set DQ_IRIS = "$add/*/*/IRIS/QC/DQ"
 set DQ_ARC = "$add/*/*/ARC/QC/DQ"

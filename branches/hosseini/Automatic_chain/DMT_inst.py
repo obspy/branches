@@ -40,6 +40,8 @@ import os
 import sys
 import ConfigParser
 import pickle
+import tarfile
+import glob
 
 ####################################################################################################################################
 ########################################################### Main Program ###########################################################
@@ -145,8 +147,15 @@ def read_input():
 	input['ArcLink_inst'] = config.get('instrument_correction', 'ArcLink_inst')
 	input['corr_unit'] = config.get('instrument_correction', 'corr_unit')
 	input['pre_filt'] = config.get('instrument_correction', 'pre_filter')
-	input['pre_filt'] = tuple(float(s) for s in input['pre_filt'][1:-1].split(','))
-			
+	
+	if input['pre_filt'] == 'None':
+		input['pre_filt'] = None
+	else:
+		input['pre_filt'] = tuple(float(s) for s in input['pre_filt'][1:-1].split(','))
+	
+	input['RAW_comp'] = config.get('instrument_correction', 'RAW_comp')
+	input['Resp_comp'] = config.get('instrument_correction', 'Resp_comp')
+		
 	return input
 
 ###################################################### inst_IRIS ######################################################
@@ -201,19 +210,24 @@ def inst_IRIS(input, channel, interactive = 'N'):
 	
 	input_file = []
 	
+	if input['corr_unit'] == 'DIS':
+		BH_file = 'BH'
+	else:
+		BH_file = 'BH_' + input['corr_unit']
+	
 	for l in range(0, len_events):
 		
 		input_file.append(open(Address_events + '/' + events[l]['event_id'] + '/IRIS/info/iris_' + channel))
 		
 		try:
-			os.makedirs(Address_events + '/' + events[l]['event_id'] + '/IRIS/BH_' + input['corr_unit'])
+			os.makedirs(Address_events + '/' + events[l]['event_id'] + '/IRIS/' + BH_file)
 			
 		except Exception, e:
 			print '********************************************'
 			print e
 			print '********************************************'
 			print "This folder:"
-			print Address_events + '/' + events[l]['event_id'] + '/IRIS/BH_' + input['corr_unit']
+			print Address_events + '/' + events[l]['event_id'] + '/IRIS/' + BH_file
 			print "exists in your directory..."
 			print 'The program will continue in the same folder!'
 			
@@ -258,8 +272,43 @@ def inst_IRIS(input, channel, interactive = 'N'):
 			print 'Response file:'
 			print resp_file
 			
-			inst_corr(trace = tr, resp_file = resp_file, Address = Address_events + '/' + events[l]['event_id'] + '/IRIS/BH_' + input['corr_unit'] + '/', \
+			inst_corr(trace = tr, resp_file = resp_file, Address = Address_events + '/' + events[l]['event_id'] + '/IRIS/' + BH_file + '/', \
 				unit = input['corr_unit'], BP_filter = input['pre_filt'])
+	
+	
+	# ---------Creating Tar files (Response files)
+	
+	if input['RAW_comp'] == 'Y':
+						
+		print '*********************'
+		print 'Compressing Raw files'
+		print '*********************'
+		
+		for l in range(0, len_events):
+			
+			path = Address_events + '/' + events[l]['event_id'] + '/IRIS/BH_RAW/'
+			tar_file = os.path.join(path, 'BH_RAW.tar')
+			files = '*.*.*'
+			
+			compress_gzip(path = path, tar_file = tar_file, files = files)
+			
+			
+	# ---------Creating Tar files (Response files)
+	
+	if input['Resp_comp'] == 'Y':
+				
+		print '**************************'
+		print 'Compressing Response files'
+		print '**************************'
+		
+		for l in range(0, len_events):
+		
+			path = Address_events + '/' + events[l]['event_id'] + '/IRIS/Resp/'
+			tar_file = os.path.join(path, 'Resp.tar')
+			files = 'RESP.*'
+			
+			compress_gzip(path = path, tar_file = tar_file, files = files)
+	
 	
 	t_inst_2 = datetime.now()
 	
@@ -320,19 +369,24 @@ def inst_ARC(input, channel, interactive = 'N'):
 	
 	input_file = []
 	
+	if input['corr_unit'] == 'DIS':
+		BH_file = 'BH'
+	else:
+		BH_file = 'BH_' + input['corr_unit']
+	
 	for l in range(0, len_events):
 		
 		input_file.append(open(Address_events + '/' + events[l]['event_id'] + '/ARC/info/arc_' + channel))
 		
 		try:
-			os.makedirs(Address_events + '/' + events[l]['event_id'] + '/ARC/BH_' + input['corr_unit'])
+			os.makedirs(Address_events + '/' + events[l]['event_id'] + '/ARC/' + BH_file)
 			
 		except Exception, e:
 			print '********************************************'
 			print e
 			print '********************************************'
 			print "This folder:"
-			print Address_events + '/' + events[l]['event_id'] + '/ARC/BH_' + input['corr_unit']
+			print Address_events + '/' + events[l]['event_id'] + '/ARC/' + BH_file
 			print "exists in your directory..."
 			print 'The program will continue in the same folder!'
 			
@@ -377,8 +431,43 @@ def inst_ARC(input, channel, interactive = 'N'):
 			print 'Response file:'
 			print resp_file
 			
-			inst_corr(trace = tr, resp_file = resp_file, Address = Address_events + '/' + events[l]['event_id'] + '/ARC/BH_' + input['corr_unit'] + '/', \
+			inst_corr(trace = tr, resp_file = resp_file, Address = Address_events + '/' + events[l]['event_id'] + '/ARC/' + BH_file + '/', \
 				unit = input['corr_unit'], BP_filter = input['pre_filt'])
+	
+	
+	# ---------Creating Tar files (Response files)
+	
+	if input['RAW_comp'] == 'Y':
+				
+		print '*********************'
+		print 'Compressing Raw files'
+		print '*********************'
+		
+		for l in range(0, len_events):
+			
+			path = Address_events + '/' + events[l]['event_id'] + '/ARC/BH_RAW/'
+			tar_file = os.path.join(path, 'BH_RAW.tar')
+			files = '*.*.*'
+			
+			compress_gzip(path = path, tar_file = tar_file, files = files)
+			
+			
+	# ---------Creating Tar files (Response files)
+	
+	if input['Resp_comp'] == 'Y':
+		
+		print '**************************'
+		print 'Compressing Response files'
+		print '**************************'
+		
+		for l in range(0, len_events):
+		
+			path = Address_events + '/' + events[l]['event_id'] + '/ARC/Resp/'
+			tar_file = os.path.join(path, 'Resp.tar')
+			files = 'RESP.*'
+			
+			compress_gzip(path = path, tar_file = tar_file, files = files)
+	
 	
 	t_inst_2 = datetime.now()
 	
@@ -445,8 +534,8 @@ def inst_corr(trace, resp_file, Address, unit = 'DIS', BP_filter = (0.008, 0.012
 				
 		else:
 		'''
-		trace.write(Address + \
-				trace.stats['network'] + '.' + trace.stats['station'] + '.' + trace.stats['location'] + \
+		
+		trace.write(Address + unit.lower() + '.' + trace.stats['station'] + '.' + trace.stats['location'] + \
 				'.' + trace.stats['channel'], format = 'SAC')
 		
 		print '-----------------------'
@@ -455,6 +544,24 @@ def inst_corr(trace, resp_file, Address, unit = 'DIS', BP_filter = (0.008, 0.012
 		
 	except Exception, e:
 		print e
+
+###################################################### compress_gzip ######################################################
+
+def compress_gzip(path, tar_file, files):
+			
+	tar = tarfile.open(tar_file, "w:gz")
+	os.chdir(path)
+	
+	for infile in glob.glob( os.path.join(path, files) ):
+		
+		print '------------------------------------'
+		print 'Compressing:'
+		print infile
+		
+		tar.add(infile.split('/')[-1])
+		os.remove(infile)
+	
+	tar.close()
 
 #########################################################################################################################
 #########################################################################################################################
