@@ -34,6 +34,7 @@ CREATE_SQL = """
         timestamp INTEGER,
         tests INTEGER,
         errors INTEGER,
+        failures INTEGER,
         modules INTEGER,
         node TEXT,
         system TEXT,
@@ -43,22 +44,22 @@ CREATE_SQL = """
 """
 
 INSERT_SQL = """
-    INSERT INTO report (timestamp, tests, errors, modules, system,
-        architecture, version, xml, node) 
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO report (timestamp, tests, errors, failures, modules,
+        system, architecture, version, xml, node) 
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 """
 
 SELECT_ALL_SQL = """
-    SELECT id, timestamp, tests, errors, modules, system, architecture,
-        version, xml, node 
+    SELECT id, timestamp, tests, errors, failures, modules, system,
+        architecture, version, xml, node 
     FROM report
     %s 
     ORDER BY timestamp DESC LIMIT 20
 """
 
 SELECT_SQL = """
-    SELECT id, timestamp, tests, errors, modules, system, architecture, 
-        version, xml, node
+    SELECT id, timestamp, tests, errors, failures, modules, system,
+        architecture, version, xml, node
     FROM report 
     WHERE id=?
 """
@@ -102,6 +103,7 @@ class MyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         self.wfile.write("""
         <style type='text/css'>%s</style>
         """ % temp_css)
+
     def _filter(self, id, items, qargs={}):
         url = "/?filter&amp;"
         for key, value in qargs.iteritems():
@@ -110,15 +112,15 @@ class MyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             url += '%s=%s&amp;' % (key, value)
         out = '<ul class="filter">'
         if id in qargs:
-            out += '  <li><a href="%s">all</a></li>' % (url)
+            out += '  <li><a href="%s">all</a>&nbsp;</li>' % (url)
         else:
-            out += '  <li><b>all</b></li>'
+            out += '  <li><b>all</b>&nbsp;</li>'
         for item in items:
             out += "  <li>"
             if id in qargs and item == qargs[id]:
-                out += "<b>%s</b>" % (item)
+                out += "<b>%s</b>&nbsp;" % (item)
             else:
-                out += '<a href="%s%s=%s">%s</a>' % (url, id, item, item)
+                out += '<a href="%s%s=%s">%s</a>&nbsp;' % (url, id, item, item)
             out += "  </li>"
         out += "</ul>"
         return out
@@ -139,13 +141,13 @@ class MyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header("Content-type", "text/xml")
             self.end_headers()
-            self.wfile.write(item[8])
+            self.wfile.write(item[9])
         elif self.path.startswith('/?id='):
             try:
                 id = int(self.path[5:])
                 result = conn.execute(SELECT_SQL, (id,))
                 item = result.fetchone()
-                root = etree.parse(StringIO(item[8])).getroot()
+                root = etree.parse(StringIO(item[9])).getroot()
             except Exception, e:
                 print e
                 self.send_response(200)
@@ -159,45 +161,65 @@ class MyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             self.wfile.write("<title>Report #%s</title>" % id)
             self._stylesheet()
             self.wfile.write("</head>")
-            self.wfile.write("<body><h1>Report #%s</h1>" % id)
-            self.wfile.write("<p><a href='?id=%d'>&lt;&lt;&lt;</a>" % (id - 1))
-            self.wfile.write(" <a href='?'>Return to overview</a>")
-            self.wfile.write(" <a href='?id=%d'>&gt;&gt;&gt;</a></p>" % (id + 1))
-            self.wfile.write("<h2>Platform</h2>")
+            self.wfile.write("<body>")
+            self.wfile.write("<a href='http://www.obspy.org'><img ")
+            self.wfile.write(" style='float: right; border: none;' ")
+            self.wfile.write(" src='http://obspy.org/www/obspy-logo.png' alt='ObsPy Logo' /></a>")
+            self.wfile.write("<h1>Report #%s</h1>" % id)
+            self.wfile.write("<p><a href='?id=%d' title='previous test'>&lt;&lt;&lt;</a>" % (id - 1))
+            self.wfile.write(" &nbsp; <a href='?' title='start page'>Return to Overview</a> &nbsp; ")
+            self.wfile.write(" <a href='?id=%d' title='next test'>&gt;&gt;&gt;</a></p>" % (id + 1))
+            self.wfile.write("<h2>General Information</h2>")
             self.wfile.write("<ul>")
+            timetaken = float(root.findtext('timetaken'))
+            self.wfile.write("<li><b>Total Runtime</b> : %.3fs</li>" % (timetaken))
+            self.wfile.write("<li><b>Report File</b> : <a href='/?xml_id=%s'>XML Document</a></li>" % (id))
             for item in root.find('platform')._children:
-                self.wfile.write("<li><b>%s</b> : %s</li>" % (item.tag, item.text))
+                tag = item.tag.replace('_',' ').title()
+                self.wfile.write("<li><b>%s</b> : %s</li>" % (tag, item.text))
             self.wfile.write("</ul>")
             self.wfile.write("<h2>Dependencies</h2>\n")
             self.wfile.write("<ul>")
-            for item in root.find('dependencies')._children:
-                self.wfile.write("<li><b>%s</b> : %s</li>" % (item.tag, item.text))
+            children = root.find('dependencies')._children
+            dependencies = dict([(c.tag, c) for c in children])
+            for key in sorted(dependencies.keys()):
+                self.wfile.write("<li><b>%s</b> : %s</li>" % (key, dependencies[key].text))
             self.wfile.write("</ul>")
             self.wfile.write("<h2>ObsPy</h2>\n")
             self.wfile.write("<table>\n")
             self.wfile.write("  <tr>\n")
-            self.wfile.write("    <th width='200'>Module</th>\n")
-            self.wfile.write("    <th width='200'>Version</th>\n")
+            self.wfile.write("    <th>Module</th>\n")
+            self.wfile.write("    <th>Version</th>\n")
             self.wfile.write("    <th>Errors/Failures</th>\n")
+            self.wfile.write("    <th>Total / Average Runtime</th>\n")
             self.wfile.write("    <th>Tracebacks</th>\n")
             self.wfile.write("  </tr>\n")
             errlog = ""
             errid = 0
-            for item in root.find('obspy')._children:
+            children = root.find('obspy')._children
+            modules = dict([(c.tag, c) for c in children])
+            for key in sorted(modules.keys()):
+                item = modules[key]
                 errcases = ""
                 self.wfile.write("  <tr>\n")
                 version = item.findtext('installed')
-                self.wfile.write("    <td>obspy.%s</td>" % (item.tag))
+                self.wfile.write("    <td>obspy.%s</td>" % (key))
                 self.wfile.write("    <td>%s</td>" % (version))
                 if item.find('tested') != None:
+                    timetaken = float(item.findtext('timetaken'))
                     tests = int(item.findtext('tests'))
+                    try:
+                        avg = float(timetaken) / tests
+                    except:
+                        avg = 0
                     errors = 0
+                    failures = 0
                     for sitem in item.find('errors')._children:
                         temp = sitem.text
                         temp = temp.replace('&' , '&amp;')
                         temp = temp.replace('<' , '&lt;')
                         temp = temp.replace('>' , '&gt;')
-                        errlog += "<a name='%d'><h5>#%d</h5></a>" % (errid, errid)
+                        errlog += "<a name='%d'><h4>obspy.%s #%d</h4></a>" % (errid, key, errid)
                         errlog += "<pre>%s</pre>" % temp
                         errcases += "<a href='#%d'>#%d</a> " % (errid, errid)
                         errid += 1
@@ -207,19 +229,30 @@ class MyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                         temp = temp.replace('&' , '&amp;')
                         temp = temp.replace('<' , '&lt;')
                         temp = temp.replace('>' , '&gt;')
-                        errlog += "<a name='%d'><h5>#%d</h5></a>" % (errid, errid)
+                        errlog += "<a name='%d'><h4>obspy.%s #%d</h4></a>" % (errid, key, errid)
                         errlog += "<pre>%s</pre>" % temp
                         errcases += "<a href='#%d'>#%d</a> " % (errid, errid)
-                        errors += 1
+                        failures += 1
                         errid += 1
+                    # error color
                     if errors > 0:
                         color = "error"
+                    elif failures > 0:
+                        color = "failure"
                     else:
                         color = "ok"
-                    self.wfile.write("    <td class='%s'>%d of %d</td>" % (color, errors, tests))
+                    self.wfile.write("    <td class='%s'>%d of %d</td>" % (color, errors+failures, tests))
+                    # time colors
+                    if avg > 0.1:
+                        color = "badtime"
+                    elif avg > 0.05:
+                        color = "slowtime"
+                    else:
+                        color = "oktime"
+                    self.wfile.write("<td class='%s'>%.3fs / %.3fs</td>" % (color, timetaken, avg))
+                    self.wfile.write("<td>%s</td>" % (errcases))
                 else:
-                    self.wfile.write("    <td>Not tested</td>\n")
-                self.wfile.write("<td>%s</td>" % (errcases))
+                    self.wfile.write("    <td colspan='3' style='color: grey'>Not tested</td>\n")
                 self.wfile.write("  </tr>\n")
             self.wfile.write("</table>\n")
             self.wfile.write(errlog)
@@ -267,14 +300,18 @@ class MyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 data['id'] = item[0]
                 data['datetime'] = datetime.datetime.fromtimestamp(item[1])
                 data['tests'] = int(item[2])
-                data['errors'] = int(item[3])
-                data['modules'] = int(item[4])
-                data['system'] = item[5]
-                data['arch'] = item[6]
-                data['version'] = item[7]
-                data['node'] = item[9]
-                if int(item[3]):
+                data['errors'] = errors = int(item[3])
+                data['failures'] = failures = int(item[4])
+                data['sum'] = sum = errors + failures
+                data['modules'] = int(item[5])
+                data['system'] = item[6]
+                data['arch'] = item[7]
+                data['version'] = item[8]
+                data['node'] = item[10]
+                if errors:
                     data['status'] = "error"
+                elif failures:
+                    data['status'] = "failure"
                 else:
                     data['status'] = "ok"
                 rows += temp.safe_substitute(**data)
@@ -302,6 +339,7 @@ class MyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             ts = int(form['timestamp'].value)
             xml_doc = form['xml'].value
             errors = int(form['errors'].value)
+            failures = int(form['failures'].value)
             modules = int(form['modules'].value)
             tests = int(form['tests'].value)
             system = form['system'].value
@@ -309,7 +347,7 @@ class MyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             architecture = form['architecture'].value
             root = etree.parse(StringIO(xml_doc)).getroot()
             node = root.findtext('platform/node')
-            conn.execute(INSERT_SQL, (ts, tests, errors, modules, system,
+            conn.execute(INSERT_SQL, (ts, tests, errors, failures, modules, system,
                                       architecture, python_version, xml_doc, node))
             conn.commit()
         except Exception, e:
