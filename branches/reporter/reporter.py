@@ -92,12 +92,13 @@ except:
     pass
 
 # fetch default filter
-ARCHS = [i[0] for i in conn.execute(SELECT_ARCHS_SQL).fetchall()]
-VERSIONS = [i[0] for i in conn.execute(SELECT_VERSIONS_SQL).fetchall()]
-SYSTEMS = [i[0] for i in conn.execute(SELECT_SYSTEMS_SQL).fetchall()]
 
 
 class MyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
+
+    ARCHS = [i[0] for i in conn.execute(SELECT_ARCHS_SQL).fetchall()]
+    VERSIONS = [i[0] for i in conn.execute(SELECT_VERSIONS_SQL).fetchall()]
+    SYSTEMS = [i[0] for i in conn.execute(SELECT_SYSTEMS_SQL).fetchall()]
 
     def _stylesheet(self):
         self.wfile.write("""
@@ -255,7 +256,9 @@ class MyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                     self.wfile.write("    <td colspan='3' style='color: grey'>Not tested</td>\n")
                 self.wfile.write("  </tr>\n")
             self.wfile.write("</table>\n")
-            self.wfile.write(errlog)
+            if errlog:
+                self.wfile.write("<h2>Tracebacks</h2>")
+                self.wfile.write(errlog)
             try:
                 log = root.findtext('install_log')
                 log = unicode(log).encode("utf-8")
@@ -273,15 +276,15 @@ class MyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             filter = ''
             qargs = {}
             if 'system' in query and len(query['system']) == 1 and \
-               query['system'][0] in SYSTEMS:
+               query['system'][0] in self.SYSTEMS:
                 qargs['system'] = query['system'][0]
                 filter += "AND system='%s' " % qargs['system']
             if 'arch' in query and len(query['arch']) == 1 and \
-                query['arch'][0] in ARCHS:
+                query['arch'][0] in self.ARCHS:
                     qargs['arch'] = query['arch'][0]
                     filter += "AND architecture='%s' " % qargs['arch']
             if 'version' in query and len(query['version']) == 1 and \
-               query['version'][0] in VERSIONS:
+               query['version'][0] in self.VERSIONS:
                 qargs['version'] = query['version'][0]
                 filter += "AND version='%s' " % qargs['version']
             if filter:
@@ -318,9 +321,9 @@ class MyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             data = {}
             data['CSS'] = temp_css
             data['DATA'] = rows
-            data['FILTER_SYSTEM'] = self._filter('system', SYSTEMS, qargs)
-            data['FILTER_ARCH'] = self._filter('arch', ARCHS, qargs)
-            data['FILTER_VERSION'] = self._filter('version', VERSIONS, qargs)
+            data['FILTER_SYSTEM'] = self._filter('system', self.SYSTEMS, qargs)
+            data['FILTER_ARCH'] = self._filter('arch', self.ARCHS, qargs)
+            data['FILTER_VERSION'] = self._filter('version', self.VERSIONS, qargs)
             out = Template(temp_index).safe_substitute(**data)
             self.wfile.write(out)
 
