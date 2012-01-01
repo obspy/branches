@@ -157,7 +157,7 @@ else:
         """
         global quitflag
         with lock:
-            if quitflag :
+            if quitflag:
                 msg = "Quitting. To resume the download, just run " + \
                 "ObsPyLoad again, using the same arguments."
                 print msg
@@ -276,7 +276,6 @@ def main(**kwargs):
          obspyload -H) as well as the ObsPyLoad manual (available on the ObsPy
          SVN server) for further documentation.
     """
-
     global datapath, quitflag, done, skip_networks
     quitflag = False
     # dead networks deactivated for now
@@ -442,6 +441,13 @@ def main(**kwargs):
               "want to plot the data and no phases, use -a none."
     parser.add_option("-a", "--phases", action="store", dest="phases",
                       help=helpmsg)
+    helpmsg = "Create plots for an existing data folder previously " + \
+              "downloaded without the plotting option. May be used with " + \
+              "-P to specify the path to the folder, otherwise the default" + \
+              " path is used. Has to be used together with -I to specify " + \
+              "the plot properties."
+    parser.add_option("-c", "--create-plots", action="store_true",
+                      dest="plotmode", help=helpmsg)
     parser.add_option("-d", "--debug", action="store_true", dest="debug",
                       help="Show debugging information.")
     # (\\label{lst:optionend})
@@ -579,12 +585,6 @@ def main(**kwargs):
     ## if the user has given e.g. -r x/x/x/x or -t time1/time
     # extract min. and max. longitude and latitude if the user has given the
     # coordinates with -r (GMT syntax)
-    if options.rect:
-        if options.lonmin or options.lonmax or options.latmin or options.latmax:
-            msg = "Either provide the rectangle with GMT syntax, or with " + \
-            "-x -X -y -Y, not both."
-            print msg
-            sys.exit(2)
         try:
             options.rect = options.rect.split('/')
             if options.debug:
@@ -678,11 +678,23 @@ def main(**kwargs):
                   options.lo, options.ch, options.permanent, options.debug)
         return
     # if -E oder --exceptions, do not enter normal data download operation,
-    # operation, but read exceptions.txt and try to download again and quit.
+    # but read exceptions.txt and try to download again and quit.
     if options.exceptions:
         print "ObsPyLoad will now try to download the data that returned " + \
               "an error other than 'no data available' last time.\n"
         exceptionMode(debug=options.debug)
+        return
+    # if -c or --create-plots, do not enter normal data download operation,
+    # but add plots to an existing data folder (enter plotmode)
+    if options.plotmode:
+        if not options.plt:
+            print "Please specify the plot properties with -I."
+            return
+        print "ObsPyLoad will now add the plots to the datapath specified " + \
+              "with -P (or to the default path).\n"
+        plotMode(datapath=datapath, pltWidth=pltWidth, pltHeight=pltHeight,
+                 colWidth=colWidth, timespan=timespan, pltPhases=pltPhases,
+                 model=options.model, debug=options.debug)
         return
     # if -u or --update, delete event and catalog pickled objects
     if options.update:
@@ -731,6 +743,11 @@ def main(**kwargs):
     # create datapath # (\\label{lst:datadl})
     if not os.path.exists(datapath):
         os.mkdir(datapath)
+    # initialize lists to hold downloaded data and elapsed time to create a
+    # downloaded data vs elapsed time plot later
+    dlplot_begin = time.time()
+    dlplot_x = [0]
+    dlplot_y = [getFolderSize(datapath)/(1024*1024.0)]
     # start keypress thread, so we can quit by pressing 'q' anytime from now on
     # during the downloads
     done = False
@@ -767,8 +784,8 @@ def main(**kwargs):
     headline = "event_id;datetime;origin_id;author;flynn_region;"
     headline += "latitude;longitude;depth;magnitude;magnitude_type;"
     headline += "DataQuality;TimingQualityMin\n" + "#" * 126 + "\n\n"
-    hl_eventf = "Station;Data Provider;TQ min;Gaps;Overlaps" + "\n"
-    hl_eventf += "#" * 42 + "\n\n"
+    hl_eventf = "Station;Data Provider;Lat;Lon;TQ min;Gaps;Overlaps" + "\n"
+    hl_eventf += "#" * 50 + "\n\n"
     catalogfp = os.path.join(datapath, 'catalog.txt')
     # open catalog file in read and write mode in case we are continuing d/l,
     # so we can append to the file
@@ -965,6 +982,7 @@ def main(**kwargs):
                 # else code will run if try returned no exception!
                 # write station name to event info line  # (\\label{lst:qcbeg})
                 il_quake = station + ';ArcLink;'
+                il_quake += str(stationlat) + ';' + str(stationlon) + ';'
                 # Quality Control with libmseed
                 dqsum += sum(mseed.getDataQualityFlagsCount(datafout))
                 # Timing Quality, trying to get all stations into one line in
@@ -1071,6 +1089,9 @@ def main(**kwargs):
                         print "stmatrix: ", stmatrix
                     print "done."  # (\\label{lst:trnormend})
                 del st
+            # add current elapsed time and folder size to the lists
+            dlplot_x.append(time.time() - dlplot_begin)
+            dlplot_y.append(getFolderSize(datapath)/(1024*1024.0))
         # (5.2) Iris wf data download loop  # (\\label{lst:5.2})
         for net, sta, loc, cha, stationlat, stationlon in avail:
             check_quit()
@@ -1131,6 +1152,7 @@ def main(**kwargs):
                 # data quality handling for iris
                 # write station name to event info line
                 il_quake = station + ';IRIS;'
+                il_quake += str(stationlat) + ';' + str(stationlon) + ';'
                 # Quality Control with libmseed
                 dqsum += sum(mseed.getDataQualityFlagsCount(irisfnfull))
                 # Timing Quality, trying to get all stations into one line in
@@ -1207,6 +1229,9 @@ def main(**kwargs):
                 il_quake += ';%d;%d\n' % (gaps, overlaps)
                 quakefout.write(il_quake)
                 quakefout.flush()
+            # add current elapsed time and folder size to the lists
+            dlplot_x.append(time.time() - dlplot_begin)
+            dlplot_y.append(getFolderSize(datapath)/(1024*1024.0))
         # write data quality info into catalog file event info line
         if dqsum == 0:
             infoline += ';0 (OK);'
@@ -1267,6 +1292,13 @@ def main(**kwargs):
             alleventsmatrix += stmatrix[1:, :]
             alleventsmatrix_counter += 1
             del stmatrix
+    # save plot of database size versus elapsed download time
+    plt.plot(dlplot_x, dlplot_y)
+    plt.xlabel('Time in seconds')
+    plt.ylabel('Folder size in megabytes')
+    titlemsg = "Folder size vs elapsed time"
+    plotfn = os.path.join(datapath, 'foldersize_vs_time.pdf')
+    plt.savefig(plotfn)
     # save plot of all events, similar as above, for comments see above
     if options.plt:
         print "Saving plot of all events stacked..."
@@ -1738,6 +1770,155 @@ def exceptionMode(debug):
     exceptionfout.close()
     done = True
     return
+
+
+def plotMode(datapath, pltWidth, pltHeight, colWidth, timespan, pltPhases,
+             model, debug):
+    """
+    This adds plots to an existing data folder.
+    """
+    # initialize matrix to hold the 'all-events stacked' plot
+    alleventsmatrix = np.zeros((pltHeight, pltWidth))
+    alleventsmatrix_counter = 0
+    # event catalog file handler
+    catalogfin = os.path.join(datapath, 'catalog.txt')
+    catalogfh = open(catalogfin, 'r')
+    # extract events from catalog file
+    events = catalogfh.readlines()[3:]
+    # loop over events, which is a list of csv-strings
+    for event in events:
+        # initialize matrix to hold this event's plot
+        stmatrix = np.zeros((pltHeight + 1, pltWidth))
+        # the first cs-value is the event identifier, ...
+        eventid = event.split(';')[0]
+        eventtime = UTCDateTime(event.split(';')[1])
+        eventlat = float(event.split(';')[5])
+        eventlon = float(event.split(';')[6])
+        eventdepth = float(event.split(';')[7])
+        if debug:
+            print "eventlat:", eventlat
+            print "eventlon:", eventlon
+        # concatenate event directory and quake catalog file strings
+        eventdir = os.path.join(datapath, eventid)
+        quakefin = os.path.join(eventdir, 'quake.txt')
+        # quake.txt file handler
+        quakefh = open(quakefin, 'r')
+        stations = quakefh.readlines()[9:]
+        # loop over stations, which is a list of csv-strings
+        for station in stations:
+            try:
+                stationid = station.split(';')[0]
+                stationlat = float(station.split(';')[2])
+                stationlon = float(station.split(';')[3])
+            except:
+                if debug:
+                    print "failed to obtain stationid, stationlat, stationlon"
+                continue
+            if debug:
+                print "stationid:", stationid
+                print "stationlat:", stationlat
+                print "stationlon:", stationlon
+            # calculate distance from event to station
+            distance = taup.locations2degrees(eventlat, eventlon, stationlat,
+                                              stationlon)
+            if debug:
+                print "distance:", distance
+            # open stream file for this station
+            streamfin = os.path.join(eventdir, stationid + '.mseed')
+            st = read(streamfin)
+            tr = st[0]
+            # trim trace to necessary timespan
+            if debug:
+                print "eventtime:", eventtime, type(eventtime)
+                print "timespan:", timespan, type(timespan)
+                print "endtime:", eventtime+timespan
+            tr.trim(starttime=eventtime,
+                    endtime=eventtime + timespan, pad=True, fill_value=0)
+            tr.normalize()
+            # interpolate to plot size using scipy
+            pixelcol = np.around(scipy.ndimage.interpolation.zoom(tr,
+                                 float(pltHeight) / len(tr)), 7)
+            x_coord = int((distance / 180.0) * pltWidth)
+            # floor down to the next multiple of the station column width:
+            x_coord -= x_coord % colWidth
+            pixelcol = np.hstack((1, abs(pixelcol)))
+            try:
+                print "Adding station to station plot...",
+                # add pixelcol to 1 or more columns, depending on the
+                # chosen width of the station columns  # (\\label{stm})
+                stmatrix[:, x_coord:x_coord + colWidth] += \
+                           np.vstack([pixelcol] * colWidth).transpose()
+            except:
+                print "failed."
+                continue
+            print "done."
+            if debug:
+                print stmatrix
+        # normalize each distance column - the [0, i] entry has been
+        # counting how many stations we did add at that distance
+        for i in range(pltWidth - 1):
+            if stmatrix[0, i] != 0:
+                stmatrix[:, i] /= stmatrix[0, i]
+        # [1:,:] because we do not want to display the counter
+        plt.imshow(stmatrix[1:, :], vmin=0.001, vmax=1,
+                   origin='lower', cmap=plt.cm.hot_r,
+                   norm=mpl.colors.LogNorm(vmin=0.001, vmax=1))
+        plt.xticks(range(0, pltWidth, pltWidth / 4),
+                         ('0', '45', '90', '135', '180'), rotation=45)
+        y_incr = timespan / 60 / 4
+        plt.yticks(range(0, pltHeight, pltHeight / 4),
+                  ('0', str(y_incr), str(2 * y_incr), str(3 * y_incr),
+                   str(3 * y_incr)))
+        plt.xlabel('Distance from epicenter in degrees')
+        plt.ylabel('Time after origin time in minutes')
+        titlemsg = "Event %s:\ndata and " % eventid + \
+                   "theoretical arrival times\n"
+        plt.title(titlemsg)
+        cbar = plt.colorbar()
+        mpl.colorbar.ColorbarBase.set_label(cbar, 'Relative amplitude')
+        # add taupe theoretical arrival times points to plot
+        # invoking travelTimePlot function, taken and fitted to my needs
+        # from the obspy.taup package
+        # choose npoints value depending on plot size, but not for every
+        # pixel so pdf conversion won't convert the points to a line
+        travelTimePlot(npoints=pltWidth / 10, phases=pltPhases,
+                       depth=eventdepth, model=model,
+                       pltWidth=pltWidth, pltHeight=pltHeight,
+                       timespan=timespan)
+        # construct filename and save event plots
+        print "Done with event %s, saving plots..." % eventid
+        plotfn = os.path.join(datapath, eventid, 'waveforms.pdf')
+        plt.savefig(plotfn)
+        # clear figure
+        plt.clf()
+        alleventsmatrix += stmatrix[1:, :]
+        alleventsmatrix_counter += 1
+        del stmatrix
+    # save plot of all events, similar as above, for comments see above
+    print "Saving plot of all events stacked..."
+    plt.imshow(alleventsmatrix / alleventsmatrix_counter,
+               origin='lower', cmap=plt.cm.hot_r,
+               norm=mpl.colors.LogNorm(vmin=0.01, vmax=1))
+    plt.xticks(range(0, pltWidth, pltWidth / 4),
+                     ('0', '45', '90', '135', '180'), rotation=45)
+    y_incr = timespan / 60 / 4
+    plt.yticks(range(0, pltHeight, pltHeight / 4),
+              ('0', str(y_incr), str(2 * y_incr), str(3 * y_incr),
+               str(3 * y_incr)))
+    plt.xlabel('Distance from epicenter in degrees')
+    plt.ylabel('Time after origin time in minutes')
+    titlemsg = "%s events data stacked\n" % len(events)
+    plt.title(titlemsg)
+    cbar = plt.colorbar()
+    mpl.colorbar.ColorbarBase.set_label(cbar, 'Relative amplitude')
+    travelTimePlot(npoints=pltWidth / 10, phases=pltPhases,
+                   depth=10, model=model,
+                   pltWidth=pltWidth, pltHeight=pltHeight,
+                   timespan=timespan)
+    plotfn = os.path.join(datapath, 'allevents_waveforms.pdf')
+    plt.savefig(plotfn)
+
+
 # (\\label{lst:addfct})
 ###########################################################
 # ADDITIONAL FUNCTIONS SECTION as described in the thesis #
@@ -1937,6 +2118,13 @@ def help():
     printWrap("", "Note: if you select phases with ticks(') in the " + \
               "phase name, don't forget to use quotes " + \
               "(-a \"phase1',phase2\") to avoid unintended behaviour.")
+    print
+    printWrap("-c[--create-plots]", "")
+    printWrap("", "Create plots for an existing data folder previously " + \
+              "downloaded without the plotting option. May be used " + \
+              "with -P to specify the path and with -a to specify the " + \
+              "phases. Has to be used together with " + \
+              "-I to specify the plot properties.")
     print "\n\n* specify additional options:\n"
     printWrap("-n[--no-temporary]", "")
     printWrap("", "Instead of downloading both temporary and permanent " + \
@@ -2000,6 +2188,10 @@ def help():
     printWrap("Download stations that failed last time " + \
               "(not necessary to re-enter the event/station restrictions):",
               "obspyload.py -E -P thisOrderHadExceptions -f")
+    print
+    printWrap("Add plots to an existing folder 'myfolder' specifying some " + \
+              "plotting options:",
+              "obspyload.py -c -P myfolder -I 1200x800x5/60 -a P,S,PP")
     print
     return
 
