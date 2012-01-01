@@ -861,17 +861,6 @@ def IRIS_get_Waveform(input, Sta_req, channel, interactive, type):
 						'/IRIS/BH_RAW/' + Sta_req[i][j][0] + '.' + Sta_req[i][j][1] + '.' + \
 						Sta_req[i][j][2] + '.' + channel, Sta_req[i][j][0], Sta_req[i][j][1], \
 						Sta_req[i][j][2], channel, t[i]-input['t_before'], t[i]+input['t_after'])
-						
-					t22 = datetime.now()
-					
-					if input['time_iris'] == 'Y':
-						time_iris = t22 - t11
-						time_file = open(Address_events + '/' + events[i]['event_id'] + \
-							'/IRIS/info/' + 'iris_time_' + channel, 'a')
-						ti = Sta_req[i][j][0] + ',' + Sta_req[i][j][1] + ',' + \
-							Sta_req[i][j][2] + ',' + Sta_req[i][j][3] + ',' + str(time_iris) + ',' + '\n'
-						time_file.writelines(ti)
-						time_file.close()
 					
 					print "Saving Waveform for: " + Sta_req[i][j][0] + '.' + Sta_req[i][j][1] + '.' + \
 						Sta_req[i][j][2] + '.' + channel + "  ---> DONE"  
@@ -950,8 +939,36 @@ def IRIS_get_Waveform(input, Sta_req, channel, interactive, type):
 				pickle.dump(dic[j], Station_file)
 				Station_file.close()
 				
+				t22 = datetime.now()
+					
+				if input['time_iris'] == 'Y':
+					time_iris = t22 - t11
+					time_file = open(Address_events + '/' + events[i]['event_id'] + \
+						'/IRIS/info/' + 'iris_time_' + channel, 'a')
+					size = getFolderSize(Address_events + '/' + events[i]['event_id'] + '/IRIS') 
+					print size/1.e6
+					ti = Sta_req[i][j][0] + ',' + Sta_req[i][j][1] + ',' + \
+						Sta_req[i][j][2] + ',' + Sta_req[i][j][3] + ',' + str(time_iris.seconds) + ',' + \
+						str(time_iris.microseconds) + ',' + str(size/1.e6) + ',' + '\n'
+					time_file.writelines(ti)
+					time_file.close()
+				
 			except Exception, e:	
 				
+				t22 = datetime.now()
+					
+				if input['time_iris'] == 'Y':
+					time_iris = t22 - t11
+					time_file = open(Address_events + '/' + events[i]['event_id'] + \
+						'/IRIS/info/' + 'iris_time_' + channel, 'a')
+					size = getFolderSize(Address_events + '/' + events[i]['event_id'] + '/IRIS') 
+					print size/1.e6
+					ti = Sta_req[i][j][0] + ',' + Sta_req[i][j][1] + ',' + \
+						Sta_req[i][j][2] + ',' + Sta_req[i][j][3] + ',' + str(time_iris.seconds) + ',' + \
+						str(time_iris.microseconds) + ',' + str(size/1.e6) + ',' + '\n'
+					time_file.writelines(ti)
+					time_file.close()
+								
 				print dummy + '---' + Sta_req[i][j][0] +	'.' + Sta_req[i][j][1] + \
 					'.' +Sta_req[i][j][2] + '.' + channel
 				
@@ -1224,7 +1241,6 @@ def ARC_get_Waveform(input, Sta_req, channel, interactive, type):
 			
 		else:	 
 			len_req_arc = len(Sta_req[i]) 		
-		
 
 		inv = {}
 			
@@ -1244,22 +1260,11 @@ def ARC_get_Waveform(input, Sta_req, channel, interactive, type):
 					dummy = 'Waveform'
 					
 					t11 = datetime.now()
-									
+				
 					client_arclink.saveWaveform(Address_events + '/' + events[i]['event_id'] + \
-						'/ARC/BH_RAW/' + Sta_req[i][j][0] +	'.' + Sta_req[i][j][1] + '.' + \
+						'/ARC/BH_RAW/' + Sta_req[i][j][0] + '.' + Sta_req[i][j][1] + '.' + \
 						Sta_req[i][j][2] + '.' + channel, Sta_req[i][j][0], Sta_req[i][j][1], \
 						Sta_req[i][j][2], channel, t[i]-input['t_before'], t[i]+input['t_after'])
-					
-					t22 = datetime.now()
-					
-					if input['time_arc'] == 'Y':
-						time_arc = t22 - t11
-						time_file = open(Address_events + '/' + events[i]['event_id'] + \
-							'/ARC/info/' + 'arc_time_' + channel, 'a')
-						ti = Sta_req[i][j][0] + ',' + Sta_req[i][j][1] + ',' + \
-							Sta_req[i][j][2] + ',' + Sta_req[i][j][3] + ',' + str(time_arc) + ',' + '\n'
-						time_file.writelines(ti)
-						time_file.close()
 					
 					print "Saving Waveform for: " + Sta_req[i][j][0] + '.' + Sta_req[i][j][1] + '.' + \
 						Sta_req[i][j][2] + '.' + channel + "  ---> DONE"  
@@ -1327,7 +1332,37 @@ def ARC_get_Waveform(input, Sta_req, channel, interactive, type):
 				pickle.dump(inv[j], Station_file)
 				Station_file.close()
 				
+				t22 = datetime.now()
+					
+				if input['time_arc'] == 'Y':
+					time_arc = t22 - t11
+					time_file = open(Address_events + '/' + events[i]['event_id'] + \
+						'/ARC/info/' + 'arc_time_' + channel, 'a')
+					size = getFolderSize(Address_events + '/' + events[i]['event_id'] + '/ARC')
+					print size/1.e6
+					ti = Sta_req[i][j][0] + ',' + Sta_req[i][j][1] + ',' + \
+						Sta_req[i][j][2] + ',' + Sta_req[i][j][3] + ',' + str(time_arc.seconds) + ',' + \
+						str(time_arc.microseconds) + ',' + str(size/1.e6) + ',' + '\n'
+					time_file.writelines(ti)
+					time_file.close()
+				
 			except Exception, e:	
+								
+			
+				t22 = datetime.now()
+				
+				if input['time_arc'] == 'Y':
+					time_arc = t22 - t11
+					time_file = open(Address_events + '/' + events[i]['event_id'] + \
+						'/ARC/info/' + 'arc_time_' + channel, 'a')
+					size = getFolderSize(Address_events + '/' + events[i]['event_id'] + '/ARC')
+					print size/1.e6
+					ti = Sta_req[i][j][0] + ',' + Sta_req[i][j][1] + ',' + \
+						Sta_req[i][j][2] + ',' + Sta_req[i][j][3] + ',' + str(time_arc.seconds) + ',' + \
+						str(time_arc.microseconds) + ',' + str(size/1.e6) + ',' + '\n'
+					time_file.writelines(ti)
+					time_file.close()
+			
 				
 				print dummy + '---' + Sta_req[i][j][0] +	'.' + Sta_req[i][j][1] + \
 					'.' +Sta_req[i][j][2] + '.' + channel
