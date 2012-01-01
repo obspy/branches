@@ -109,10 +109,10 @@ else:
         """
         This class will run as a second thread to capture keypress events
         """
-        global quitflag, done
+        global quitflag, done, dlplot_x, dlplot_y, dlplot_x_fp, dlplot_y_fp
 
         def run(self):
-            global quitflag, done
+            global quitflag, done, dlplot_x, dlplot_y, dlplot_x_fp, dlplot_y_fp
             msg = 'Keypress capture thread initialized...\n'
             msg += "Press 'q' at any time to finish " \
             + "the file in progress and quit."
@@ -155,12 +155,23 @@ else:
         """
         Checks if the user pressed q to quit downloading meanwhile.
         """
-        global quitflag
+        global quitflag, dlplot_x, dlplot_y, dlplot_x_fp, dlplot_y_fp
         with lock:
             if quitflag:
                 msg = "Quitting. To resume the download, just run " + \
                 "ObsPyLoad again, using the same arguments."
                 print msg
+                # dump current data-vs-time lists to file
+                # try-except since those variables only exist in data dl mode
+                try:
+                    dlplot_x_fh = open(dlplot_x_fp, 'wb')
+                    dlplot_y_fh = open(dlplot_y_fp, 'wb')
+                    pickle.dump(dlplot_x, dlplot_x_fh)
+                    pickle.dump(dlplot_y, dlplot_y_fh)
+                    dlplot_x_fh.close()
+                    dlplot_y_fh.close()
+                except:
+                    pass
                 sys.exit(0)
 # (\\label{lst:main})
 ####################################################
@@ -276,7 +287,8 @@ def main(**kwargs):
          obspyload -H) as well as the ObsPyLoad manual (available on the ObsPy
          SVN server) for further documentation.
     """
-    global datapath, quitflag, done, skip_networks
+    global datapath, quitflag, done, skip_networks, dlplot_x, dlplot_y
+    global dlplot_x_fp, dlplot_y_fp
     quitflag = False
     # dead networks deactivated for now
     skip_networks = []
@@ -745,9 +757,25 @@ def main(**kwargs):
         os.mkdir(datapath)
     # initialize lists to hold downloaded data and elapsed time to create a
     # downloaded data vs elapsed time plot later
-    dlplot_begin = time.time()
-    dlplot_x = [0]
-    dlplot_y = [getFolderSize(datapath)/(1024*1024.0)]
+    dlplot_x_fp = os.path.join(datapath, 'dlplot_x.pickle')
+    dlplot_y_fp = os.path.join(datapath, 'dlplot_y.pickle')
+    try:
+        # if this d/l is resumed, load the previous dl-plot data into memory
+        # b for binary file
+        dlplot_x_fh = open(dlplot_x_fp, 'rb')
+        dlplot_y_fh = open(dlplot_y_fp, 'rb')
+        dlplot_x = pickle.load(dlplot_x_fh)
+        dlplot_y = pickle.load(dlplot_y_fh)
+        dlplot_x_fh.close()
+        dlplot_y_fh.close()
+        dlplot_begin = time.time() - dlplot_x[-1]
+        print "Found previous data-vs-time plot file, resuming the plot..."
+    except:
+        # create new dlplot lists
+        print "Initializing new data-vs-time plot..."
+        dlplot_begin = time.time()
+        dlplot_x = [0]
+        dlplot_y = [getFolderSize(datapath) / (1024 * 1024.0)]
     # start keypress thread, so we can quit by pressing 'q' anytime from now on
     # during the downloads
     done = False
@@ -1091,7 +1119,7 @@ def main(**kwargs):
                 del st
             # add current elapsed time and folder size to the lists
             dlplot_x.append(time.time() - dlplot_begin)
-            dlplot_y.append(getFolderSize(datapath)/(1024*1024.0))
+            dlplot_y.append(getFolderSize(datapath) / (1024 * 1024.0))
         # (5.2) Iris wf data download loop  # (\\label{lst:5.2})
         for net, sta, loc, cha, stationlat, stationlon in avail:
             check_quit()
@@ -1231,7 +1259,7 @@ def main(**kwargs):
                 quakefout.flush()
             # add current elapsed time and folder size to the lists
             dlplot_x.append(time.time() - dlplot_begin)
-            dlplot_y.append(getFolderSize(datapath)/(1024*1024.0))
+            dlplot_y.append(getFolderSize(datapath) / (1024 * 1024.0))
         # write data quality info into catalog file event info line
         if dqsum == 0:
             infoline += ';0 (OK);'
@@ -1831,7 +1859,7 @@ def plotMode(datapath, pltWidth, pltHeight, colWidth, timespan, pltPhases,
             if debug:
                 print "eventtime:", eventtime, type(eventtime)
                 print "timespan:", timespan, type(timespan)
-                print "endtime:", eventtime+timespan
+                print "endtime:", eventtime + timespan
             tr.trim(starttime=eventtime,
                     endtime=eventtime + timespan, pad=True, fill_value=0)
             tr.normalize()
@@ -2012,8 +2040,8 @@ def help():
     """
     print "\nObsPyLoad: ObsPy Seismic Data Download tool."
     print "============================================\n\n"
-    print "The CLI allows for different flavors of usage, in short:"
-    print "--------------------------------------------------------\n"
+    print "There are two different flavors of usage, in short:"
+    print "---------------------------------------------------\n"
     printWrap("e.g.:", "obspyload.py -r <lonmin>/<lonmax>/<latmin>/<latmax>" \
           + "-t <start>/<end> -m <min_mag> -M <max_mag> -i <nw>.<st>.<l>.<ch>")
     printWrap("e.g.:", "obspyload.py -y <min_lon> -Y <max_lon> " + \
@@ -2225,7 +2253,7 @@ if __name__ == "__main__":
     signal.signal(signal.SIGINT, interrupt_handler)
     signal.siginterrupt(signal.SIGINT, False)
     """
-    global quitflag, done
+    global quitflag, done, dlplot_x, dlplot_y, dlplot_x_fp, dlplot_y_fp
     quitflag = False
     begin = time.time()
     status = main()
