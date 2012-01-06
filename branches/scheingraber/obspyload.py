@@ -15,7 +15,7 @@ This has been part of a Bachelor's Thesis at the University of Munich.
 #############################################
 # IMPORT SECTION as described in the thesis #
 #############################################
-# (\\label{lst:importbegin})
+#
 # added this line for python 2.5 compatibility
 from __future__ import with_statement
 import sys
@@ -47,6 +47,7 @@ import obspy.neries
 import obspy.arclink
 import obspy.iris
 from obspy.mseed.libmseed import LibMSEED
+from obspy.xseed import Parser
 from lxml import etree
 from obspy.taup import taup
 # using these modules to wrap the custom(long) help function
@@ -62,7 +63,7 @@ except Exception, error:
     print "Missing dependencies, no plotting available."
     pass
 
-# (\\label{lst:abbr})
+#
 ### may use these abbreviations ###
 # comments:                       #
 # d/l: download                   #
@@ -85,7 +86,7 @@ except Exception, error:
 ######################################################
 # KEYPRESS-THREAD SECTION as described in the thesis #
 ######################################################
-# (\\label{lst:keypresswin})
+#
 # this is to support windows without changing the rest
 if windows:
     class keypress_thread():
@@ -103,7 +104,7 @@ if windows:
         Does nothing, for windows support.
         """
         return
-# (\\label{lst:keypress})
+#
 else:
     class keypress_thread (threading.Thread):
         """
@@ -118,7 +119,7 @@ else:
             + "the file in progress and quit."
             print msg
             while not done:
-                c = getkey()  # (\\label{lst:getkeycall})
+                c = getkey()  #
                 print c
                 if c == 'q' and not done:
                     try:
@@ -173,7 +174,7 @@ else:
                 except:
                     pass
                 sys.exit(0)
-# (\\label{lst:main})
+#
 ####################################################
 # MAIN FUNCTION SECTION as described in the thesis #
 ####################################################
@@ -306,7 +307,7 @@ def main(**kwargs):
     # provide start and end time
     # default for start is three months ago, end is now
     # default offset is 80 min, preset 5min, default velocity model is 'iasp91'
-    config = ConfigParser({'magmin': '3',  # (\\label{lst:configstart})
+    config = ConfigParser({'magmin': '3',
                            'magmax': '12',
                            'latmin': '-90',
                            'latmax': '90',
@@ -325,14 +326,14 @@ def main(**kwargs):
                            'st': '*',
                            'lo': '*',
                            'ch': '*',
-                          })  # (\\label{lst:configend})
+                          })
 
     # read config file, if it exists, possibly overriding defaults
     config.read('~/.obspyloadrc')
 
     # create command line option parser
     # parser = OptionParser("%prog [options]" + __doc__.rstrip())
-    parser = OptionParser("%prog [options]")  # (\\label{lst:optionparse})
+    parser = OptionParser("%prog [options]")
 
     # configure command line options
     # action=".." tells OptionsParser what to save:
@@ -340,11 +341,9 @@ def main(**kwargs):
     # store_false saves bool FALSE, store saves string; into the variable
     # given with dest="var"
     # * you need to provide every possible option here.
-    # reihenfolge wird eingehalten in help msg # (\\label{lst:optionstart})
     parser.add_option("-H", "--more-help", action="store_true",
                       dest="showhelp", help="Show long help and exit.")
-    helpmsg = "Instead of downloading seismic data, download metadata:" + \
-              " resp instrument and dataless seed files."
+    helpmsg = "Instead of downloading seismic data, download metadata."
     parser.add_option("-q", "--query-metadata", action="store_true",
                       dest="metadata", help=helpmsg)
     helpmsg = "The path where ObsPyLoad will store the data (default " + \
@@ -462,16 +461,16 @@ def main(**kwargs):
                       dest="plotmode", help=helpmsg)
     parser.add_option("-d", "--debug", action="store_true", dest="debug",
                       help="Show debugging information.")
-    # (\\label{lst:optionend})
+    #
     # read from ConfigParser object's defaults section into a dictionary.
     # config.defaults() (ConfigParser method) returns a dict of the default
     # options as specified above
-    config_options = config.defaults()  # (\\label{lst:storedefault})
+    config_options = config.defaults()
 
     # config_options is dictionary of _strings_(see above dict),
     # override respective correct # default types here
     # * dont need to provide every possible option here, just the ones with
-    # default values overriden  # (\\label{lst:override})
+    # default values overriden
     config_options['magmin'] = config.getfloat('DEFAULT', 'magmin')
     config_options['dt'] = config.getfloat('DEFAULT', 'dt')
     config_options['preset'] = config.getfloat('DEFAULT', 'preset')
@@ -483,7 +482,7 @@ def main(**kwargs):
     parser.set_defaults(**config_options)
 
     # parse command line options
-    (options, args) = parser.parse_args()  # (\\label{lst:optiontpl})
+    (options, args) = parser.parse_args()
     if options.debug:
         print "(options, args) created"
         print "options: ", options
@@ -516,7 +515,7 @@ def main(**kwargs):
     ##########################################################################
     # VARIABLE SPLITTING AND SANITY CHECK SECTION as described in the thesis #
     ##########################################################################
-    # print long help if -H  # (\\label{lst:varsplit})
+    # print long help if -H
     if options.showhelp:
         help()
         sys.exit()
@@ -525,7 +524,7 @@ def main(**kwargs):
         print "Erroneous velocity model given:"
         print "correct are '-v iasp91' or '-v ak135'."
         sys.exit(2)
-    # parse pixel sizes and timespan of the plot if -I  # (\\label{lst:pltbeg})
+    # parse pixel sizes and timespan of the plot if -I
     if options.plt:
         try:
             # this will do it's job if the user has given a timespan
@@ -593,7 +592,7 @@ def main(**kwargs):
     except:
         print "Erroneous phases given."
         print "Format: e.g. -a P,S,PKPdiff"
-        sys.exit(0)  # (\\label{lst:pltend})
+        sys.exit(0)
     ## if the user has given e.g. -r x/x/x/x or -t time1/time
     # extract min. and max. longitude and latitude if the user has given the
     # coordinates with -r (GMT syntax)
@@ -659,11 +658,11 @@ def main(**kwargs):
         print "Now it's UTCDateTime:"
         print "options.start", options.start
         print "options.end", options.end
-    ################################################### (\\label{lst:spcl})
+    ###################################################
     # SPECIAL TASK SECTION as described in the thesis #
     ###################################################
     cwd = os.getcwd()
-    # change default datapath if in metadata mode # (\\label{lst:metachange})
+    # change default datapath if in metadata mode #
     if options.metadata and options.datapath == 'obspyload-data':
         options.datapath = os.path.join(cwd, 'obspyload-metadata')
     # parse datapath (check if given absolute or relative)
@@ -680,9 +679,9 @@ def main(**kwargs):
         except:
             pass
     # if -q oder --query-metadata, do not enter normal data download operation,
-    # but download metdata and quit. # (\\label{lst:othermodes})
+    # but download metdata and quit.
     if options.metadata:
-        print "ObsPyLoad will download resp and dataless seed instrument " + \
+        print "ObsPyLoad will download instrument response " + \
               "files and quit.\n"
         queryMeta(options.lonmin, options.lonmax, options.latmin,
                   options.latmax,
@@ -717,7 +716,6 @@ def main(**kwargs):
         except:
             pass
     # Warn that datapath will be created and give list of further options
-    # (\\label{lst:msg})
     if not options.force:
         if not os.path.isdir(datapath):
             if len(sys.argv) == 1:
@@ -752,7 +750,7 @@ def main(**kwargs):
     ############################################################
     # DATA DOWNLOAD ROUTINE SECTION as described in the thesis #
     ############################################################
-    # create datapath # (\\label{lst:datadl})
+    # create datapath
     if not os.path.exists(datapath):
         os.mkdir(datapath)
     # initialize lists to hold downloaded data and elapsed time to create a
@@ -780,7 +778,7 @@ def main(**kwargs):
     # during the downloads
     done = False
     keypress_thread().start()
-    # (1) get events from NERIES-eventservice # (\\label{lst:1})
+    # (1) get events from NERIES-eventservice
     if options.debug:
         print '#############'
         print "options: ", options
@@ -790,7 +788,7 @@ def main(**kwargs):
                             options.magmin, options.magmax)
     if options.debug:
         print 'events from NERIES:', events
-    # (2) get inventory data from ArcLink # (\\label{lst:2})
+    # (2) get inventory data from ArcLink
     # check if the user pressed 'q' while we did d/l eventlists.
     check_quit()
     arclink_stations = get_inventory(options.start, options.end, options.nw,
@@ -801,14 +799,14 @@ def main(**kwargs):
     # [(station1, lat1, lon1), (station2, lat2, lon2), ...]
     if options.debug:
         print 'arclink_stations returned from get_inventory:', arclink_stations
-    # (3) Get availability data from IRIS # (\\label{lst:3})
+    # (3) Get availability data from IRIS
     # check if the user pressed 'q' while we did d/l the inventory from ArcLink
     check_quit()
     avail = getnparse_availability(start=options.start, end=options.end,
                                    nw=options.nw, st=options.st, lo=options.lo,
                                    ch=options.ch, debug=options.debug)
     irisclient = obspy.iris.Client(debug=options.debug)
-    # (4) create and write to catalog file # (\\label{lst:4})
+    # (4) create and write to catalog file
     headline = "event_id;datetime;origin_id;author;flynn_region;"
     headline += "latitude;longitude;depth;magnitude;magnitude_type;"
     headline += "DataQuality;TimingQualityMin\n" + "#" * 126 + "\n\n"
@@ -830,7 +828,7 @@ def main(**kwargs):
     # initialize ArcLink webservice client
     arcclient = obspy.arclink.Client(timeout=5, debug=options.debug)
     mseed = LibMSEED()
-    # (5) Loop through events # (\\label{lst:5})
+    # (5) Loop through events
     # create exception file
     # this file will contain any information about exceptions while trying to
     # download data: the event we were trying to d/l, starttime, endtime,
@@ -863,7 +861,7 @@ def main(**kwargs):
         alleventsmatrix_counter = 0
     for eventdict in events:
         check_quit()
-        eventid = eventdict['event_id']  # (\\label{lst:eventxtrst})
+        eventid = eventdict['event_id']
         eventtime = eventdict['datetime']
         # extract information for taup
         eventlat = float(eventdict['latitude'])
@@ -873,7 +871,7 @@ def main(**kwargs):
             print '#############'
             print 'event:', eventid
             for key in eventdict:
-                print key, eventdict[key]  # (\\label{lst:eventxtrend})
+                print key, eventdict[key]
         # create event info line for catalog file and quakefile
         infoline = eventdict['event_id'] + ';' + str(eventdict['datetime'])
         infoline += ';' + str(eventdict['origin_id']) + ';'
@@ -894,7 +892,7 @@ def main(**kwargs):
             print "Downloading quakeml xml file for event %s..." % eventid,
             try:
                 quakeml = neriesclient.getEventDetail(eventid, 'xml')
-                quakemlfout = open(quakemlfp, 'wt')  # (\\label{lst:quakeml})
+                quakemlfout = open(quakemlfp, 'wt')
                 quakemlfout.write(quakeml)
                 quakemlfout.close()
             except Exception, error:
@@ -904,7 +902,7 @@ def main(**kwargs):
         else:
             print "Found existing quakeml xml file for event %s, skip..." \
                                                                       % eventid
-        # init/reset dqsum  # (\\label{lst:initsum})
+        # init/reset dqsum
         dqsum = 0
         tqlist = []
         # create event file in event dir
@@ -929,9 +927,9 @@ def main(**kwargs):
         # all station waveforms later. +1 because the [0] entry of each col
         # works as a counter
         if options.plt:
-            stmatrix = np.zeros((pltHeight + 1, pltWidth))  # (\\label{lst:st})
+            stmatrix = np.zeros((pltHeight + 1, pltWidth))
         # (5.1) ArcLink wf data download loop (runs inside event loop)
-        # Loop trough arclink_stations  # (\\label{lst:5.1})
+        # Loop trough arclink_stations
         for station in arclink_stations:
             check_quit()
             # station is a tuple of (stationname, lat, lon)
@@ -949,7 +947,7 @@ def main(**kwargs):
                 print 'Skipping dead network %s...' % net
                 # continue the for-loop to the next iteration
                 continue
-            # create data file pointer  # (\\label{lst:datafp})
+            # create data file pointer
             datafout = os.path.join(eventdir, "%s.mseed" % station)
             if os.path.isfile(datafout):
                 print 'Data file for event %s from %s exists, skip...' \
@@ -958,12 +956,12 @@ def main(**kwargs):
             # if this string has already been in the exception file when we
             # were starting the d/l, we had an exception for this event/data
             # provider/station combination last time and won't try again.
-            skipstr = eventid + ';ArcLink;' + station  # (\\label{lst:skipstr})
+            skipstr = eventid + ';ArcLink;' + station
             if skipstr in exceptionstr:
                 msg = 'Encountered exception for event %s from ArcLink %s last'
                 msg += ' time, skip...'
                 print msg % (eventid, station)
-                continue  # (\\label{lst:skipend})
+                continue
             # use taup to calculate the correct starttime and endtime for
             # waveform retrieval at this station
             distance = taup.locations2degrees(eventlat, eventlon, stationlat,
@@ -980,7 +978,7 @@ def main(**kwargs):
             arrivaltime = 99999
             for phase in traveltimes:
                 if phase['time'] < arrivaltime:
-                    arrivaltime = phase['time']  # (\\label{lst:arrival})
+                    arrivaltime = phase['time']
             if options.debug:
                 print "earliest arrival time: ", arrivaltime
             starttime = eventtime + arrivaltime - options.preset
@@ -1008,7 +1006,7 @@ def main(**kwargs):
                 continue
             else:
                 # else code will run if try returned no exception!
-                # write station name to event info line  # (\\label{lst:qcbeg})
+                # write station name to event info line
                 il_quake = station + ';ArcLink;'
                 il_quake += str(stationlat) + ';' + str(stationlon) + ';'
                 # Quality Control with libmseed
@@ -1037,14 +1035,14 @@ def main(**kwargs):
                         overlaps += 1
                 il_quake += ';%d;%d\n' % (gaps, overlaps)
                 quakefout.write(il_quake)
-                quakefout.flush()  # (\\label{lst:qcend})
+                quakefout.flush()
                 # if there has been no Exception, assume d/l was ok
                 print "done."
                 if options.plt:
-                    # referencing st[0] with tr  # (\\label{lst:pltbeg})
+                    # referencing st[0] with tr
                     tr = st[0]
                     if options.fill:
-                        # if the user gave -F option  # (\\label{lst:fillbeg})
+                        # if the user gave -F option
                         print "Getting and scaling data for station plot...",
                         del st
                         # get data for the whole timeframe needed for the
@@ -1058,7 +1056,7 @@ def main(**kwargs):
                         except Exception, error:
                             print "error: ",
                             print error
-                            continue  # (\\label{lst:fillend})
+                            continue
                         # the way we downloaded data, there should always be
                         # exactly one trace in each stream object
                     else:
@@ -1071,7 +1069,7 @@ def main(**kwargs):
                     # x axis / abscissa - distance
                     # y axis / ordinate - time
                     # normalize the trace, needed for plotting
-                    tr.normalize()  # (\\label{lst:trnorm})
+                    tr.normalize()
                     # obtain the time increment that passes between samples
                     # delta = tr.stats['delta']
                     # scale down the trace array so it matches the output size
@@ -1090,7 +1088,7 @@ def main(**kwargs):
                     x_coord = int((distance / 180.0) * pltWidth)
                     # now we need to floor down to the next multiple of the
                     # station column width:
-                    x_coord -= x_coord % colWidth  # (\\label{lst:floor})
+                    x_coord -= x_coord % colWidth
                     # Add trace as one column to waveform matrix. the [0] entry
                     # of the matrix counts how many waveforms have been added
                     # to that column (this will be normalized later)
@@ -1107,7 +1105,7 @@ def main(**kwargs):
                     pixelcol = np.hstack((1, abs(pixelcol)))
                     try:
                         # add pixelcol to 1 or more columns, depending on the
-                        # chosen width of the station columns  # (\\label{stm})
+                        # chosen width of the station columns
                         stmatrix[:, x_coord:x_coord + colWidth] += \
                                    np.vstack([pixelcol] * colWidth).transpose()
                     except:
@@ -1115,12 +1113,12 @@ def main(**kwargs):
                         continue
                     if options.debug:
                         print "stmatrix: ", stmatrix
-                    print "done."  # (\\label{lst:trnormend})
+                    print "done."
                 del st
             # add current elapsed time and folder size to the lists
             dlplot_x.append(time.time() - dlplot_begin)
             dlplot_y.append(getFolderSize(datapath) / (1024 * 1024.0))
-        # (5.2) Iris wf data download loop  # (\\label{lst:5.2})
+        # (5.2) Iris wf data download loop
         for net, sta, loc, cha, stationlat, stationlon in avail:
             check_quit()
             # construct filename:
@@ -1362,7 +1360,6 @@ def main(**kwargs):
     done = True
     return
 
-# (\\label{lst:dataser})
 #############################################################
 # DATA SERVICE FUNCTIONS SECTION as described in the thesis #
 #############################################################
@@ -1414,7 +1411,7 @@ def get_events(lonmin, lonmax, latmin, latmax, start, end, magmin, magmax):
         # urllib. implemented the while-loop to work around this restriction:
         # query is repeated until we receive less than 9999 results.
         result = []
-        events = range(9999)  # (\\label{lst:getevents})
+        events = range(9999)
         while len(events) == 9999:
             events = client.getEvents(min_latitude=latmin, max_latitude=latmax,
                                 min_longitude=lonmin, max_longitude=lonmax,
@@ -1476,7 +1473,7 @@ def get_inventory(start, end, nw, st, lo, ch, permanent, debug=False):
             if debug:
                 print "we're now setting nwcheck = True"
             nw2 = '*'
-            nwcheck = True  # (\\label{lst:nwcheck})
+            nwcheck = True
         else:
             nw2 = nw
         arcclient = obspy.arclink.client.Client()
@@ -1507,7 +1504,7 @@ def get_inventory(start, end, nw, st, lo, ch, permanent, debug=False):
         print "inventory inside get_inventory(): ", inventory
         print "stations inside get_inventory(): ", stations
     # stations is a list of 'nw.st.lo.ch' strings and is what we want
-    # check if we need to search for wildcards:  # (\\label{lst:ifnwchck})
+    # check if we need to search for wildcards:
     if nwcheck:
         stations2 = []
         # convert nw (which is 'b?a*' type string, using normal wildcards into
@@ -1563,7 +1560,7 @@ def getnparse_availability(start, end, nw, st, lo, ch, debug):
             os.mkdir(datapath)
         # try to load availability file
         availfp = os.path.join(datapath, 'availability.pickle')
-        fh = open(availfp, 'rb')  # (\\label{lst:availopen})
+        fh = open(availfp, 'rb')
         avail_list = pickle.load(fh)
         fh.close()
         print "Found IRIS availability in datapath, skip download."
@@ -1590,7 +1587,7 @@ def getnparse_availability(start, end, nw, st, lo, ch, debug):
             stations = availxml.findall('Station')
             # I will construct a list of tuples of stations of the form:
             # [(net,sta,cha,loc,lat,lon), (net,sta,loc,cha,lat,lon), ...]
-            avail_list = []  # (\\label{lst:lpbeg})
+            avail_list = []
             for station in stations:
                 net = station.values()[0]
                 sta = station.values()[1]
@@ -1611,7 +1608,7 @@ def getnparse_availability(start, end, nw, st, lo, ch, debug):
                     # as well as to construct a working IRIS ws query
                     avail_list.append((net.strip(' '), sta.strip(' '),
                                        loc.strip(' '), cha.strip(' '), lat,
-                                       lon))  # (\\label{lst:lpend})
+                                       lon))
             # dump availability to file
             fh = open(availfp, 'wb')
             pickle.dump(avail_list, fh)
@@ -1622,7 +1619,6 @@ def getnparse_availability(start, end, nw, st, lo, ch, debug):
             print("Received %d station(s) from IRIS." % (len(stations)))
             print("Received %d channel(s) from IRIS." % (len(avail_list)))
             return avail_list
-# (\\label{lst:altermodes})
 ##################################################################
 # ALTERNATIVE MODES FUNCTIONS SECTION as described in the thesis #
 ##################################################################
@@ -1631,7 +1627,7 @@ def getnparse_availability(start, end, nw, st, lo, ch, debug):
 def queryMeta(lonmin, lonmax, latmin, latmax, start, end, nw, st, lo, ch,
               permanent, debug):
     """
-    Downloads Resp instrument data and dataless seed files.
+    Downloads Resp instrument data.
     """
     global quitflag, done, skip_networks
     # start keypress thread, so we can quit by pressing 'q' anytime from now on
@@ -1649,11 +1645,11 @@ def queryMeta(lonmin, lonmax, latmin, latmax, start, end, nw, st, lo, ch,
                              debug=debug)
     # (1) IRIS: resp files
     # stations is a list of all stations (nw.st.l.ch, so it includes networks)
-    # loop over all tuples of a station in avail list:  # (\\label{lst:availp})
+    # loop over all tuples of a station in avail list:
     for (net, sta, loc, cha, lat, lon) in avail:
         check_quit()
         # construct filename
-        respfn = '.'.join((net, sta, loc, cha)) + '.resp'
+        respfn = '.'.join(('RESP', net, sta, loc, cha))
         respfnfull = os.path.join(datapath, respfn)
         if debug:
             print 'respfnfull:', respfnfull
@@ -1668,7 +1664,7 @@ def queryMeta(lonmin, lonmax, latmin, latmax, start, end, nw, st, lo, ch,
             # initializing the client each time should reduce problems
             irisclient = obspy.iris.Client(debug=debug)
             irisclient.saveResponse(respfnfull, net, sta, loc, cha, start, end,
-                                    format='RESP')  # (\\label{lst:saveresp})
+                                    format='RESP')
         except Exception, error:
             print "\ndownload error: ",
             print error
@@ -1676,9 +1672,9 @@ def queryMeta(lonmin, lonmax, latmin, latmax, start, end, nw, st, lo, ch,
         else:
             # if there has been no exception, the d/l should have worked
             print 'done.'
-    # (2) ArcLink: dataless seed
+    # (2) ArcLink: dataless seed, then parse to RESP
     # loop over stations to d/l every dataless seed file...
-    # skip dead ArcLink networks  # (\\label{lst:arclpbeg})
+    # skip dead ArcLink networks
     for station in stations:
         check_quit()
         # we don't need lat and lon
@@ -1693,7 +1689,8 @@ def queryMeta(lonmin, lonmax, latmin, latmax, start, end, nw, st, lo, ch,
         dlseedfn = '.'.join((net, sta, loc, cha)) + '.seed'
         dlseedfnfull = os.path.join(datapath, dlseedfn)
         # create data file handler
-        dlseedfnfull = os.path.join(datapath, "%s.mseed" % station)
+        dlseedfnfull = os.path.join(datapath, "%s.seed" % station)
+        respfn = os.path.join(datapath, "%s.resp" % station)
         if os.path.isfile(dlseedfnfull):
             print 'Dataless file for %s exists, skip download...' % dlseedfn
             continue
@@ -1711,7 +1708,18 @@ def queryMeta(lonmin, lonmax, latmin, latmax, start, end, nw, st, lo, ch,
             continue
         else:
             # if there has been no exception, the d/l should have worked
-            print 'done.'  # (\\label{lst:arclpend})
+            print 'done.'
+            print 'Converting seed to Resp format...',
+            sp = Parser(dlseedfnfull)
+            try:
+                sp.writeRESP(datapath)
+            except:
+                print 'failed.'
+            else:
+                print 'done.'
+            # remove seed file, since only resp is of interest to us
+            os.remove(dlseedfnfull)
+            del sp
     done = True
     return
 
@@ -1741,7 +1749,7 @@ def exceptionMode(debug):
             print "exception: ", exception
         exsplit = exception.split(';')
         if debug:
-            print "exsplit: ", exsplit  # (\\label{lst:nodatabeg})
+            print "exsplit: ", exsplit
         if not "data available" in exsplit[5]:
             # we want to d/l this one again
             if debug:
@@ -1792,9 +1800,9 @@ def exceptionMode(debug):
                     further_exceptions += il_exception
                     continue
                 else:
-                    print "done."  # (\\label{lst:nodataend})
+                    print "done."
     exceptionfout = open(exceptionfp, 'wt')
-    exceptionfout.write(further_exceptions)  # (\\label{lst:further})
+    exceptionfout.write(further_exceptions)
     exceptionfout.close()
     done = True
     return
@@ -1873,7 +1881,7 @@ def plotMode(datapath, pltWidth, pltHeight, colWidth, timespan, pltPhases,
             try:
                 print "Adding station to station plot...",
                 # add pixelcol to 1 or more columns, depending on the
-                # chosen width of the station columns  # (\\label{stm})
+                # chosen width of the station columns
                 stmatrix[:, x_coord:x_coord + colWidth] += \
                            np.vstack([pixelcol] * colWidth).transpose()
             except:
@@ -1947,7 +1955,6 @@ def plotMode(datapath, pltWidth, pltHeight, colWidth, timespan, pltPhases,
     plt.savefig(plotfn)
 
 
-# (\\label{lst:addfct})
 ###########################################################
 # ADDITIONAL FUNCTIONS SECTION as described in the thesis #
 ###########################################################
@@ -1972,7 +1979,7 @@ def travelTimePlot(npoints, phases, depth, model, pltWidth, pltHeight,
     data = {}
     for phase in phases:
         data[phase] = [[], []]
-    degrees = np.linspace(0, 180, npoints)  # (\\label{lst:deg})
+    degrees = np.linspace(0, 180, npoints)
     # Loop over all degrees.
     for degree in degrees:
         tt = taup.getTravelTimes(degree, depth, model)
@@ -1993,13 +2000,13 @@ def travelTimePlot(npoints, phases, depth, model, pltWidth, pltHeight,
         # value[0] stores all degrees, value[1] all times as lists
         # convert those values to the respective obspyload stmatrix indices:
         # divide every entry of value[0] list by 180 and sort of "multiply with
-        # pltWidth" to get correct stmatrix index  # (\\label{lst:coordbeg})
+        # pltWidth" to get correct stmatrix index
         x_coord = map(operator.div, value[0], [180.0 / pltWidth] *
                   len(value[0]))
         # for the y coord, divide every entry by the timespan and mulitply with
         # pltHeight
         y_coord = map(operator.div, value[1], [timespan / pltHeight] *
-                  len(value[1]))  # (\\label{lst:coordend})
+                  len(value[1]))
         # plot arrival times on top of data
         plt.plot(x_coord, y_coord, ',', label=key)
     plt.legend()
