@@ -17,14 +17,14 @@ import subprocess
 import numpy as np
 import matplotlib.pyplot as plt
 from obspy.core import read, UTCDateTime, Stream, AttribDict
-from obspy.signal import recStalta, triggerOnset, seisSim, cornFreq2Paz, bandpass
+from obspy.signal import triggerOnset, seisSim, cornFreq2Paz
 from obspy.seishub import Client
 from matplotlib.mlab import detrend_linear as detrend
 
 
 NET = "BW"
-#STATIONS = ("DHFO", "UH1", "UH2", "UH3", "UH4")
-STATIONS = ("UH1", "UH2", "UH3", "UH4")
+STATIONS = ("DHFO", "UH1", "UH2", "UH3", "UH4")
+#STATIONS = ("UH1", "UH2", "UH3", "UH4")
 CHANNEL = "EHZ"
 PAR = dict(LOW=10.0, # bandpass low corner
            HIGH=20.0, # bandpass high corner
@@ -45,8 +45,8 @@ client = Client()
 
 #for T1 in [UTCDateTime("2010-12-20T17:00:00"), UTCDateTime("2010-12-20T17:15:00"), UTCDateTime("2010-12-20T17:30:00"), UTCDateTime("2010-12-20T17:45:00")]:
     #T2 = T1 + (60 * 60 * 0.25) + 30
-T1 = UTCDateTime("2011-09-02T06:00:00Z")
-while T1 < UTCDateTime("2011-09-02T10:00:00Z"):
+T1 = UTCDateTime("2011-12-31T23:00:00Z")
+while T1 < UTCDateTime("2012-01-05T00:00:00Z"):
     T1 += (60 * 60 * 1)
     T2 = T1 + (60 * 60 * 1) + 30
 
@@ -94,6 +94,8 @@ while T1 < UTCDateTime("2011-09-02T10:00:00Z"):
         summary += exceptions
     summary.append("#" * 79)
 
+    mutt_base = ["mutt", "-s", "UH Alert  %s -- %s" % (T1, T2)]
+    mutt = [] + mutt_base
     trigger_list = []
     if st:
         # preprocessing, backup original data for plotting at end
@@ -128,8 +130,6 @@ while T1 < UTCDateTime("2011-09-02T10:00:00Z"):
         st.extend(st_trigger)
 
         # coincidence part, work through sorted trigger list...
-        mutt_base = ["mutt", "-s", "UH Alert  %s -- %s" % (T1, T2)]
-        mutt = [] + mutt_base
         last_off_time = 0
         while len(trigger_list) > 1:
             on, off, sta = trigger_list[0]

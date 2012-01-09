@@ -18,7 +18,7 @@ import subprocess
 import numpy as np
 import matplotlib.pyplot as plt
 from obspy.core import read, UTCDateTime, Stream, AttribDict
-from obspy.signal import recStalta, triggerOnset, seisSim, cornFreq2Paz, bandpass
+from obspy.signal import triggerOnset, seisSim, cornFreq2Paz
 from obspy.seishub import Client
 from matplotlib.mlab import detrend_linear as detrend
 
@@ -96,6 +96,8 @@ while T1 < UTCDateTime():
         summary += exceptions
     summary.append("#" * 79)
 
+    mutt_base = ["mutt", "-s", "KW Alert  %s -- %s" % (T1, T2)]
+    mutt = [] + mutt_base
     trigger_list = []
     if st:
         # preprocessing, backup original data for plotting at end
@@ -130,8 +132,6 @@ while T1 < UTCDateTime():
         st.extend(st_trigger)
 
         # coincidence part, work through sorted trigger list...
-        mutt_base = ["mutt", "-s", "KW Alert  %s -- %s" % (T1, T2)]
-        mutt = [] + mutt_base
         last_off_time = 0
         while len(trigger_list) > 1:
             on, off, sta = trigger_list[0]

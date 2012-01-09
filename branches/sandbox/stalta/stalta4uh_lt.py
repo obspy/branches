@@ -17,7 +17,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.mlab import detrend_linear as detrend
 from obspy.core import read, UTCDateTime, Stream, AttribDict
-from obspy.signal import recStalta, triggerOnset, seisSim, cornFreq2Paz, bandpass
+from obspy.signal import triggerOnset, seisSim, cornFreq2Paz
 from obspy.seishub import Client
 
 # XXX START = UTCDateTime("2010-01-26T00:00:00")
