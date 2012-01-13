@@ -96,9 +96,14 @@ except:
 
 class MyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
-    ARCHS = [i[0] for i in conn.execute(SELECT_ARCHS_SQL).fetchall()]
-    VERSIONS = [i[0] for i in conn.execute(SELECT_VERSIONS_SQL).fetchall()]
-    SYSTEMS = [i[0] for i in conn.execute(SELECT_SYSTEMS_SQL).fetchall()]
+    def getArchs(self):
+        return [i[0] for i in conn.execute(SELECT_ARCHS_SQL).fetchall()]
+
+    def getVersions(self):
+        return [i[0] for i in conn.execute(SELECT_VERSIONS_SQL).fetchall()]
+
+    def getSystems(self):
+        return [i[0] for i in conn.execute(SELECT_SYSTEMS_SQL).fetchall()]
 
     def _stylesheet(self):
         self.wfile.write("""
@@ -207,14 +212,14 @@ class MyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 self.wfile.write("    <td>obspy.%s</td>" % (key))
                 self.wfile.write("    <td>%s</td>" % (version))
                 if item.find('tested') != None:
-                    timetaken = float(item.findtext('timetaken'))
-                    tests = int(item.findtext('tests'))
-                    try:
-                        avg = float(timetaken) / tests
-                    except:
-                        avg = 0
                     errors = 0
                     failures = 0
+                    tests = int(item.findtext('tests'))
+                    # time colors
+                    try:
+                        timetaken = float(item.findtext('timetaken'))
+                    except:
+                        timetaken = None
                     for sitem in item.find('errors')._children:
                         temp = sitem.text
                         temp = temp.replace('&' , '&amp;')
@@ -236,21 +241,27 @@ class MyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                         failures += 1
                         errid += 1
                     # error color
-                    if errors > 0:
+                    if errors or (not timetaken and failures):
                         color = "error"
-                    elif failures > 0:
+                    elif failures:
                         color = "failure"
                     else:
                         color = "ok"
                     self.wfile.write("    <td class='%s'>%d of %d</td>" % (color, errors+failures, tests))
-                    # time colors
-                    if avg > 0.1:
-                        color = "badtime"
-                    elif avg > 0.05:
-                        color = "slowtime"
+                    if timetaken:
+                        try:
+                            avg = float(timetaken) / tests
+                        except:
+                            avg = 0
+                        if avg > 0.1:
+                            color = "badtime"
+                        elif avg > 0.05:
+                            color = "slowtime"
+                        else:
+                            color = "oktime"
+                        self.wfile.write("<td class='%s'>%.3fs / %.3fs</td>" % (color, timetaken, avg))
                     else:
-                        color = "oktime"
-                    self.wfile.write("<td class='%s'>%.3fs / %.3fs</td>" % (color, timetaken, avg))
+                        self.wfile.write("<td> </td>")
                     self.wfile.write("<td>%s</td>" % (errcases))
                 else:
                     self.wfile.write("    <td colspan='3' style='color: grey'>Not tested</td>\n")
@@ -276,17 +287,19 @@ class MyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             filter = ''
             qargs = {}
             if 'system' in query and len(query['system']) == 1 and \
-               query['system'][0] in self.SYSTEMS:
+               query['system'][0] in self.getSystems():
                 qargs['system'] = query['system'][0]
                 filter += "AND system='%s' " % qargs['system']
             if 'arch' in query and len(query['arch']) == 1 and \
-                query['arch'][0] in self.ARCHS:
+                query['arch'][0] in self.getArchs():
                     qargs['arch'] = query['arch'][0]
                     filter += "AND architecture='%s' " % qargs['arch']
-            if 'version' in query and len(query['version']) == 1 and \
-               query['version'][0] in self.VERSIONS:
-                qargs['version'] = query['version'][0]
-                filter += "AND version='%s' " % qargs['version']
+            if 'version' in query and len(query['version']) == 1:
+                # some python verson have a plus sign in version information
+                vers = query['version'][0].replace(' ', '+')
+                if vers in self.getVersions():
+                    qargs['version'] = vers
+                    filter += "AND version='%s' " % vers
             if filter:
                 filter = 'WHERE' + filter[3:]
             # request data
@@ -310,7 +323,14 @@ class MyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 data['system'] = item[6]
                 data['arch'] = item[7]
                 data['version'] = item[8]
-                data['node'] = item[10]
+                node = item[10]
+                if node.endswith('[dev]'):
+                    dev = '[dev]'
+                    node = node.replace('[dev]','')
+                else:
+                    dev = ''
+                data['node'] = node
+                data['dev'] = dev
                 if errors:
                     data['status'] = "error"
                 elif failures:
@@ -321,9 +341,9 @@ class MyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             data = {}
             data['CSS'] = temp_css
             data['DATA'] = rows
-            data['FILTER_SYSTEM'] = self._filter('system', self.SYSTEMS, qargs)
-            data['FILTER_ARCH'] = self._filter('arch', self.ARCHS, qargs)
-            data['FILTER_VERSION'] = self._filter('version', self.VERSIONS, qargs)
+            data['FILTER_SYSTEM'] = self._filter('system', self.getSystems(), qargs)
+            data['FILTER_ARCH'] = self._filter('arch', self.getArchs(), qargs)
+            data['FILTER_VERSION'] = self._filter('version', self.getVersions(), qargs)
             out = Template(temp_index).safe_substitute(**data)
             self.wfile.write(out)
 
@@ -342,7 +362,11 @@ class MyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             ts = int(form['timestamp'].value)
             xml_doc = form['xml'].value
             errors = int(form['errors'].value)
-            failures = int(form['failures'].value)
+            # stay compatible with older reporter versions
+            try:
+                failures = int(form['failures'].value)
+            except:
+                failures = 0
             modules = int(form['modules'].value)
             tests = int(form['tests'].value)
             system = form['system'].value
