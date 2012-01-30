@@ -46,7 +46,7 @@ from obspy.core import UTCDateTime, read
 import obspy.neries
 import obspy.arclink
 import obspy.iris
-from obspy.mseed.libmseed import LibMSEED
+import obspy.mseed.util
 from obspy.xseed import Parser
 from lxml import etree
 from obspy.taup import taup
@@ -397,7 +397,7 @@ def main(**kwargs):
                       help="Minimum longitude.")
     parser.add_option("-Y", "--lonmax", action="store", dest="lonmax",
                       help="Maximum longitude.")
-    helpmsg = "Identity code restriction, syntax: nw.st.l.ch (" + \
+    helpmsg = "Identity code restriction, syntax: net.sta.loc.cha (" + \
               "alternative to -N -S -L -C)."
     parser.add_option("-i", "--identity", action="store", dest="identity",
                       help=helpmsg)
@@ -827,7 +827,6 @@ def main(**kwargs):
     catalogfout.seek(0, 2)
     # initialize ArcLink webservice client
     arcclient = obspy.arclink.Client(timeout=5, debug=options.debug)
-    mseed = LibMSEED()
     # (5) Loop through events
     # create exception file
     # this file will contain any information about exceptions while trying to
@@ -1009,16 +1008,20 @@ def main(**kwargs):
                 # write station name to event info line
                 il_quake = station + ';ArcLink;'
                 il_quake += str(stationlat) + ';' + str(stationlon) + ';'
-                # Quality Control with libmseed
-                dqsum += sum(mseed.getDataQualityFlagsCount(datafout))
+                # Quality Control
+                dqdict = obspy.mseed.util.getTimingAndDataQuality(datafout)
+                try:
+                    dqsum += sum(dqdict['data_quality_flags'])
+                except:
+                    pass
                 # Timing Quality, trying to get all stations into one line in
                 # eventfile, and handling the case that some station's mseeds
                 # provide TQ data, and some do not
-                tq = mseed.getTimingQuality(datafout)
-                if tq != {}:
-                    tqlist.append(tq['min'])
-                    il_quake += str(tq['min'])
-                else:
+                tq = dqdict['timing_quality_min']
+                try:
+                    tqlist.append(tq)
+                    il_quake += str(tq)
+                except:
                     il_quake += str('None')
                 # finally, gaps&overlaps into quakefile
                 # read mseed into stream, use .getGaps method
@@ -1179,20 +1182,21 @@ def main(**kwargs):
                 # write station name to event info line
                 il_quake = station + ';IRIS;'
                 il_quake += str(stationlat) + ';' + str(stationlon) + ';'
-                # Quality Control with libmseed
-                dqsum += sum(mseed.getDataQualityFlagsCount(irisfnfull))
+                # Quality Control
+                dqdict = obspy.mseed.util.getTimingAndDataQuality(irisfnfull)
+                try:
+                    dqsum += sum(dqdict['data_quality_flags'])
+                except:
+                    pass
                 # Timing Quality, trying to get all stations into one line in
                 # eventfile, and handling the case that some station's mseeds
                 # provide TQ data, and some do not
+                tq = dqdict['timing_quality_min']
                 try:
-                    tq = mseed.getTimingQuality(irisfnfull)
-                    if tq != {}:
-                        tqlist.append(tq['min'])
-                        il_quake += str(tq['min'])
-                    else:
-                        il_quake += str('None')
+                    tqlist.append(tq)
+                    il_quake += str(tq)
                 except:
-                    pass
+                    il_quake += str('None')
                 # finally, gaps&overlaps into quakefile
                 # read mseed into stream, use .getGaps method
                 st = read(irisfnfull)
@@ -2050,7 +2054,7 @@ def help():
     print "There are two different flavors of usage, in short:"
     print "---------------------------------------------------\n"
     printWrap("e.g.:", "obspyload.py -r <lonmin>/<lonmax>/<latmin>/<latmax>" \
-          + "-t <start>/<end> -m <min_mag> -M <max_mag> -i <nw>.<st>.<l>.<ch>")
+          + "-t <start>/<end> -m <min_mag> -M <max_mag> -i <net.sta.loc.cha>")
     printWrap("e.g.:", "obspyload.py -y <min_lon> -Y <max_lon> " + \
           "-x <min_lat> -X <max_lat> -s <start> -e <end> -P <datapath> " + \
           "-o <offset> --reset -f")
