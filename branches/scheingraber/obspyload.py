@@ -1017,8 +1017,8 @@ def main(**kwargs):
                 # Timing Quality, trying to get all stations into one line in
                 # eventfile, and handling the case that some station's mseeds
                 # provide TQ data, and some do not
-                tq = dqdict['timing_quality_min']
                 try:
+                    tq = dqdict['timing_quality_min']
                     tqlist.append(tq)
                     il_quake += str(tq)
                 except:
@@ -1191,8 +1191,8 @@ def main(**kwargs):
                 # Timing Quality, trying to get all stations into one line in
                 # eventfile, and handling the case that some station's mseeds
                 # provide TQ data, and some do not
-                tq = dqdict['timing_quality_min']
                 try:
+                    tq = dqdict['timing_quality_min']
                     tqlist.append(tq)
                     il_quake += str(tq)
                 except:
