@@ -200,13 +200,15 @@ def mtinv_gs(st_tr, gl, fmin, fmax, fmax_hardcut_factor=4, S0=None, nsv=1,
     :type st_tr: :class:`~obspy.core.stream.Stream`
     :param st_tr: Stream containing the seismograms, station names are numbers
         starting with 0001, channels are ['u', 'v', 'w']
-    :type gl: list of :class:`~obspy.core.stream.Stream` objects
+    :type gl: list of :class:`~obspy.core.stream.Stream` objects or list
     :param gl: list of Streams containing the green's functions, station names
         are numbers starting with 0001, channels are of format '%02d%1d' where
         the first number is the component of the receiver ([0,1,2]) and the
         second the source ([0,1,...,5] or [0,1,...,8] including single forces).
         Should have the same sample rate as st_tr. If no grid search is needed,
         just put a single stream in the list.
+        In case of a high number of stations (>250), gl can be a list of 
+        strings containing the path to and names of the greens functions files
     :type fmin: float
     :param fmin: high pass frequency
     :type fmax: float
@@ -257,22 +259,23 @@ def mtinv_gs(st_tr, gl, fmin, fmax, fmax_hardcut_factor=4, S0=None, nsv=1,
                   case of single force), otherwise approximately)
         argmin  - index of Green's function in list that minimizes the misfit
     '''
-    if round(st_tr[0].stats.sampling_rate, 5) != round(gl[0][0].stats.sampling_rate, 5):
-        msg = 'sampling rates of Seismograms and Green\'s function are not the'
-        msg = msg + ' same: %f != %f' % (st_tr[0].stats.sampling_rate,
-                                         gl[0][0].stats.sampling_rate)
-        raise ValueError(msg)
-
     st_tr = st_tr.copy()
     st_tr.filter('lowpass', freq=fmax, corners=4)
     st_tr.filter('highpass', freq=fmin, corners=4)
+
+    # test if gl is a list or a stream
+    if type(gl[0]) == str:
+        st_g = read('%s'%(gl[0]))
+    else:
+        st_g = gl[0]
+
+    ng = st_g[0].data.size
 
     df = st_tr[0].stats.sampling_rate
     dt = 1./df
 
     nstat = st_tr.select(channel='u').count()
     ndat = st_tr[0].data.size
-    ng = gl[0][0].data.size
     nfft = util.nextpow2(max(ndat, ng) * 2)
 
     # use freuquncies below corner frequency * fmax_hardcut_factor (tremendous
@@ -322,8 +325,19 @@ def mtinv_gs(st_tr, gl, fmin, fmax, fmax_hardcut_factor=4, S0=None, nsv=1,
 
     st_tr.filter('lowpass', freq=fmax, corners=4)
 
-    for i, st_g in enumerate(gl):
+    for i, stg in enumerate(gl):
+        if type(stg) == str:
+            st_g = read('%s'%(stg))
+        else:
+            st_g = stg
         print i
+
+        if round(st_tr[0].stats.sampling_rate, 5) != round(st_g[0].stats.sampling_rate, 5):
+            msg = 'sampling rates of Seismograms and Green\'s function are not the'
+            msg = msg + ' same: %f != %f' % (st_tr[0].stats.sampling_rate,
+                                             st_g[0].stats.sampling_rate)
+            raise ValueError(msg)
+
         M_t, m, x, s, st_syn, misfit = mtinv((utrw, weights_l2.copy(), S0w, df,
             dt, nstat, ndat, ng, nfft, nfinv), st_tr, st_g, fmin, fmax,
             nsv=nsv, single_force=single_force, stat_subset=stat_subset,
