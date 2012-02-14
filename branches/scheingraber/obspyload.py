@@ -208,22 +208,22 @@ def main(**kwargs):
     :param lo: Location restriction, wildcards supported.
     :type ch: str, optional
     :param ch: Channel restriction, wildcards supported.
-    :type latMin: str or int or float, optional
-    :param latMin: Minimum Latitude.
-    :type latMax: str or int or float, optional
-    :param latMax: Maximum Latitude.
-    :type lonMin: str or int or float, optional
-    :param lonMin: Minimum Longitude.
-    :type lonMax: str or int or float, optional
-    :param lonMax: Maximum Longitude.
-    :type stalatMin: str or int or float, optional
-    :param stalatMin: Minimum latitude for station.
-    :type stalatMax: str or int or float, optional
-    :param stalatMax: Maximum latitude for station.
-    :type stalonMin: str or int or float, optional
-    :param stalonMin: Minimum longitude for station.
-    :type stalonMax: str or int or float, optional
-    :param stalonMax: Maximum longitude for station.
+    :type latmin: str or int or float, optional
+    :param latmin: Minimum Latitude.
+    :type latmax: str or int or float, optional
+    :param latmax: Maximum Latitude.
+    :type lonmin: str or int or float, optional
+    :param lonmin: Minimum Longitude.
+    :type lonmax: str or int or float, optional
+    :param lonmax: Maximum Longitude.
+    :type sta-latmin: str or int or float, optional
+    :param sta-latmin: Minimum latitude for station.
+    :type sta-latmax: str or int or float, optional
+    :param sta-latmax: Maximum latitude for station.
+    :type sta-lonmin: str or int or float, optional
+    :param sta-lonmin: Minimum longitude for station.
+    :type sta-lonmax: str or int or float, optional
+    :param sta-lonmax: Maximum longitude for station.
     :type datapath: str, optional
     :param datapath: Relative or absolute path to data or metadata folder.
     :type metadata: bool, optional
@@ -321,10 +321,10 @@ def main(**kwargs):
                            'latmax': '90',
                            'lonmin': '-180',
                            'lonmax': '180',
-                           'staLatMin': '-90',
-                           'staLatMax': '90',
-                           'staLonMin': '-180',
-                           'staLonMax': '180',
+                           'stalatmin': '-90',
+                           'stalatmax': '90',
+                           'stalonmin': '-180',
+                           'stalonmax': '180',
                            'dt': '10',
                            'start': str(UTCDateTime.utcnow()
                                         - 60 * 60 * 24 * 30 * 3),
@@ -401,26 +401,32 @@ def main(**kwargs):
             + "<latmin>/<latmax> (alternative to -x -X -y -Y)."
     parser.add_option("-r", "--rect", action="store", dest="rect",
                       help=helpmsg)
-    parser.add_option("-x", "--latMin", action="store", dest="latmin",
+    parser.add_option("-x", "--latmin", action="store", dest="latmin",
                       help="Minimum latitude for event.")
-    parser.add_option("-X", "--latMax", action="store", dest="latmax",
+    parser.add_option("-X", "--latmax", action="store", dest="latmax",
                       help="Maximum latitude for event.")
-    parser.add_option("-y", "--lonMin", action="store", dest="lonmin",
+    parser.add_option("-y", "--lonmin", action="store", dest="lonmin",
                       help="Minimum longitude for event.")
-    parser.add_option("-Y", "--lonMax", action="store", dest="lonmax",
+    parser.add_option("-Y", "--lonmax", action="store", dest="lonmax",
                       help="Maximum longitude for event.")
     helpmsg = "Provide station rectangle with GMT syntax: <lonmin>/<lonmax>/" \
             + "<latmin>/<latmax> (alternative to -j -J -k -K)."
-    parser.add_option("-g", "--station-rect", action="store", dest="staRect",
+    parser.add_option("-g", "--station-rect", action="store", dest="starect",
                       help=helpmsg)
-    parser.add_option("-j", "--staLatMin", action="store", dest="staLatMin",
+    parser.add_option("-j", "--sta-latmin", action="store", dest="stalatmin",
                       help="Minimum latitude for station.")
-    parser.add_option("-J", "--staLatMax", action="store", dest="staLatMax",
+    parser.add_option("-J", "--sta-latmax", action="store", dest="stalatmax",
                       help="Maximum latitude for station.")
-    parser.add_option("-k", "--staLonMin", action="store", dest="staLonMin",
+    parser.add_option("-k", "--sta-lonmin", action="store", dest="stalonmin",
                       help="Minimum longitude for station.")
-    parser.add_option("-K", "--staLonMax", action="store", dest="staLonMax",
+    parser.add_option("-K", "--sta-lonmax", action="store", dest="stalonmax",
                       help="Maximum longitude for station.")
+    parser.add_option("-l", "--sta-radius", action="store",
+                      dest="staradius",
+                      help="Longitude, Latitude and maximum distance for " + \
+                      "geographical station restriction. May not be used " + \
+                      "together with rectangular bounding box station " + \
+                      "restrictions. Syntax: -l lon/lat/rmax")
     helpmsg = "Identity code restriction, syntax: net.sta.loc.cha (" + \
               "alternative to -N -S -L -C)."
     parser.add_option("-i", "--identity", action="store", dest="identity",
@@ -539,14 +545,25 @@ def main(**kwargs):
         options.lonmax = float(options.lonmax)
 
     # station area restriction parameters
-    if options.staLatMin:
-        options.staLatMin = float(options.staLatMin)
-    if options.staLatMax:
-        options.staLatMax = float(options.staLatMax)
-    if options.staLonMin:
-        options.staLonMin = float(options.staLonMin)
-    if options.staLonMax:
-        options.staLonMax = float(options.staLonMax)
+    if options.stalatmin:
+        options.stalatmin = float(options.stalatmin)
+    if options.stalatmax:
+        options.stalatmax = float(options.stalatmax)
+    if options.stalonmin:
+        options.stalonmin = float(options.stalonmin)
+    if options.stalonmax:
+        options.stalonmax = float(options.stalonmax)
+
+    # circular station restriction option parsing
+    if options.staradius:
+        try:
+            options.lon, options.lat, options.r = options.staradius.split('/')
+            options.lon = float(options.lon)
+            options.lat = float(options.lat)
+            options.r = float(options.r)
+        except:
+            print "Invalid circular station restriction given. Syntax: " + \
+                  "-l lon.lat.rmax"
 
     ##########################################################################
     # VARIABLE SPLITTING AND SANITY CHECK SECTION as described in the thesis #
@@ -649,21 +666,21 @@ def main(**kwargs):
         if options.debug:
             print options
     # extract min. and max. station longitude and latitude if -g has been used
-    if options.staRect:
+    if options.starect:
         try:
-            options.staRect = options.staRect.split('/')
+            options.starect = options.starect.split('/')
             if options.debug:
-                print options.staRect
-            if len(options.staRect) != 4:
+                print options.starect
+            if len(options.starect) != 4:
                 print "Erroneous rectangle given."
                 sys.exit(2)
-            options.staLonMin = float(options.staRect[0])
-            options.staLonMax = float(options.staRect[1])
-            options.staLatMin = float(options.staRect[2])
-            options.staLatMax = float(options.staRect[3])
+            options.stalonmin = float(options.starect[0])
+            options.stalonmax = float(options.starect[1])
+            options.stalatmin = float(options.starect[2])
+            options.stalatmax = float(options.starect[3])
         except:
             print "Erroneous station rectangle given."
-            print optarg, options.staRect
+            print optarg, options.starect
             sys.exit(2)
         if options.debug:
             print options
@@ -1474,16 +1491,12 @@ def get_inventory(options):
     Because the ArcLink webservice does not support wildcard searches for
     networks (but for everything else), this method uses the re module to
     find * and ? wildcards in ArcLink networks and returns only matching
-    network/station combinations.
+    network/station combinations. Since ArcLink does not support circular
+    constraining of the returned stations, this is done inside this function.
 
     Parameters
     ----------
-    start : str, optional
-        ISO 8601-formatted, in UTC: yyyy-MM-dd['T'HH:mm:ss].
-        e.g.: "2002-05-17" or "2002-05-17T05:24:00"
-    end : str, optional
-        ISO 8601-formatted, in UTC: yyyy-MM-dd['T'HH:mm:ss].
-        e.g.: "2002-05-17" or "2002-05-17T05:24:00"
+    options: OptionParser dictionary.
 
     Returns
     -------
@@ -1569,9 +1582,24 @@ def get_inventory(options):
         # to final station list
         thislat = inventory[key]['latitude']
         thislon = inventory[key]['longitude']
-        if options.staLatMin <= thislat <= options.staLatMax and \
-           options.staLonMin <= thislon <= options.staLonMax:
-            stations3.append((station, thislat, thislon))
+        if options.debug:
+            type(options.stalatmin)
+        if options.stalatmin <= thislat <= options.stalatmax and \
+           options.stalonmin <= thislon <= options.stalonmax:
+            if options.debug:
+                print "inside ArcLink station bounding box code block"
+            if options.staradius:
+                # calculated angular distance of this station to the given
+                # latitude and longitude
+                distance = taup.locations2degrees(thislat, thislon,
+                                                  options.lat, options.lon)
+                # check if that distance within the max radius
+                if distance <= options.r:
+                    # add to the finally fully filtered station list
+                    stations3.append((station, thislat, thislon))
+            else:
+                # if no circular geographical constrain given, just add
+                stations3.append((station, thislat, thislon))
     print("Received %d channel(s) from ArcLink." % (len(stations3)))
     if options.debug:
         print "stations2 inside get_inventory: ", stations2
@@ -1606,17 +1634,31 @@ def getnparse_availability(options):
     except:
         print "Downloading IRIS availability data...",
         try:
-            result = irisclient.availability(
-                                    network=options.nw, station=options.st,
-                                    location=options.lo, channel=options.ch,
-                                    starttime=UTCDateTime(options.start),
-                                    endtime=UTCDateTime(options.end),
-                                    minlat=options.staLatMin,
-                                    maxlat=options.staLatMax,
-                                    minlon=options.staLonMin,
-                                    maxlon=options.staLonMax, output='xml')
+            # IRIS WS only allows to constrain the station areas either
+            # rectangular or circular
+            if options.staradius:
+                result = irisclient.availability(
+                                       network=options.nw, station=options.st,
+                                       location=options.lo, channel=options.ch,
+                                       starttime=UTCDateTime(options.start),
+                                       endtime=UTCDateTime(options.end),
+                                       lat=options.lat, lon=options.lon,
+                                       minradius = 0, maxradius=options.r,
+                                       output='xml')
+            else:
+                result = irisclient.availability(
+                                       network=options.nw, station=options.st,
+                                       location=options.lo, channel=options.ch,
+                                       starttime=UTCDateTime(options.start),
+                                       endtime=UTCDateTime(options.end),
+                                       minlat=options.stalatmin,
+                                       maxlat=options.stalatmax,
+                                       minlon=options.stalonmin,
+                                       maxlon=options.stalonmax,
+                                       output='xml')
         except Exception, error:
             print "\nIRIS returned no matching stations."
+            print error
             if options.debug:
                 print "\niris client error: ", error
             # return an empty list (iterable empty result)
@@ -1624,6 +1666,7 @@ def getnparse_availability(options):
         else:
             print "done."
             if len(result) == 0:
+                print "\nIRIS returned no matching stations."
                 return []
             print "Parsing IRIS availability xml to obtain nw.st.lo.ch...",
             if options.debug:
@@ -1809,7 +1852,8 @@ def exceptionMode(options):
             net, sta, loc, cha = station.split('.')
             starttime = UTCDateTime(exsplit[3])
             endtime = UTCDateTime(exsplit[4])
-            datafout = os.path.join(options.datapath, eventid, station + '.mseed')
+            datafout = os.path.join(options.datapath, eventid,
+                                    station + '.mseed')
             if options.debug:
                 print "datafout: ", datafout
             # check if ArcLink or IRIS
