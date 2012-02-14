@@ -313,9 +313,10 @@ def main(**kwargs):
     # need to provide default start and end time, otherwise
     # obspy.arclink.getInventory will raise an error if the user does not
     # provide start and end time
-    # default for start is three months ago, end is now
-    # default offset is 80 min, preset 5min, default velocity model is 'iasp91'
-    config = ConfigParser({'magmin': '3',
+    # default for start is one month ago, end is now
+    # default offset is 40 min, preset 5min, default velocity model is 'iasp91'
+    # default minimum magnitude is 5.8
+    config = ConfigParser({'magmin': '5.8',
                            'magmax': '12',
                            'latmin': '-90',
                            'latmax': '90',
@@ -327,10 +328,10 @@ def main(**kwargs):
                            'stalonmax': '180',
                            'dt': '10',
                            'start': str(UTCDateTime.utcnow()
-                                        - 60 * 60 * 24 * 30 * 3),
+                                        - 60 * 60 * 24 * 30 * 1),
                            'end': str(UTCDateTime.utcnow()),
                            'preset': '300',
-                           'offset': '4800',
+                           'offset': '2400',
                            'datapath': 'obspyload-data',
                            'model': 'iasp91',
                            'phases': 'P,S',
@@ -390,7 +391,7 @@ def main(**kwargs):
                       help=helpmsg)
     helpmsg = "Time parameter in seconds which determines how close " + \
               "the event data will be cropped after the calculated " + \
-              "arrival time. Default: 80 minutes."
+              "arrival time. Default: 40 minutes."
     parser.add_option("-o", "--offset", action="store", dest="offset",
                       help=helpmsg)
     parser.add_option("-m", "--magMin", action="store", dest="magmin",
@@ -789,8 +790,8 @@ def main(**kwargs):
             if len(sys.argv) == 1:
                 print "\nWelcome,"
                 print "you provided no options, using all default values will"
-                print "download every event that occurred in the last 3 months"
-                print "with magnitude > 3 from every available station."
+                print "download every event that occurred in the last 1 month"
+                print "with magnitude > 5.8 from every available station."
             print "\nObsPyLoad will create the folder %s" % options.datapath
             print "and possibly download vast amounts of data. Continue?"
             print "Note: you can suppress this message with -f or --force"
@@ -871,8 +872,8 @@ def main(**kwargs):
     headline = "event_id;datetime;origin_id;author;flynn_region;"
     headline += "latitude;longitude;depth;magnitude;magnitude_type;"
     headline += "DataQuality;TimingQualityMin\n" + "#" * 126 + "\n\n"
-    hl_eventf = "Station;Data Provider;Lat;Lon;TQ min;Gaps;Overlaps" + "\n"
-    hl_eventf += "#" * 50 + "\n\n"
+    hl_eventf = "Station;Data Provider;Lat;Lon;Elevation;TQ min;Gaps;Overlaps" + "\n"
+    hl_eventf += "#" * 60 + "\n\n"
     catalogfp = os.path.join(options.datapath, 'catalog.txt')
     # open catalog file in read and write mode in case we are continuing d/l,
     # so we can append to the file
@@ -992,10 +993,11 @@ def main(**kwargs):
         # Loop trough arclink_stations
         for station in arclink_stations:
             check_quit()
-            # station is a tuple of (stationname, lat, lon)
+            # station is a tuple of (stationname, lat, lon, elevation)
             try:
                 stationlat = station[1]
                 stationlon = station[2]
+                elevation = station[3]
                 station = station[0]
             except:
                 continue
@@ -1069,6 +1071,7 @@ def main(**kwargs):
                 # write station name to event info line
                 il_quake = station + ';ArcLink;'
                 il_quake += str(stationlat) + ';' + str(stationlon) + ';'
+                il_quake += str(elevation) + ';'
                 # Quality Control
                 dqdict = obspy.mseed.util.getTimingAndDataQuality(datafout)
                 try:
@@ -1183,7 +1186,7 @@ def main(**kwargs):
             dlplot_x.append(time.time() - dlplot_begin)
             dlplot_y.append(getFolderSize(options.datapath) / (1024 * 1024.0))
         # (5.2) Iris wf data download loop
-        for net, sta, loc, cha, stationlat, stationlon in avail:
+        for net, sta, loc, cha, stationlat, stationlon, elevation in avail:
             check_quit()
             # construct filename:
             station = '.'.join((net, sta, loc, cha))
@@ -1243,6 +1246,7 @@ def main(**kwargs):
                 # write station name to event info line
                 il_quake = station + ';IRIS;'
                 il_quake += str(stationlat) + ';' + str(stationlon) + ';'
+                il_quake += str(elevation) + ';'
                 # Quality Control
                 dqdict = obspy.mseed.util.getTimingAndDataQuality(irisfnfull)
                 try:
@@ -1578,6 +1582,8 @@ def get_inventory(options):
         # obtain key for station Attrib dict
         net, sta, loc, cha = station.split('.')
         key = '.'.join((net, sta))
+        # get elevation for this station
+        elevation = inventory[key]['elevation']
         # check if station matches the geographic constraints and add tupel
         # to final station list
         thislat = inventory[key]['latitude']
@@ -1596,10 +1602,10 @@ def get_inventory(options):
                 # check if that distance within the max radius
                 if distance <= options.r:
                     # add to the finally fully filtered station list
-                    stations3.append((station, thislat, thislon))
+                    stations3.append((station, thislat, thislon, elevation))
             else:
                 # if no circular geographical constrain given, just add
-                stations3.append((station, thislat, thislon))
+                stations3.append((station, thislat, thislon, elevation))
     print("Received %d channel(s) from ArcLink." % (len(stations3)))
     if options.debug:
         print "stations2 inside get_inventory: ", stations2
@@ -1675,15 +1681,16 @@ def getnparse_availability(options):
             if options.debug:
                 print 'availxml:\n', availxml
             stations = availxml.findall('Station')
-            # I will construct a list of tuples of stations of the form:
-            # [(net,sta,cha,loc,lat,lon), (net,sta,loc,cha,lat,lon), ...]
+            # construct a list of tuples of stations of the form:
+            # [(net,sta,cha,loc,lat,lon,elevation), (..), (..), ...]
             avail_list = []
             for station in stations:
                 net = station.values()[0]
                 sta = station.values()[1]
-                # find latitude and longitude of station
+                # find latitude, longitude and elevation of station
                 lat = float(station.find('Lat').text)
                 lon = float(station.find('Lon').text)
+                elevation = float(station.find('Elevation').text)
                 channels = station.findall('Channel')
                 for channel in channels:
                     loc = channel.values()[1]
@@ -1698,7 +1705,7 @@ def getnparse_availability(options):
                     # as well as to construct a working IRIS ws query
                     avail_list.append((net.strip(' '), sta.strip(' '),
                                        loc.strip(' '), cha.strip(' '), lat,
-                                       lon))
+                                       lon, elevation))
             # dump availability to file
             fh = open(availfp, 'wb')
             pickle.dump(avail_list, fh)
@@ -1733,7 +1740,7 @@ def queryMeta(options):
     # (1) IRIS: resp files
     # stations is a list of all stations (nw.st.l.ch, so it includes networks)
     # loop over all tuples of a station in avail list:
-    for (net, sta, loc, cha, lat, lon) in avail:
+    for (net, sta, loc, cha, lat, lon, elevation) in avail:
         check_quit()
         # construct filename
         respfn = '.'.join(('RESP', net, sta, loc, cha))
@@ -1765,7 +1772,8 @@ def queryMeta(options):
     # skip dead ArcLink networks
     for station in stations:
         check_quit()
-        # we don't need lat and lon
+        # for metadata request, don't need lat, lon, elevation which is also
+        # saved inside station
         station = station[0]
         net, sta, loc, cha = station.split('.')
         # skip dead networks
@@ -1826,7 +1834,8 @@ def exceptionMode(options):
     try:
         exceptionfin = open(exceptionfp, 'rt')
     except:
-        print "Could not open exception file. Check your working directory."
+        print "Could not open exception file. Check your working " + \
+              "directory and permissions."
         sys.exit(0)
     exceptions = exceptionfin.readlines()
     exceptionfin.close()
@@ -2168,7 +2177,7 @@ def help():
     printWrap("", "e.g.: -x -15.5 -X 40 -y 30.8 -Y 50")
     print "\n"
     print "* specify a timeframe:\n"
-    printWrap("Default:", "the last 3 months")
+    printWrap("Default:", "the last 1 month")
     printWrap("Format:", "Any obspy.core.UTCDateTime recognizable string.")
     print
     printWrap("-t[--time]", "<start>/<end>")
@@ -2179,7 +2188,7 @@ def help():
     printWrap("", "e.g.: -s 2007-12-31 -e 2011-01-31")
     print "\n"
     print "* specify a minimum and maximum magnitude:\n"
-    printWrap("Default:", "minimum magnitude 3, no maximum magnitude.")
+    printWrap("Default:", "minimum magnitude 5.8, no maximum magnitude.")
     printWrap("Format:", "Integer or decimal.")
     print
     printWrap("-m[--magmin]", "<min.magnitude>")
@@ -2268,7 +2277,7 @@ def help():
     printWrap("-o[--offset]", "<offset>")
     printWrap("", "Time parameter given in seconds which determines how " + \
         "close the data will be cropped after estimated arrival time at " + \
-        "each individual station. Default: 80 minutes.")
+        "each individual station. Default: 40 minutes.")
     print
     printWrap("-q[--query-resp]", "")
     printWrap("", "Instead of downloading seismic data, download " + \
