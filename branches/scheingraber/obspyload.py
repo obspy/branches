@@ -374,6 +374,14 @@ def main(**kwargs):
               "running ObsPyLoad."
     parser.add_option("-R", "--reset", action="store_true",
                       dest="reset", help=helpmsg)
+    helpmsg = "Provide this flag if you do not want to use the automatic " + \
+              "event-based download routine, but just want to download " + \
+              "all data in the supported seismic archives in the whole " + \
+              "timeframe (given as usual by the options --start and --end." + \
+              " May be combined with any of the station selection " + \
+              "options."
+    parser.add_option("-w", "--time-window-mode", action="store_true",
+                      dest="timewindowmode", help=helpmsg)
     parser.add_option("-s", "--start", action="store", dest="start",
                       help="Start time. Default: 3 months ago.")
     parser.add_option("-e", "--end", action="store", dest="end",
@@ -776,6 +784,11 @@ def main(**kwargs):
                  pltHeight=pltHeight, colWidth=colWidth, timespan=timespan,
                  pltPhases=pltPhases, model=options.model, debug=options.debug)
         return
+    # if -w or --time-window, go into manual timeframe mode (not event based)
+    if options.timewindowmode:
+        print "Entering time window mode (not event based download)."
+        timeWindowMode(options)
+        return
     # if -u or --update, delete event and catalog pickled objects
     if options.update:
         try:
@@ -872,9 +885,9 @@ def main(**kwargs):
     headline = "event_id;datetime;origin_id;author;flynn_region;"
     headline += "latitude;longitude;depth;magnitude;magnitude_type;"
     headline += "DataQuality;TimingQualityMin\n" + "#" * 126 + "\n\n"
-    hl_eventf = "Station;Data Provider;Lat;Lon;Elevation;TQ min;Gaps;Overlaps" + "\n"
-    hl_eventf += "#" * 60 + "\n\n"
-    catalogfp = os.path.join(options.datapath, 'catalog.txt')
+    hl_eventf = "Station;Data Provider;Lat;Lon;Elevation;TQ min;Gaps;Overlaps"
+    hl_eventf += "\n" + "#" * 60 + "\n\n"
+    catalogfp = os.path.join(options.datapath, 'events.txt')
     # open catalog file in read and write mode in case we are continuing d/l,
     # so we can append to the file
     try:
@@ -969,7 +982,7 @@ def main(**kwargs):
         # create event file in event dir
         # DQ: all min entries in event folder txt file differently
         # this is handled inside the station loop
-        quakefp = os.path.join(eventdir, 'quake.txt')
+        quakefp = os.path.join(eventdir, 'stations.txt')
         # open quake file in read and write mode in case we are continuing d/l,
         # so we can append to the file
         try:
@@ -977,7 +990,6 @@ def main(**kwargs):
         except:
             # the file did not exist, we are not continuing d/l
             quakefout = open(quakefp, 'wt')
-        quakefout.write(headline[:97] + "\n" + "#" * 97 + "\n\n")
         quakefout.write(infoline + '\n\n\n')
         quakefout.write(hl_eventf)
         quakefout.flush()
@@ -1649,7 +1661,7 @@ def getnparse_availability(options):
                                        starttime=UTCDateTime(options.start),
                                        endtime=UTCDateTime(options.end),
                                        lat=options.lat, lon=options.lon,
-                                       minradius = 0, maxradius=options.r,
+                                       minradius=0, maxradius=options.r,
                                        output='xml')
             else:
                 result = irisclient.availability(
@@ -1716,6 +1728,7 @@ def getnparse_availability(options):
             print("Received %d station(s) from IRIS." % (len(stations)))
             print("Received %d channel(s) from IRIS." % (len(avail_list)))
             return avail_list
+
 ##################################################################
 # ALTERNATIVE MODES FUNCTIONS SECTION as described in the thesis #
 ##################################################################
@@ -1921,7 +1934,7 @@ def plotMode(datapath, pltWidth, pltHeight, colWidth, timespan, pltPhases,
     alleventsmatrix = np.zeros((pltHeight, pltWidth))
     alleventsmatrix_counter = 0
     # event catalog file handler
-    catalogfin = os.path.join(datapath, 'catalog.txt')
+    catalogfin = os.path.join(datapath, 'events.txt')
     catalogfh = open(catalogfin, 'r')
     # extract events from catalog file
     events = catalogfh.readlines()[3:]
@@ -1940,8 +1953,8 @@ def plotMode(datapath, pltWidth, pltHeight, colWidth, timespan, pltPhases,
             print "eventlon:", eventlon
         # concatenate event directory and quake catalog file strings
         eventdir = os.path.join(datapath, eventid)
-        quakefin = os.path.join(eventdir, 'quake.txt')
-        # quake.txt file handler
+        quakefin = os.path.join(eventdir, 'stations.txt')
+        # stations.txt file handler
         quakefh = open(quakefin, 'r')
         stations = quakefh.readlines()[9:]
         # loop over stations, which is a list of csv-strings
@@ -2058,6 +2071,274 @@ def plotMode(datapath, pltWidth, pltHeight, colWidth, timespan, pltPhases,
     plotfn = os.path.join(datapath, 'allevents_waveforms.pdf')
     plt.savefig(plotfn)
 
+
+def timeWindowMode(options):
+    """
+    This mode just downloads all available data for a user specified time
+    frame, i.e. does not go for distinct event-based downloads.
+    """
+    # sparsely commenting this section, it's largely a subset of main()
+    # (need to look for a good way to encapsulate this - problem is that the
+    # unnecessary sections are scattered all over main, would need lots of
+    # conditional code and branching otherwise..)
+    global done
+    if not os.path.exists(options.datapath):
+        os.mkdir(options.datapath)
+    # lists for data vs elapsed time plot
+    dlplot_x_fp = os.path.join(options.datapath, 'dlplot_x.pickle')
+    dlplot_y_fp = os.path.join(options.datapath, 'dlplot_y.pickle')
+    try:
+        # if this d/l is resumed, load the previous dl-plot data into memory
+        # b for binary file
+        dlplot_x_fh = open(dlplot_x_fp, 'rb')
+        dlplot_y_fh = open(dlplot_y_fp, 'rb')
+        dlplot_x = pickle.load(dlplot_x_fh)
+        dlplot_y = pickle.load(dlplot_y_fh)
+        dlplot_x_fh.close()
+        dlplot_y_fh.close()
+        dlplot_begin = time.time() - dlplot_x[-1]
+        print "Found previous data-vs-time plot file, resuming the plot..."
+    except:
+        # create new dlplot lists
+        print "Initializing new data-vs-time plot..."
+        dlplot_begin = time.time()
+        dlplot_x = [0]
+        dlplot_y = [getFolderSize(options.datapath) / (1024 * 1024.0)]
+    # start keypress thread
+    done = False
+    keypress_thread().start()
+    # get arclink and IRIS stations
+    arclink_stations = get_inventory(options)
+    check_quit()
+    avail = getnparse_availability(options)
+    # initialize obspy's IRIS and ArcLink webservice clients
+    irisclient = obspy.iris.Client(debug=options.debug)
+    arcclient = obspy.arclink.Client(timeout=5, debug=options.debug)
+    # exception file - contains info about d/l exceptions(problems)
+    exceptionfp = os.path.join(options.datapath, 'exceptions.txt')
+    # try open exceptionfile in read and write mode if we continue d/l
+    try:
+        exceptionfout = open(exceptionfp, 'r+t')
+        # reading previous exceptions to skip those stations this time
+        exceptionstr = exceptionfout.read()
+        # go back to beginning of exceptionfout
+        exceptionfout.seek(0)
+    except:
+        # create new exception file otherwise
+        exceptionfout = open(exceptionfp, 'wt')
+        exceptionstr = ''
+    # keeping event_id info in the headline and will write none in that column
+    # for all stations - will simplify encapsulation of this code block later
+    exceptionhl = 'event_id;data provider;station;starttime;endtime;exception'
+    exceptionhl += '\n' + '#' * 58 + '\n\n'
+    exceptionfout.write(exceptionhl)
+    # just like for the catalog file, move to end of exception file
+    exceptionfout.seek(0, 2)
+    # omitting the waveform plotting in this mode.
+    # re-init neriesclient here, seems to reduce problems
+    neriesclient = obspy.neries.Client()
+    # init/reset dqsum
+    dqsum = 0
+    tqlist = []
+    # create station catalog file
+    hl_eventf = "Station;Data Provider;Lat;Lon;Elevation;TQ min;Gaps;Overlaps"
+    hl_eventf += "\n" + "#" * 60 + "\n\n"
+    # this is handled inside the station loop
+    quakefp = os.path.join(options.datapath, 'stations.txt')
+    # rw mode so we can append to the file if continuing d/l
+    try:
+        quakefout = open(quakefp, 'r+t')
+    except:
+        # the file did not exist, we are not continuing d/l
+        quakefout = open(quakefp, 'wt')
+    quakefout.write(hl_eventf)
+    quakefout.flush()
+    # just like for catalog and exception file, move to end of quake file
+    # to write new stations to the end of it
+    quakefout.seek(0, 2)
+    # not downloading event-based, but I want to keep the structure of the
+    # catalog file the same
+    eventid = "none"
+    # in this mode, download all data from options.start to options.end
+    starttime = options.start
+    endtime = options.end
+    # (5.1) ArcLink wf data download loop (runs inside event loop)
+    # Loop trough arclink_stations
+    for station in arclink_stations:
+        check_quit()
+        # station is a tuple of (stationname, lat, lon, elevation)
+        try:
+            stationlat = station[1]
+            stationlon = station[2]
+            elevation = station[3]
+            station = station[0]
+        except:
+            continue
+        if options.debug:
+            print "station: ", station
+        # skip dead networks
+        net, sta, loc, cha = station.split('.')
+        if net in skip_networks:
+            print 'Skipping dead network %s...' % net
+            # continue the for-loop to the next iteration
+            continue
+        # create data file pointer
+        datafout = os.path.join(options.datapath, "%s.mseed" % station)
+        if os.path.isfile(datafout):
+            print 'Data file for %s exists, skip...' % (station)
+            continue
+        # if this string has already been in the exception file when we
+        # were starting the d/l, we had an exception for this event/data
+        # provider/station combination last time and won't try again.
+        skipstr = eventid + ';ArcLink;' + station
+        if skipstr in exceptionstr:
+            msg = 'Encountered exception for event %s from ArcLink %s last'
+            msg += ' time, skip...'
+            print msg % (eventid, station)
+            continue
+        print 'Downloading station %s from ArcLink... ' % station,
+        try:
+            # I have been told to init the client often
+            arcclient = obspy.arclink.Client(timeout=5,
+                                             debug=options.debug)
+            arcclient.saveWaveform(filename=datafout, network=net,
+                                   station=sta, location=loc, channel=cha,
+                                   starttime=starttime, endtime=endtime)
+        except Exception, error:
+            print "download error: ",
+            print error
+            # create exception file info line
+            il_exception = str(eventid) + ';ArcLink;' + station + ';'
+            il_exception += str(starttime) + ';' + str(endtime) + ';'
+            il_exception += str(error) + '\n'
+            exceptionfout.write(il_exception)
+            exceptionfout.flush()
+            continue
+        else:
+            # write station name to station file
+            il_quake = station + ';ArcLink;'
+            il_quake += str(stationlat) + ';' + str(stationlon) + ';'
+            il_quake += str(elevation) + ';'
+            # Quality Control
+            dqdict = obspy.mseed.util.getTimingAndDataQuality(datafout)
+            try:
+                dqsum += sum(dqdict['data_quality_flags'])
+            except:
+                pass
+            # Timing Quality, trying to get all stations into one line in
+            # station file, and handling the case that some station's mseeds
+            # provide TQ data, and some do not
+            try:
+                tq = dqdict['timing_quality_min']
+                tqlist.append(tq)
+                il_quake += str(tq)
+            except:
+                il_quake += str('None')
+            # finally, gaps&overlaps into quakefile
+            # read mseed into stream, use .getGaps method
+            st = read(datafout)
+            result = st.getGaps()
+            gaps = 0
+            overlaps = 0
+            for r in result:
+                if r[6] > 0:
+                    gaps += 1
+                else:
+                    overlaps += 1
+            il_quake += ';%d;%d\n' % (gaps, overlaps)
+            quakefout.write(il_quake)
+            quakefout.flush()
+            # if there has been no Exception, assume d/l was ok
+            print "done."
+            del st
+        # add current elapsed time and folder size to the lists
+        dlplot_x.append(time.time() - dlplot_begin)
+        dlplot_y.append(getFolderSize(options.datapath) / (1024 * 1024.0))
+    # (5.2) Iris wf data download loop
+    for net, sta, loc, cha, stationlat, stationlon, elevation in avail:
+        check_quit()
+        # construct filename
+        station = '.'.join((net, sta, loc, cha))
+        irisfn = station + '.mseed'
+        irisfnfull = os.path.join(options.datapath, irisfn)
+        if os.path.isfile(irisfnfull):
+            print 'Data file for %s exists, skip...' % station
+            continue
+        skipstr = eventid + ';IRIS;' + station
+        if skipstr in exceptionstr:
+            msg = 'Encountered exception for station %s last '
+            msg += 'time, skip...'
+            print msg % station
+            continue
+        print 'Downloading station %s from IRIS... ' % station,
+        try:
+            irisclient = obspy.iris.Client(debug=options.debug)
+            irisclient.saveWaveform(filename=irisfnfull,
+                                    network=net, station=sta,
+                                    location=loc, channel=cha,
+                                    starttime=starttime, endtime=endtime)
+        except Exception, error:
+            print "download error: ", error
+            # create exception file info line
+            il_exception = str(eventid) + ';IRIS;' + station + ';'
+            il_exception += str(starttime) + ';' + str(endtime) + ';'
+            il_exception += str(error) + '\n'
+            exceptionfout.write(il_exception)
+            exceptionfout.flush()
+            continue
+        else:
+            # data quality handling for iris
+            # write station name to event info line
+            il_quake = station + ';IRIS;'
+            il_quake += str(stationlat) + ';' + str(stationlon) + ';'
+            il_quake += str(elevation) + ';'
+            # Quality Control
+            dqdict = obspy.mseed.util.getTimingAndDataQuality(irisfnfull)
+            try:
+                dqsum += sum(dqdict['data_quality_flags'])
+            except:
+                pass
+            # Timing Quality, trying to get all stations into one line in
+            # eventfile, and handling the case that some station's mseeds
+            # provide TQ data, and some do not
+            try:
+                tq = dqdict['timing_quality_min']
+                tqlist.append(tq)
+                il_quake += str(tq)
+            except:
+                il_quake += str('None')
+            # finally, gaps&overlaps into quakefile
+            # read mseed into stream, use .getGaps method
+            st = read(irisfnfull)
+            result = st.getGaps()
+            gaps = 0
+            overlaps = 0
+            for r in result:
+                if r[6] > 0:
+                    gaps += 1
+                else:
+                    overlaps += 1
+            print "done."
+            del st
+            il_quake += ';%d;%d\n' % (gaps, overlaps)
+            quakefout.write(il_quake)
+            quakefout.flush()
+        # add current elapsed time and folder size to the lists
+        dlplot_x.append(time.time() - dlplot_begin)
+        dlplot_y.append(getFolderSize(options.datapath) / (1024 * 1024.0))
+    ### end of station loop ###
+    # save plot of database size versus elapsed download time
+    plt.plot(dlplot_x, dlplot_y)
+    plt.xlabel('Time in seconds')
+    plt.ylabel('Folder size in megabytes')
+    titlemsg = "Folder size vs elapsed time"
+    plotfn = os.path.join(options.datapath, 'foldersize_vs_time.pdf')
+    plt.savefig(plotfn)
+    # close files
+    quakefout.close()
+    exceptionfout.close()
+    done = True
+    return
 
 ###########################################################
 # ADDITIONAL FUNCTIONS SECTION as described in the thesis #
