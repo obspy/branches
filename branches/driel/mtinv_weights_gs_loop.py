@@ -1,21 +1,19 @@
+#!/usr/bin/env python
 import numpy as np
-#import matplotlib.pyplot as plt
 from obspy.signal.util import nextpow2
 from obspy.core import read, Trace, Stream
-from obspy.signal import highpass, lowpass#, cosTaper
+from obspy.signal import highpass, lowpass
 import pickle
 import os.path
 from scipy.integrate import cumtrapz
 from obspy.signal.invsim import waterlevel
 
 def mtinv(input_set, st_tr, st_g, fmin, fmax, nsv=1, single_force=False,
-        stat_subset=[], weighting_type=2, weights=[], cache_path='',
-        force_recalc=False, cache=True):
-
+          stat_subset=[], weighting_type=2, weights=[], cache_path='',
+          force_recalc=False, cache=True):
     '''
     Not intended for direct use, use mtinv_gs instead!
     '''
-
     utrw, weights_l2, S0w, df, dt, nstat, ndat, ng, nfft, nfinv = input_set
 
     # setup greens matrix in fourier space
@@ -28,10 +26,9 @@ def mtinv(input_set, st_tr, st_g, fmin, fmax, nsv=1, single_force=False,
             gw = gw[:,:,:nfinv]
 
     if not os.path.isfile(cache_path + 'gw.pickle') or force_recalc:
-        #g = np.zeros((nstat * 3, 6 + single_force * 3, ng))
-        #gw = np.zeros((nstat * 3, 6 + single_force * 3, nfinv)) * 0j
-        g = np.empty((nstat * 3, 6 + single_force * 3, ng))
-        gw = np.empty((nstat * 3, 6 + single_force * 3, nfinv)) * 0j
+        g = np.zeros((nstat * 3, 6 + single_force * 3, ng))
+        #gw = np.zeros((nstat * 3, 6 + single_force * 3, nfft/2+1)) * 0j
+        gw = np.zeros((nstat * 3, 6 + single_force * 3, nfinv)) * 0j
         
         # loop over number of stations
         for k in np.arange(nstat):
@@ -96,8 +93,7 @@ def mtinv(input_set, st_tr, st_g, fmin, fmax, nsv=1, single_force=False,
     weightsm = np.matrix(np.diag(weights_l2[chan_subset] *
                          chan_weights[chan_subset]**.5))
     
-    #M = np.zeros((6 + single_force * 3, nfft/2+1)) * 0j
-    M = np.empty((6 + single_force * 3, nfft/2+1), dtype=complex)
+    M = np.zeros((6 + single_force * 3, nfft/2+1)) * 0j
     
     # inversion
     for w in np.arange(nfinv):
@@ -108,7 +104,7 @@ def mtinv(input_set, st_tr, st_g, fmin, fmax, nsv=1, single_force=False,
 
     # back to time domain
 
-    M_t = np.empty((6 + single_force * 3, nfft))
+    M_t = np.zeros((6 + single_force * 3, nfft))
 
     for j in np.arange(6 + single_force * 3):
         M_t[j,:] = np.fft.irfft(M[j,:])[:nfft] * df
@@ -181,9 +177,12 @@ def mtinv(input_set, st_tr, st_g, fmin, fmax, nsv=1, single_force=False,
     return M_t, np.array(m), np.array(x), s, st_syn, misfit
 
 
+
+
+
 def mtinv_gs(st_tr, gl, fmin, fmax, fmax_hardcut_factor=4, S0=None, nsv=1,
-        single_force=False, stat_subset=[], weighting_type=2, weights=[],
-        cache_path='', force_recalc=False, cache=False, w_level=50): 
+          single_force=False, stat_subset=[], weighting_type=2, weights=[],
+          cache_path='', force_recalc=False, cache=False, w_level=50):
     '''
     Frequency domain moment tensor inversion.
 
@@ -262,7 +261,6 @@ def mtinv_gs(st_tr, gl, fmin, fmax, fmax_hardcut_factor=4, S0=None, nsv=1,
                   case of single force), otherwise approximately)
         argmin  - index of Green's function in list that minimizes the misfit
     '''
-
     st_tr = st_tr.copy()
     st_tr.filter('lowpass', freq=fmax, corners=4)
     st_tr.filter('highpass', freq=fmin, corners=4)
@@ -274,6 +272,7 @@ def mtinv_gs(st_tr, gl, fmin, fmax, fmax_hardcut_factor=4, S0=None, nsv=1,
         st_g = gl[0]
 
     ng = st_g[0].data.size
+
     df = st_tr[0].stats.sampling_rate
     dt = 1./df
 
@@ -308,12 +307,9 @@ def mtinv_gs(st_tr, gl, fmin, fmax, fmax_hardcut_factor=4, S0=None, nsv=1,
 
 
     # setup seismogram matrix in fourier space
-    #utr = np.zeros((nstat * 3, ndat))
-    #utrw = np.zeros((nstat * 3, nfft/2+1)) * 0j
-    #weights_l2 = np.zeros(nstat * 3)
-    utr = np.empty((nstat * 3, ndat))
-    utrw = np.empty((nstat * 3, nfft/2+1)) * 0j
-    weights_l2 = np.empty(nstat * 3)
+    utr = np.zeros((nstat * 3, ndat))
+    utrw = np.zeros((nstat * 3, nfft/2+1)) * 0j
+    weights_l2 = np.zeros(nstat * 3)
 
     for k in np.arange(nstat):
         for i, chan in enumerate(['u', 'v', 'w']):
@@ -321,8 +317,14 @@ def mtinv_gs(st_tr, gl, fmin, fmax, fmax_hardcut_factor=4, S0=None, nsv=1,
             utrw[k*3 + i,:] = np.fft.rfft(utr[k*3 + i,:], n=nfft) * dt
             # calculate l2 norm for weighting
             weights_l2[k*3 + i] = cumtrapz(utr[k*3 + i,:]**2, dx=dt)[-1]
-   
-    # minimize misfit 
+    
+    M_tl = []
+    ml = []
+    xl = []
+    sl = []
+    st_synl = []
+    #misfitl = []
+    misfitarg = []
     min_misfit = 1e6
 
     st_tr.filter('lowpass', freq=fmax, corners=4)
@@ -354,9 +356,25 @@ def mtinv_gs(st_tr, gl, fmin, fmax, fmax_hardcut_factor=4, S0=None, nsv=1,
             xl = x
             sl = s
             st_synl = st_syn
+            misfitl = misfit
             argmin = i
 
         else:
             pass
 
-    return M_tl, ml, xl, sl, st_synl, st_tr, min_misfit, argmin
+            #M_tl.append(M_t)
+            #ml.append(m)
+            #xl.append(x)
+            #sl.append(s)
+            #st_synl.append(st_syn)
+            #misfitl.append(misfit)
+
+        #del st_g, st_syn, M_t, m, x, s, misfit
+
+    #misfit = np.array(misfitl)
+    #argmin = misfit.argmin()
+    
+    return M_tl, ml, xl, sl, st_synl, st_tr, misfitl, argmin
+
+    #return M_tl[argmin], ml[argmin], xl[argmin], sl[argmin], st_synl[argmin], st_tr, misfit, argmin
+    
