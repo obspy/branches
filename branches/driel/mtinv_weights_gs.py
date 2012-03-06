@@ -178,9 +178,174 @@ def mtinv(input_set, st_tr, st_g, fmin, fmax, nsv=1, single_force=False,
 
 
 
+def mtinv_constrained(input_set, st_tr, st_g, fmin, fmax, nsv=1, single_force=False,
+          stat_subset=[], weighting_type=2, weights=[], cache_path='',
+          force_recalc=False, cache=True, constrained_sources=None):
+    '''
+    Not intended for direct use, use mtinv_gs instead!
+    '''
+    utrw, weights_l2, S0w, df, dt, nstat, ndat, ng, nfft, nfinv = input_set
+
+    # setup greens matrix in fourier space
+    if os.path.isfile(cache_path + 'gw.pickle') and not force_recalc:
+        # read G-matrix from file if exists
+        gw = pickle.load(open(cache_path + 'gw.pickle'))
+        if gw.shape[-1] < nfinv:
+            force_recalc = True
+        else:
+            gw = gw[:,:,:nfinv]
+
+    if not os.path.isfile(cache_path + 'gw.pickle') or force_recalc:
+        g = np.zeros((nstat * 3, 6 + single_force * 3, ng))
+        #gw = np.zeros((nstat * 3, 6 + single_force * 3, nfft/2+1)) * 0j
+        gw = np.zeros((nstat * 3, 6 + single_force * 3, nfinv)) * 0j
+
+        for k in np.arange(nstat):
+            for i in np.arange(3):
+                for j in np.arange(6 + single_force * 3):
+                    g[k*3 + i,j,:] = st_g.select(station='%04d' % (k + 1),
+                                     channel='%02d%1d' % (i,j))[0].data
+                    # fill greens matrix in freq space, deconvolve S0
+                    gw[k*3 + i,j,:] = np.fft.rfft(g[k*3 + i,j,:], n=nfft) \
+                                                    [:nfinv] * dt / S0w
+                    
+
+        # write G-matrix to file
+        if cache:
+            pickle.dump(gw, open(cache_path + 'gw.pickle', 'w'), protocol=2)
+
+    # setup channel subset from station subset
+    if stat_subset == []:
+        stat_subset = np.arange(nstat)
+    else:
+        stat_subset = np.array(stat_subset) - 1
+
+    chan_subset = np.zeros(stat_subset.size*3, dtype=int)
+    for i in np.arange(stat_subset.size):
+        chan_subset[i*3:(i+1)*3] = stat_subset[i]*3 + np.array([0,1,2])
+
+    # setup weighting matrix (depending on weighting scheme and apriori
+    # weighting)
+    
+    # a priori weighting   
+    if weights == []:
+        weights = np.ones(nstat)
+    elif len(weights) == stat_subset.size:
+        weights = np.array(weights)
+        buf = np.ones(nstat)
+        buf[stat_subset] = weights
+        weights = buf
+    elif len(weights) == nstat:
+        weights = np.array(weights)
+    else:
+        raise ValueError('argument weights has wrong length')
+    
+    chan_weights = np.zeros(nstat*3)
+    for i in np.arange(nstat):
+        chan_weights[i*3:(i+1)*3] = weights[i] + np.zeros(3)
+
+    # l2-norm weighting
+    if weighting_type == 0:
+        weights_l2 *= chan_weights
+        weights_l2 = np.ones(nstat*3) * (weights_l2[chan_subset].sum())**.5
+    elif weighting_type == 1:
+        weights_l2 = weights_l2**.5
+    elif weighting_type == 2:
+        for k in np.arange(nstat):
+            weights_l2[k*3:k*3 + 3] = (weights_l2[k*3:k*3 + 3].sum())**.5
+    else:
+        raise ValueError('argument weighting_type needs to be in [0,1,2]')
+   
+    weights_l2 = 1./weights_l2
+    weightsm = np.matrix(np.diag(weights_l2[chan_subset] *
+                         chan_weights[chan_subset]**.5))
+    
+   
+    mf = np.zeros(constrained_sources.shape[0])
+    stfl = []
+    stl = []
+
+    for nn, const_source in enumerate(constrained_sources):
+        stf = np.zeros(nfft/2+1) * 0j
+
+        # inversion
+        for w in np.arange(nfinv):
+            GM = weightsm * np.matrix(gw[[chan_subset],:,w]) * np.matrix(const_source).T
+            GI = np.linalg.pinv(GM, rcond=0.00001)
+            m = GI * weightsm * np.matrix(utrw[[chan_subset],w]).T
+            stf[w] = m[0,0]
+
+        # back to time domain
+        stf_t = np.fft.irfft(stf)[:nfft] * df
+        
+        stf_t = lowpass(stf_t, fmax, df, corners=4)
+
+        # compute synthetic seismograms (for stations included in the inversion
+        # only - maybe it makes sense to do it for all so that indizes in the
+        # streams are the same in input and ouput)
+
+        channels = ['u', 'v', 'w']
+
+        M_t = np.zeros((6, nfft))
+        for i in np.arange(6):
+            M_t[i] = stf_t * const_source[i]
+
+        traces = []
+        stff = np.fft.rfft(M_t, n=nfft) * dt
+
+        for k in stat_subset:
+            for i in np.arange(3):
+                
+                data = np.zeros(ndat)
+                for j in np.arange(6 + single_force * 3):
+                    dummy = np.concatenate((gw[k*3 + i,j,:], np.zeros(nfft/2 + 1 -
+                                            nfinv))) * stff[j]
+                    dummy = np.fft.irfft(dummy)[:ndat] / dt
+                    data += dummy
+
+                stats = {'network': 'SY', 
+                         'station': '%04d' % (k+1), 
+                         'location': '',
+                         'channel': channels[i],
+                         'npts': len(data), 
+                         'sampling_rate': st_tr[0].stats.sampling_rate,
+                         'starttime': st_tr[0].stats.starttime,
+                         'mseed' : {'dataquality': 'D'}}
+                traces.append(Trace(data=data, header=stats))
+
+        st_syn = Stream(traces)
+        
+        # compute misfit
+        misfit = 0.
+
+        for k in stat_subset:
+            for i, chan in enumerate(['u', 'v', 'w']):
+                u = st_tr.select(station='%04d' % (k+1), channel=chan)[0].data.copy()
+                Gm = st_syn.select(station='%04d' % (k+1), channel=chan)[0].data.copy()
+                misfit += weights_l2[k*3 + i]**2 * chan_weights[k*3 + i] * \
+                          cumtrapz((u - Gm)**2, dx=dt)[-1]
+
+        if weighting_type == 1:
+            misfit /= chan_weights[chan_subset].sum()
+        elif weighting_type == 2:
+            misfit /= weights[stat_subset].sum()
+
+        mf[nn] = misfit
+        stfl.append(stf_t)
+        stl.append(st_syn)
+
+    am = mf.argmin()
+
+    return constrained_sources[am], stfl[am], mf[am], stl[am]
+
+
+
+
+
 def mtinv_gs(st_tr, gl, fmin, fmax, fmax_hardcut_factor=4, S0=None, nsv=1,
           single_force=False, stat_subset=[], weighting_type=2, weights=[],
-          cache_path='', force_recalc=False, cache=False, w_level=50):
+          cache_path='', force_recalc=False, cache=False, w_level=50,
+          method='full_pca', constrained_sources=None):
     '''
     Frequency domain moment tensor inversion.
 
@@ -325,38 +490,71 @@ def mtinv_gs(st_tr, gl, fmin, fmax, fmax_hardcut_factor=4, S0=None, nsv=1,
 
     st_tr.filter('lowpass', freq=fmax, corners=4)
 
-    for i, stg in enumerate(gl):
-        if type(stg) == str:
-            st_g = read('%s'%(stg))
-        else:
-            st_g = stg
-        print i
+    if method == 'full_pca':
+        for i, stg in enumerate(gl):
+            if type(stg) == str:
+                st_g = read('%s'%(stg))
+            else:
+                st_g = stg
+            print i
 
-        if round(st_tr[0].stats.sampling_rate, 5) != round(st_g[0].stats.sampling_rate, 5):
-            msg = 'sampling rates of Seismograms and Green\'s function are not the'
-            msg = msg + ' same: %f != %f' % (st_tr[0].stats.sampling_rate,
-                                             st_g[0].stats.sampling_rate)
-            raise ValueError(msg)
+            if round(st_tr[0].stats.sampling_rate, 5) != round(st_g[0].stats.sampling_rate, 5):
+                msg = 'sampling rates of Seismograms and Green\'s function are not the'
+                msg = msg + ' same: %f != %f' % (st_tr[0].stats.sampling_rate,
+                                                 st_g[0].stats.sampling_rate)
+                raise ValueError(msg)
 
-        M_t, m, x, s, st_syn, misfit = mtinv((utrw, weights_l2.copy(), S0w, df,
-            dt, nstat, ndat, ng, nfft, nfinv), st_tr, st_g, fmin, fmax,
-            nsv=nsv, single_force=single_force, stat_subset=stat_subset,
-            force_recalc=force_recalc, weighting_type=weighting_type,
-            weights=weights, cache_path=cache_path + ('%06d_' % i), cache=cache)
+            M_t, m, x, s, st_syn, misfit = mtinv((utrw, weights_l2.copy(), S0w, df,
+                dt, nstat, ndat, ng, nfft, nfinv), st_tr, st_g, fmin, fmax,
+                nsv=nsv, single_force=single_force, stat_subset=stat_subset,
+                force_recalc=force_recalc, weighting_type=weighting_type,
+                weights=weights, cache_path=cache_path + ('%06d_' % i), cache=cache)
 
-        M_tl.append(M_t)
-        ml.append(m)
-        xl.append(x)
-        sl.append(s)
-        st_synl.append(st_syn)
-        misfitl.append(misfit)
+            M_tl.append(M_t)
+            ml.append(m)
+            xl.append(x)
+            sl.append(s)
+            st_synl.append(st_syn)
+            misfitl.append(misfit)
 
-    misfit = np.array(misfitl)
-    argmin = misfit.argmin()
+        misfit = np.array(misfitl)
+        argmin = misfit.argmin()
+        
+
+        return M_tl[argmin], ml[argmin], xl[argmin], sl[argmin], st_synl[argmin], st_tr, misfit, argmin
     
-
-    return M_tl[argmin], ml[argmin], xl[argmin], sl[argmin], st_synl[argmin], st_tr, misfit, argmin
+    elif method == 'constrained':
     
+        for i, stg in enumerate(gl):
+            if type(stg) == str:
+                st_g = read('%s'%(stg))
+            else:
+                st_g = stg
+            print i
+
+            if round(st_tr[0].stats.sampling_rate, 5) != round(st_g[0].stats.sampling_rate, 5):
+                msg = 'sampling rates of Seismograms and Green\'s function are not the'
+                msg = msg + ' same: %f != %f' % (st_tr[0].stats.sampling_rate,
+                                                 st_g[0].stats.sampling_rate)
+                raise ValueError(msg)
+
+            M, stf, misfit, st_syn = mtinv_constrained((utrw, weights_l2.copy(), S0w, df,
+                dt, nstat, ndat, ng, nfft, nfinv), st_tr, st_g, fmin, fmax,
+                nsv=nsv, single_force=single_force, stat_subset=stat_subset,
+                force_recalc=force_recalc, weighting_type=weighting_type,
+                weights=weights, cache_path=cache_path + ('%06d_' % i),
+                cache=cache, constrained_sources=constrained_sources)
+
+            M_tl.append(M)
+            sl.append(stf)
+            st_synl.append(st_syn)
+            misfitl.append(misfit)
+
+        misfit = np.array(misfitl)
+        argmin = misfit.argmin()
+        
+
+        return M_tl[argmin], sl[argmin], st_synl[argmin], st_tr, misfit, argmin
 
 
 
