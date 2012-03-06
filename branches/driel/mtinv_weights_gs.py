@@ -357,3 +357,88 @@ def mtinv_gs(st_tr, gl, fmin, fmax, fmax_hardcut_factor=4, S0=None, nsv=1,
 
     return M_tl[argmin], ml[argmin], xl[argmin], sl[argmin], st_synl[argmin], st_tr, misfit, argmin
     
+
+
+
+
+def generate_constrained_sources(mt_eigenvalues, euler_angles=[(-np.pi,
+        np.pi),(-0.5*np.pi, 0.5*np.pi),(-np.pi, np.pi)], angle_steps=[10,10,10],
+        rotation_mode='extrinsic'):
+    '''
+    For a Moment Tensor given as Eigenvalues, compute all rotations for the angle limits in euler_angles.
+    
+    :param mt_eigenvalues: 3x1 list type containing the eigenvalues of the MT to rotate
+    :param euler_angles: angle range to parameterize (depends on the symmetries
+        of the MT) list of 3 tuples with two entries each
+    :param angle_steps: list of 3 integers, number of interpolation points in the euler angle range
+    :param rotation_mode: 'intrinsic' or 'extrinsic', see http://en.wikipedia.org/wiki/Euler_angles
+    '''
+
+    # set up angle search grid
+    angle_grid = np.empty((angle_steps[0], angle_steps[1], angle_steps[2], 3))
+    print angle_grid.shape
+    
+    # set up constraines sources by rotating the mt defined by mt_eigenvalues
+    # by angles in the grid
+    constrained_sources = np.zeros((angle_steps[0], angle_steps[1], angle_steps[2], 6))
+    
+    for k in np.arange(angle_steps[0]):
+        for l in np.arange(angle_steps[1]):
+            for m in np.arange(angle_steps[2]):
+
+                phi = k  / float(angle_steps[0] - 1) \
+                    * (euler_angles[0][1] -  euler_angles[0][0]) \
+                    + euler_angles[0][0]
+            
+                theta = l  / float(angle_steps[1] - 1) \
+                      * (euler_angles[1][1] -  euler_angles[1][0]) \
+                      + euler_angles[1][0]
+
+                psi = m  / float(angle_steps[2] - 1) \
+                      * (euler_angles[2][1] -  euler_angles[2][0]) \
+                      + euler_angles[2][0]
+           
+                angle_grid[k,l,m,:] = (phi, theta, psi)
+
+        
+                # Define the 3D rotation matrix with Euler angles phi, theta and psi
+
+                R1 = np.matrix(np.zeros((3,3)))
+
+                R1[2,2] = 1.
+                R1[0,0] =  np.cos(phi)
+                R1[1,1] =  np.cos(phi)
+                R1[0,1] = -np.sin(phi)
+                R1[1,0] =  np.sin(phi)
+
+                R2 = np.matrix(np.zeros((3,3)))
+
+                R2[0,0] = 1.
+                R2[1,1] =  np.cos(theta)
+                R2[2,2] =  np.cos(theta)
+                R2[1,2] = -np.sin(theta)
+                R2[2,1] =  np.sin(theta)
+                
+                R3 = np.matrix(np.zeros((3,3)))
+
+                R3[2,2] = 1.
+                R3[0,0] =  np.cos(psi)
+                R3[1,1] =  np.cos(psi)
+                R3[0,1] = -np.sin(psi)
+                R3[1,0] =  np.sin(psi)
+
+                m_const = np.matrix(np.diag(mt_eigenvalues))
+                
+                if rotation_mode == 'extrinsic':
+                    m_const = R3 * R2 * R1 * m_const * R1.T * R2.T * R3.T
+                elif rotation_mode == 'intrinsic':
+                    m_const = R1 * R2 * R3 * m_const * R3.T * R2.T * R1.T
+
+                constrained_sources[k,l,m,0] = m_const[0,0]
+                constrained_sources[k,l,m,1] = m_const[1,1]
+                constrained_sources[k,l,m,2] = m_const[2,2]
+                constrained_sources[k,l,m,3] = m_const[0,1]
+                constrained_sources[k,l,m,4] = m_const[0,2]
+                constrained_sources[k,l,m,5] = m_const[1,2]
+    
+    return (constrained_sources, angle_grid)
