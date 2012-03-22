@@ -584,20 +584,29 @@ def generate_constrained_sources(mt_eigenvalues, euler_angles=[(-np.pi,
         for l in np.arange(angle_steps[1]):
             for m in np.arange(angle_steps[2]):
 
-                phi = k  / float(angle_steps[0] - 1) \
-                    * (euler_angles[0][1] -  euler_angles[0][0]) \
-                    + euler_angles[0][0]
+                if not angle_steps[0] == 1:
+                    phi = k  / float(angle_steps[0] - 1) \
+                        * (euler_angles[0][1] -  euler_angles[0][0]) \
+                        + euler_angles[0][0]
+                else:
+                    phi = euler_angles[0][0]
+                
             
-                theta = l  / float(angle_steps[1] - 1) \
-                      * (euler_angles[1][1] -  euler_angles[1][0]) \
-                      + euler_angles[1][0]
+                if not angle_steps[1] == 1:
+                    theta = l  / float(angle_steps[1] - 1) \
+                          * (euler_angles[1][1] -  euler_angles[1][0]) \
+                          + euler_angles[1][0]
+                else:
+                    theta = euler_angles[1][0]
 
-                psi = m  / float(angle_steps[2] - 1) \
-                      * (euler_angles[2][1] -  euler_angles[2][0]) \
-                      + euler_angles[2][0]
-           
+                if not angle_steps[2] == 1:
+                    psi = m  / float(angle_steps[2] - 1) \
+                          * (euler_angles[2][1] -  euler_angles[2][0]) \
+                          + euler_angles[2][0]
+                else:
+                    psi = euler_angles[1][0]
+                
                 angle_grid[k,l,m,:] = (phi, theta, psi)
-
         
                 # Define the 3D rotation matrix with Euler angles phi, theta and psi
 
