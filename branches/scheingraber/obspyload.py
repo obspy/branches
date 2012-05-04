@@ -324,9 +324,9 @@ def main(**kwargs):
                            'stalonmin': '-180',
                            'stalonmax': '180',
                            'dt': '10',
-                           'start': str(UTCDateTime.utcnow()
+                           'start': str(UTCDateTime()
                                         - 60 * 60 * 24 * 30 * 1),
-                           'end': str(UTCDateTime.utcnow()),
+                           'end': str(UTCDateTime()),
                            'preset': '300',
                            'offset': '2400',
                            'datapath': 'obspyload-data',
