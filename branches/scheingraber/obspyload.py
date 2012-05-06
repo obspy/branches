@@ -1836,8 +1836,8 @@ def queryMeta(options):
             # if there has been no exception, the d/l should have worked
             print 'done.'
             print 'Converting seed to Resp format...',
-            sp = Parser(dlseedfnfull)
             try:
+                sp = Parser(dlseedfnfull)
                 sp.writeRESP(options.datapath)
             except:
                 print 'failed.'
