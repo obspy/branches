@@ -1843,9 +1843,9 @@ def queryMeta(options):
                 print 'failed.'
             else:
                 print 'done.'
-            # remove seed file, since only resp is of interest to us
-            os.remove(dlseedfnfull)
-            del sp
+                # remove seed file, since only resp is of interest to us
+                os.remove(dlseedfnfull)
+                del sp
     done = True
     return
 
