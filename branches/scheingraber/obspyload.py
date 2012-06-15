@@ -1093,8 +1093,8 @@ def main(**kwargs):
                 il_quake += str(stationlat) + ';' + str(stationlon) + ';'
                 il_quake += str(elevation) + ';'
                 # Quality Control
-                dqdict = obspy.mseed.util.getTimingAndDataQuality(datafout)
                 try:
+                    dqdict = obspy.mseed.util.getTimingAndDataQuality(datafout)
                     dqsum += sum(dqdict['data_quality_flags'])
                 except:
                     pass
@@ -1266,8 +1266,8 @@ def main(**kwargs):
                 il_quake += str(stationlat) + ';' + str(stationlon) + ';'
                 il_quake += str(elevation) + ';'
                 # Quality Control
-                dqdict = obspy.mseed.util.getTimingAndDataQuality(datafout)
                 try:
+                    dqdict = obspy.mseed.util.getTimingAndDataQuality(datafout)
                     dqsum += sum(dqdict['data_quality_flags'])
                 except:
                     pass
