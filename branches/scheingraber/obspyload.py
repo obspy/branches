@@ -111,11 +111,11 @@ else:
         """
         This class will run as a second thread to capture keypress events
         """
-        global quitflag, done, options
+        global quitflag, done, options, plotfn
 
         def run(self):
             global quitflag, done, dlplot_x, dlplot_y, dlplot_x_fp, dlplot_y_fp
-            global options
+            global options, plotfn
             msg = 'Keypress capture thread initialized...\n'
             msg += "Press 'q' at any time to finish " \
             + "the file in progress and quit."
@@ -159,7 +159,7 @@ else:
         Checks if the user pressed q to quit downloading meanwhile.
         """
         global quitflag, dlplot_x, dlplot_y, dlplot_x_fp, dlplot_y_fp, plotfn
-        global options
+        global options, dlplot_begin
         with lock:
             if quitflag:
                 msg = "Quitting. To resume the download, just run " + \
@@ -173,7 +173,7 @@ else:
                                  dlplot_x_fp, dlplot_y_fp)
                     dataTimePlot(dlplot_x, dlplot_y, plotfn)
                 except:
-                    pass
+                    print "Did not create data-vs-time plot."
                 sys.exit(0)
 #
 ####################################################
@@ -297,8 +297,8 @@ def main(**kwargs):
          obspyload -H) as well as the ObsPyLoad manual (available on the ObsPy
          SVN server) for further documentation.
     """
-    global datapath, quitflag, done, dlplot_x, dlplot_y
-    global dlplot_x_fp, dlplot_y_fp
+    global datapath, quitflag, done, dlplot_x, dlplot_y, plotfn
+    global dlplot_x_fp, dlplot_y_fp, dlplot_begin, options
     quitflag = False
     ##############################################################
     # CONFIG AND OPTIONPARSER SECTION as described in the thesis #
@@ -2741,12 +2741,6 @@ def dataTimeSave(options, dlplot_begin, dlplot_x_fp, dlplot_y_fp):
         print "Saved data-vs-time information."
     except:
         print "Warning: could not save data-vs-time information."
-    plt.plot(dlplot_x, dlplot_y)
-    plt.xlabel('Time in seconds')
-    plt.ylabel('Folder size in megabytes')
-    titlemsg = "Folder size vs elapsed time"
-    plotfn = os.path.join(options.datapath, 'foldersize_vs_time.pdf')
-    plt.savefig(plotfn)
 
 
 def dataTimePlot(dlplot_x, dlplot_y, plotfn):
