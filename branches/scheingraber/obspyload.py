@@ -111,10 +111,11 @@ else:
         """
         This class will run as a second thread to capture keypress events
         """
-        global quitflag, done, dlplot_x, dlplot_y, dlplot_x_fp, dlplot_y_fp
+        global quitflag, done, options
 
         def run(self):
             global quitflag, done, dlplot_x, dlplot_y, dlplot_x_fp, dlplot_y_fp
+            global options
             msg = 'Keypress capture thread initialized...\n'
             msg += "Press 'q' at any time to finish " \
             + "the file in progress and quit."
@@ -157,7 +158,8 @@ else:
         """
         Checks if the user pressed q to quit downloading meanwhile.
         """
-        global quitflag, dlplot_x, dlplot_y, dlplot_x_fp, dlplot_y_fp
+        global quitflag, dlplot_x, dlplot_y, dlplot_x_fp, dlplot_y_fp, plotfn
+        global options
         with lock:
             if quitflag:
                 msg = "Quitting. To resume the download, just run " + \
@@ -165,13 +167,11 @@ else:
                 print msg
                 # dump current data-vs-time lists to file
                 # try-except since those variables only exist in data dl mode
+                # and to support running this over ssh with screen w/o x-server
                 try:
-                    dlplot_x_fh = open(dlplot_x_fp, 'wb')
-                    dlplot_y_fh = open(dlplot_y_fp, 'wb')
-                    pickle.dump(dlplot_x, dlplot_x_fh)
-                    pickle.dump(dlplot_y, dlplot_y_fh)
-                    dlplot_x_fh.close()
-                    dlplot_y_fh.close()
+                    dataTimeSave(options, dlplot_begin,
+                                 dlplot_x_fp, dlplot_y_fp)
+                    dataTimePlot(dlplot_x, dlplot_y, plotfn)
                 except:
                     pass
                 sys.exit(0)
@@ -338,6 +338,7 @@ def main(**kwargs):
                            'ch': '*',
                            'maxdays': '5',
                            'skip_nw' : '',
+                           'dlplot_interv' : '10'
                           })
 
     # read config file, if it exists, possibly overriding defaults
@@ -521,6 +522,7 @@ def main(**kwargs):
     config_options['preset'] = config.getfloat('DEFAULT', 'preset')
     config_options['offset'] = config.getfloat('DEFAULT', 'offset')
     config_options['maxdays'] = config.getfloat('DEFAULT', 'maxdays')
+    config_options['dlplot_interv'] = config.getint('DEFAULT', 'dlplot_interv')
     # Not possible to override the start and end time defaults here, since
     # they are of obspy's own UTCDateTime type. will handle below.
 
@@ -846,6 +848,7 @@ def main(**kwargs):
     # downloaded data vs elapsed time plot later
     dlplot_x_fp = os.path.join(options.datapath, 'dlplot_x.pickle')
     dlplot_y_fp = os.path.join(options.datapath, 'dlplot_y.pickle')
+    plotfn = os.path.join(options.datapath, 'foldersize_vs_time.pdf')
     try:
         # if this d/l is resumed, load the previous dl-plot data into memory
         # b for binary file
@@ -940,6 +943,9 @@ def main(**kwargs):
     if options.plt:
         alleventsmatrix = np.zeros((pltHeight, pltWidth))
         alleventsmatrix_counter = 0
+    # init dlplot_cter, this will be incremented and checked to only update
+    # the data-vs-time plot every dlplot_interv iterations
+    dlplot_cter = 0
     for eventdict in events:
         check_quit()
         eventid = eventdict['event_id']
@@ -1200,9 +1206,13 @@ def main(**kwargs):
                         print "stmatrix: ", stmatrix
                     print "done."
                 del st
-            # add current elapsed time and folder size to the lists
-            dlplot_x.append(time.time() - dlplot_begin)
-            dlplot_y.append(getFolderSize(options.datapath) / (1024 * 1024.0))
+            # save current elapsed time and folder size
+            # every dlplot_interv iterations
+            if dlplot_cter >= options.dlplot_interv:
+                dataTimeSave(options, dlplot_begin, dlplot_x_fp, dlplot_y_fp)
+                dlplot_cter = 0
+            else:
+                dlplot_cter += 1
         # (5.2) Iris wf data download loop
         for net, sta, loc, cha, stationlat, stationlon, elevation in avail:
             check_quit()
@@ -1342,9 +1352,15 @@ def main(**kwargs):
                 il_quake += ';%d;%d\n' % (gaps, overlaps)
                 quakefout.write(il_quake)
                 quakefout.flush()
-            # add current elapsed time and folder size to the lists
-            dlplot_x.append(time.time() - dlplot_begin)
-            dlplot_y.append(getFolderSize(options.datapath) / (1024 * 1024.0))
+            # save current elapsed time and folder size
+            if dlplot_cter >= options.dlplot_interv:
+                dataTimeSave(options, dlplot_begin, dlplot_x_fp, dlplot_y_fp)
+                dlplot_cter = 0
+            else:
+                dlplot_cter += 1
+        # --- end of retrieval for one event ---
+        # after each event, produce and save a new data-vs-time plot
+        dataTimePlot(dlplot_x, dlplot_y, plotfn)
         # write data quality info into catalog file event info line
         if dqsum == 0:
             infoline += ';0 (OK);'
@@ -1405,13 +1421,6 @@ def main(**kwargs):
             alleventsmatrix += stmatrix[1:, :]
             alleventsmatrix_counter += 1
             del stmatrix
-    # save plot of database size versus elapsed download time
-    plt.plot(dlplot_x, dlplot_y)
-    plt.xlabel('Time in seconds')
-    plt.ylabel('Folder size in megabytes')
-    titlemsg = "Folder size vs elapsed time"
-    plotfn = os.path.join(options.datapath, 'foldersize_vs_time.pdf')
-    plt.savefig(plotfn)
     # save plot of all events, similar as above, for comments see above
     if options.plt:
         print "Saving plot of all events stacked..."
@@ -2305,9 +2314,8 @@ def timeWindowMode(options):
             il_quake += ';%d;%d\n' % (gaps, overlaps)
             quakefout.write(il_quake)
             quakefout.flush()
-            # add current elapsed time and folder size to the lists
-            dlplot_x.append(time.time() - dlplot_begin)
-            dlplot_y.append(getFolderSize(options.datapath) / (1024 * 1024.0))
+        # add current elapsed time and folder size to the lists
+        dataTimeSave(options, dlplot_begin, dlplot_x_fp, dlplot_y_fp)
     # (5.2) Iris wf data download loop
     for net, sta, loc, cha, stationlat, stationlon, elevation in avail:
         check_quit()
@@ -2426,17 +2434,12 @@ def timeWindowMode(options):
         il_quake += ';%d;%d\n' % (gaps, overlaps)
         quakefout.write(il_quake)
         quakefout.flush()
+        # add current elapsed time and folder size to the lists
+        dataTimeSave(options, dlplot_begin, dlplot_x_fp, dlplot_y_fp)
     ### end of station loop ###
-    # add current elapsed time and folder size to the lists
-    dlplot_x.append(time.time() - dlplot_begin)
-    dlplot_y.append(getFolderSize(options.datapath) / (1024 * 1024.0))
-    # save plot of database size versus elapsed download time
-    plt.plot(dlplot_x, dlplot_y)
-    plt.xlabel('Time in seconds')
-    plt.ylabel('Folder size in megabytes')
-    titlemsg = "Folder size vs elapsed time"
-    plotfn = os.path.join(options.datapath, 'foldersize_vs_time.pdf')
-    plt.savefig(plotfn)
+    # add current elapsed time and folder size to the lists and plot
+    dataTimeSave(options, dlplot_begin, dlplot_x_fp, dlplot_y_fp)
+    dataTimePlot(dlplot_x, dlplot_y, plotfn)
     # close files
     quakefout.close()
     exceptionfout.close()
@@ -2718,6 +2721,49 @@ def help():
     print
     return
 
+
+def dataTimeSave(options, dlplot_begin, dlplot_x_fp, dlplot_y_fp):
+    """
+    Adds current time and folder size to list and saves it
+    """
+    global dlplot_x, dlplot_y
+    # add new time-vs-data pair to lists
+    dlplot_x.append(time.time() - dlplot_begin)
+    dlplot_y.append(getFolderSize(options.datapath) / (1024 * 1024.0))
+    # dump current data-vs-time lists to file
+    try:
+        dlplot_x_fh = open(dlplot_x_fp, 'wb')
+        dlplot_y_fh = open(dlplot_y_fp, 'wb')
+        pickle.dump(dlplot_x, dlplot_x_fh)
+        pickle.dump(dlplot_y, dlplot_y_fh)
+        dlplot_x_fh.close()
+        dlplot_y_fh.close()
+        print "Saved data-vs-time information."
+    except:
+        print "Warning: could not save data-vs-time information."
+    plt.plot(dlplot_x, dlplot_y)
+    plt.xlabel('Time in seconds')
+    plt.ylabel('Folder size in megabytes')
+    titlemsg = "Folder size vs elapsed time"
+    plotfn = os.path.join(options.datapath, 'foldersize_vs_time.pdf')
+    plt.savefig(plotfn)
+
+
+def dataTimePlot(dlplot_x, dlplot_y, plotfn):
+    """
+    Saves plot of database size versus elapsed download time
+    """
+    # try-except to avoid crash when missing connection to x-server
+    # which matplotlib needs even for only saving the plot
+    try:
+        plt.plot(dlplot_x, dlplot_y)
+        plt.xlabel('Time in seconds')
+        plt.ylabel('Folder size in megabytes')
+        titlemsg = "Folder size vs elapsed time"
+        plt.savefig(plotfn)
+        print "Saved data-vs-time plot."
+    except:
+        print "Warning: could not save data-vs-time plot."
 
 if __name__ == "__main__":
     """
