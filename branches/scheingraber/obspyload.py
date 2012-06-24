@@ -1115,7 +1115,11 @@ def main(**kwargs):
                     il_quake += str('None')
                 # finally, gaps&overlaps into quakefile
                 # read mseed into stream, use .getGaps method
-                st = read(datafout)
+                try:
+                    st = read(datafout)
+                except:
+                    print "Invalid data file retrieved."
+                    continue
                 # this code snippet is taken from stream.printGaps since I need
                 # gaps and overlaps distinct.
                 result = st.getGaps()
@@ -1292,7 +1296,11 @@ def main(**kwargs):
                     il_quake += str('None')
                 # finally, gaps&overlaps into quakefile
                 # read mseed into stream, use .getGaps method
-                st = read(datafout)
+                try:
+                    st = read(datafout)
+                except:
+                    print "Invalid data file retrieved."
+                    continue
                 # this code snippet is taken from stream.printGaps since I need
                 # gaps and overlaps distinct.
                 result = st.getGaps()
@@ -2539,30 +2547,17 @@ def help():
     print "\nObsPyLoad: ObsPy Seismic Data Download tool."
     print "============================================\n\n"
     print "There are two different flavors of usage, in short:"
-    print "---------------------------------------------------\n"
+    print "===================================================\n"
     printWrap("e.g.:", "obspyload.py -r <lonmin>/<lonmax>/<latmin>/<latmax>" \
           + "-t <start>/<end> -m <min_mag> -M <max_mag> -i <net.sta.loc.cha>")
     printWrap("e.g.:", "obspyload.py -y <min_lon> -Y <max_lon> " + \
           "-x <min_lat> -X <max_lat> -s <start> -e <end> -P <datapath> " + \
           "-o <offset> --reset -f")
 
-    print "\n\nYou may (no mandatory options):"
-    print "-------------------------------\n"
-    print "* specify a geographical rectangle:\n"
-    printWrap("Default:", "no constraints.")
-    printWrap("Format:", "+/- 90 decimal degrees for latitudinal limits,")
-    printWrap("", "+/- 180 decimal degrees for longitudinal limits.")
-    print
-    printWrap("-r[--rect]",
-            "<min.longitude>/<max.longitude>/<min.latitude>/<max.latitude>")
-    printWrap("", "e.g.: -r -15.5/40/30.8/50")
-    print
-    printWrap("-x[--lonmin]", "<min.latitude>")
-    printWrap("-X[--lonmax]", "<max.longitude>")
-    printWrap("-y[--latmin]", "<min.latitude>")
-    printWrap("-Y[--latmax]", "<max.latitude>")
-    printWrap("", "e.g.: -x -15.5 -X 40 -y 30.8 -Y 50")
-    print "\n"
+    print "\n\nYou may provide (no mandatory options):"
+    print "=======================================\n"
+    print "SOURCE (event) restrictions:"
+    print "----------------------------\n"
     print "* specify a timeframe:\n"
     printWrap("Default:", "the last 1 month")
     printWrap("Format:", "Any obspy.core.UTCDateTime recognizable string.")
@@ -2582,7 +2577,49 @@ def help():
     printWrap("-M[--magmax]", "<max.magnitude>")
     printWrap("", "e.g.: -m 4.2 -M 9")
     print "\n"
-    print "* specify a station restriction:\n"
+    print "* specify rectangular geographical source region:\n"
+    printWrap("Default:", "no constraints.")
+    printWrap("Format:", "+/- 90 decimal degrees for latitudinal limits,")
+    printWrap("", "+/- 180 decimal degrees for longitudinal limits.")
+    print
+    printWrap("-r[--rect]",
+            "<min.longitude>/<max.longitude>/<min.latitude>/<max.latitude>")
+    printWrap("", "e.g.: -r -15.5/40/30.8/50")
+    print
+    printWrap("-x[--lonmin]", "<min.longitude>")
+    printWrap("-X[--lonmax]", "<max.longitude>")
+    printWrap("-y[--latmin]", "<min.latitude>")
+    printWrap("-Y[--latmax]", "<max.latitude>")
+    printWrap("", "e.g.: -x -15.5 -X 40 -y 30.8 -Y 50")
+    print "\n"
+    print "RECEIVER (station) restrictions:"
+    print "--------------------------------\n"
+    print "* specify rectangular geographical receiver region:\n"
+    printWrap("Default:", "no constraints.")
+    printWrap("Format:", "+/- 90 decimal degrees for latitudinal limits,")
+    printWrap("", "+/- 180 decimal degrees for longitudinal limits.")
+    print
+    printWrap("-g[--station-rect]",
+            "<min.longitude>/<max.longitude>/<min.latitude>/<max.latitude>")
+    printWrap("", "e.g.: -g -15.5/40/30.8/50")
+    print
+    printWrap("-k[--sta-lonmin]", "<min.latitude>")
+    printWrap("-K[--sta-lonmax]", "<max.longitude>")
+    printWrap("-j[--sta-latmin]", "<min.latitude>")
+    printWrap("-J[--sta-latmax]", "<max.latitude>")
+    printWrap("", "e.g.: -k -15.5 -K 40 -j 30.8 -J 50")
+    print "\n"
+    print "* specify circular geographical receiver region:\n"
+    printWrap("Default:", "no constraints.")
+    printWrap("Format:", "+/- 90 decimal degrees for latitudinal center,")
+    printWrap("", "+/- 180 decimal degrees for longitudinal center,")
+    printWrap("", "from 0 to 180 decimal degrees for radius.")
+    print
+    printWrap("-l[--sta-radius]",
+            "<longitude>/<latitude>/<max.radius>")
+    printWrap("", "e.g.: -l 11/48/20\n")
+    print
+    print "\n* specify a station identifier restriction:\n"
     printWrap("Default:", "no constraints.")
     printWrap("Format:", "Any station code, may include wildcards.")
     print
@@ -2594,7 +2631,27 @@ def help():
     printWrap("-L[--location]", "<location>")
     printWrap("-C[--channel]", "<channel>")
     printWrap("", "e.g. -N IU -S ANMO -L 00 -C BH*")
-    print "\n\n* specify plotting options:\n"
+    print "\n* additional station options:\n"
+    printWrap("-n[--no-temporary]", "")
+    printWrap("", "Instead of downloading both temporary and permanent " + \
+          "networks (default), download only permanent ones.")
+    print
+    printWrap("-p[--preset]", "<preset>")
+    printWrap("", "Time parameter given in seconds which determines how " + \
+        "close the data will be cropped before estimated arrival time at " + \
+        "each individual station. Default: 5 minutes.")
+    print
+    printWrap("-o[--offset]", "<offset>")
+    printWrap("", "Time parameter given in seconds which determines how " + \
+        "close the data will be cropped after estimated arrival time at " + \
+        "each individual station. Default: 40 minutes.")
+    print
+    printWrap("-q[--query-resp]", "")
+    printWrap("", "Instead of downloading seismic data, download " + \
+              "instrument response files.")
+    print
+    print "\n\nPLOTTING options:"
+    print "-----------------\n"
     printWrap("Default:", "no plot. If the plot will be created with -I d " + \
               "(or -I default), the defaults are 1200x800x1/100 and the " + \
               "default phases to plot are 'P' and 'S'.")
@@ -2651,25 +2708,8 @@ def help():
               "with -P to specify the path and with -a to specify the " + \
               "phases. Has to be used together with " + \
               "-I to specify the plot properties.")
-    print "\n\n* specify additional options:\n"
-    printWrap("-n[--no-temporary]", "")
-    printWrap("", "Instead of downloading both temporary and permanent " + \
-          "networks (default), download only permanent ones.")
-    print
-    printWrap("-p[--preset]", "<preset>")
-    printWrap("", "Time parameter given in seconds which determines how " + \
-        "close the data will be cropped before estimated arrival time at " + \
-        "each individual station. Default: 5 minutes.")
-    print
-    printWrap("-o[--offset]", "<offset>")
-    printWrap("", "Time parameter given in seconds which determines how " + \
-        "close the data will be cropped after estimated arrival time at " + \
-        "each individual station. Default: 40 minutes.")
-    print
-    printWrap("-q[--query-resp]", "")
-    printWrap("", "Instead of downloading seismic data, download " + \
-              "instrument response files.")
-    print
+    print "\n\nFOLDER Options:"
+    print "---------------\n"
     printWrap("-P[--datapath]", "<datapath>")
     printWrap("", "Specify a different datapath, do not use do default one.")
     print
@@ -2688,7 +2728,7 @@ def help():
               " creation).")
     print "\nType obspyload.py -h for a list of all long and short options."
     print "\n\nExamples:"
-    print "---------\n"
+    print "=========\n"
     printWrap("Alps region, minimum magnitude of 4.2:",
               "obspyload.py -r 5/16.5/45.75/48 -t 2007-01-13T08:24:00/" + \
               "2011-02-25T22:41:00 -m 4.2")
